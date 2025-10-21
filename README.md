@@ -205,9 +205,97 @@ npm run lint         # Ejecutar linter
 
 ## 🚀 Deploy en Vercel
 
+### Deploy Básico
+
 1. Conectar repositorio a Vercel
 2. Agregar variables de entorno
 3. Deploy automático en cada push a main
+
+### 🌐 Dominio Personalizado
+
+Para que Zingarito Kids tenga su propio dominio profesional, hay varias opciones:
+
+#### Opciones de Dominios
+
+**OPCIÓN 1: Solo .com (Recomendado - Más Simple)**
+- Dominio: `zingaritokids.com`
+- Proveedor: [Namecheap](https://namecheap.com)
+- Costo: ~USD $12/año (~$12,000 ARS/año)
+- ✅ No requiere trámites con AFIP
+- ✅ Más profesional internacionalmente
+- ✅ Configuración en 10 minutos
+- ✅ Ideal para expansión futura
+
+**OPCIÓN 2: .com.ar + .com (Identidad Argentina)**
+- Dominios: `zingaritokids.com.ar` (principal) + `zingaritokids.com` (redirección)
+- Proveedores:
+  - `.com.ar`: [DonWeb](https://donweb.com) (~$4,000 ARS/año)
+  - `.com`: [Namecheap](https://namecheap.com) (~USD $12/año)
+- Costo total: ~$16,000 ARS/año
+- ✅ Identidad argentina clara
+- ⚠️ Requiere Clave Fiscal AFIP para .com.ar
+
+#### Configuración del Dominio con Vercel
+
+**1. Comprar el dominio**
+- Ir a [Namecheap](https://namecheap.com) o [DonWeb](https://donweb.com)
+- Buscar: `zingaritokids.com`
+- Completar la compra
+
+**2. Conectar en Vercel**
+```bash
+# En Vercel Dashboard:
+1. Ir a tu proyecto → Settings → Domains
+2. Click en "Add Domain"
+3. Ingresar: zingaritokids.com
+4. Vercel te mostrará los registros DNS necesarios
+```
+
+**3. Configurar DNS en Namecheap**
+```
+1. Login en Namecheap
+2. Domain List → Manage → Advanced DNS
+3. Agregar estos registros:
+
+   Type: A Record
+   Host: @
+   Value: 76.76.21.21
+   TTL: Automatic
+
+   Type: CNAME
+   Host: www
+   Value: cname.vercel-dns.com
+   TTL: Automatic
+```
+
+**4. Verificar y Activar HTTPS**
+- Esperar 24-48 horas para propagación DNS
+- Vercel detecta automáticamente el dominio
+- HTTPS se activa automáticamente (gratis con Let's Encrypt)
+- ✅ Tu sitio estará en: `https://zingaritokids.com`
+
+#### Proveedores de Dominios en Argentina
+
+**Para .com.ar (Dominios Argentinos):**
+- **NIC Argentina** (oficial): https://nic.ar - ~$3,000 ARS/año
+- **DonWeb** (recomendado): https://donweb.com - ~$4,000 ARS/año
+- **HostGator Argentina**: https://hostgator.ar - ~$3,500 ARS/año
+
+**Para .com (Internacionales):**
+- **Namecheap** (recomendado): https://namecheap.com - ~USD $12/año
+- **Google Domains**: https://domains.google - ~USD $12/año
+- **GoDaddy**: https://godaddy.com - ~USD $15/año
+
+#### Verificación del Dominio
+
+Después de configurar el DNS, verificar con:
+```bash
+# Verificar registros DNS
+nslookup zingaritokids.com
+
+# Verificar propagación global
+# Usar: https://dnschecker.org
+```
 
 ## 📄 Licencia
 
