@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ShoppingBag, Heart } from 'lucide-react';
-import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Product } from '@/lib/types';
 import { formatPrice } from '@/lib/utils/formatters';
 
@@ -16,7 +16,7 @@ export function ProductCard({ product, onAddToFavorites, isFavorite = false }: P
   const hasDiscount = product.wholesale_price && product.wholesale_price < product.price;
 
   return (
-    <Card hover padding="none" className="overflow-hidden relative group">
+    <Card className="overflow-hidden relative group hover:shadow-lg transition-shadow p-0">
       <Link href={`/productos/${product.id}`}>
         {/* Imagen del Producto */}
         <div className="relative aspect-square bg-gray-200 overflow-hidden">

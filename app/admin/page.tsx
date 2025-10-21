@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button, Alert } from '@/lib/ui-wrappers';
 import { Loading } from '@/components/ui/Loading';
-import { Alert } from '@/components/ui/Alert';
 import { 
   DollarSign, 
   ShoppingCart, 

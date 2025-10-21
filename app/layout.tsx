@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { Toaster } from "react-hot-toast";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -32,23 +32,8 @@ export default function RootLayout({
   return (
     <html lang="es" className={inter.variable}>
       <body className="antialiased min-h-screen flex flex-col bg-gray-50">
-        {/* Notificaciones Toast */}
-        <Toaster 
-          position="top-right"
-          toastOptions={{
-            duration: 3000,
-            style: {
-              background: '#363636',
-              color: '#fff',
-            },
-            success: {
-              iconTheme: {
-                primary: '#7B3FBD',
-                secondary: '#fff',
-              },
-            },
-          }}
-        />
+        {/* Notificaciones Toast - Sonner (shadcn/ui) */}
+        <Toaster position="top-right" richColors />
         
         {/* Header */}
         <Header />

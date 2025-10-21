@@ -4,11 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { Alert } from '@/components/ui/Alert';
+import { Button, Input, Select, Alert } from '@/lib/ui-wrappers';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { validateEmail, validatePassword, validatePhone } from '@/lib/utils/validators';
 import { PROVINCES_ARGENTINA } from '@/lib/types';
 

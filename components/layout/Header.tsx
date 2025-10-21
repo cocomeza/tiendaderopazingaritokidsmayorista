@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Menu, X, ShoppingCart, User, Search, Heart } from 'lucide-react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useCart } from '@/lib/hooks/useCart';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/lib/ui-wrappers';
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

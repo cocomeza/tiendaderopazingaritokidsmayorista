@@ -7,15 +7,13 @@ import { ArrowLeft, Heart, ShoppingCart, Share2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useCart } from '@/lib/hooks/useCart';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
-import { Select } from '@/components/ui/Select';
-import { Card, CardContent } from '@/components/ui/Card';
+import { Button, Select, Alert } from '@/lib/ui-wrappers';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Loading } from '@/components/ui/Loading';
-import { Alert } from '@/components/ui/Alert';
 import { Product } from '@/lib/types';
 import { formatPrice } from '@/lib/utils/formatters';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 interface PageProps {
   params: Promise<{ id: string }>;

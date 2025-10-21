@@ -1,49 +1,77 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
 
 /* =====================================================
-   ZINGARITO KIDS - ESTILOS GLOBALES
+   SHADCN/UI + ZINGARITO KIDS THEME
    ===================================================== */
 
-:root {
-  /* Colores principales */
-  --primary: #7B3FBD;
-  --primary-dark: #5A2C8F;
-  --secondary: #00D9D4;
-  --accent: #FFB700;
-  
-  /* Colores de estado */
-  --success: #25D366;
-  --error: #DC2626;
-  --warning: #F59E0B;
-  
-  /* Grises */
-  --dark: #1A1A1A;
-  --gray-900: #111827;
-  --gray-800: #1F2937;
-  --gray-700: #374151;
-  --gray-600: #4B5563;
-  --gray-500: #6B7280;
-  --gray-400: #9CA3AF;
-  --gray-300: #D1D5DB;
-  --gray-200: #E5E7EB;
-  --gray-100: #F3F4F6;
-  --gray-50: #F9FAFB;
-  
-  /* Fuentes */
-  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+@layer base {
+  :root {
+    /* SHADCN/UI VARIABLES - ZINGARITO KIDS THEME */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 262 83% 58%;  /* #7B3FBD - Morado Zingarito */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 194 100% 84%;  /* #00D9D4 - Celeste Zingarito */
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 262 83% 58%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 262 83% 58%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 262 83% 58%;
+  }
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 }
 
-body {
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+/* =====================================================
+   ZINGARITO KIDS CUSTOM STYLES
+   ===================================================== */
 
 /* Scrollbar personalizado */
 ::-webkit-scrollbar {
@@ -51,16 +79,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--gray-100);
+  background: hsl(var(--muted));
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--primary);
+  background: hsl(var(--primary));
   border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--primary-dark);
+  background: hsl(var(--primary) / 0.8);
 }
 
 /* Animaciones */
@@ -75,59 +103,356 @@ body {
   }
 }
 
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-/* Clases de utilidad */
-.container-custom {
-  max-width: 1280px;
-  margin-left: auto;
-  margin-right: auto;
-  padding-left: 1rem;
-  padding-right: 1rem;
-}
-
-@media (min-width: 640px) {
-  .container-custom {
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 
-@media (min-width: 1024px) {
-  .container-custom {
-    padding-left: 2rem;
-    padding-right: 2rem;
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
   }
 }
 
-/* Estilos para imágenes de productos */
-.product-image {
-  object-fit: cover;
-  transition: transform 0.3s ease;
+/* Utilidades personalizadas */
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
 }
 
-.product-image:hover {
-  transform: scale(1.05);
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
 }
 
-/* Overlay para modales */
+.animate-pulse-slow {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Estilos para el hero */
+.hero-gradient {
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%);
+}
+
+/* Estilos para cards */
+.card-hover {
+  transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+
+/* Estilos para botones */
+.btn-primary {
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.8) 100%);
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.9) 0%, hsl(var(--primary) / 0.7) 100%);
+  transform: translateY(-1px);
+}
+
+/* Estilos para el WhatsApp */
+.whatsapp-float {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+  animation: pulse 2s infinite;
+}
+
+/* Responsive utilities */
+@media (max-width: 768px) {
+  .hero-gradient {
+    background: linear-gradient(180deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%);
+  }
+}
+
+/* Estilos para formularios */
+.form-input {
+  transition: all 0.3s ease;
+}
+
+.form-input:focus {
+  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.3);
+}
+
+/* Estilos para badges */
+.badge-new {
+  background: linear-gradient(45deg, hsl(var(--primary)), hsl(var(--secondary)));
+  color: white;
+}
+
+.badge-sale {
+  background: linear-gradient(45deg, #ff6b6b, #ffa500);
+  color: white;
+}
+
+/* Estilos para el footer */
+.footer-gradient {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+}
+
+/* Estilos para loading */
+.loading-spinner {
+  border: 2px solid hsl(var(--muted));
+  border-top: 2px solid hsl(var(--primary));
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Estilos para el admin panel */
+.admin-sidebar {
+  background: linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--muted)) 100%);
+}
+
+/* Estilos para tablas */
+.table-row-hover:hover {
+  background: hsl(var(--muted) / 0.5);
+}
+
+/* Estilos para modales */
 .modal-overlay {
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
 }
 
-/* Focus visible mejorado */
-*:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
+/* Estilos para notificaciones */
+.notification-success {
+  background: linear-gradient(45deg, #25d366, #128c7e);
+  color: white;
 }
 
-/* Print styles */
+.notification-error {
+  background: linear-gradient(45deg, #dc2626, #b91c1c);
+  color: white;
+}
+
+.notification-warning {
+  background: linear-gradient(45deg, #f59e0b, #d97706);
+  color: white;
+}
+
+/* Estilos para el catálogo */
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+/* Estilos para filtros */
+.filter-section {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+}
+
+/* Estilos para la paginación */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Estilos para el checkout */
+.checkout-step {
+  border: 2px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.checkout-step.active {
+  border-color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.05);
+}
+
+.checkout-step.completed {
+  border-color: hsl(var(--secondary));
+  background: hsl(var(--secondary) / 0.05);
+}
+
+/* Estilos para el carrito */
+.cart-item {
+  border-bottom: 1px solid hsl(var(--border));
+  transition: all 0.3s ease;
+}
+
+.cart-item:hover {
+  background: hsl(var(--muted) / 0.3);
+}
+
+/* Estilos para el perfil de usuario */
+.profile-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+/* Estilos para estadísticas */
+.stat-card {
+  background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--muted)) 100%);
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+}
+
+/* Estilos para gráficos */
+.chart-container {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+/* Estilos para búsqueda */
+.search-input {
+  background: hsl(var(--background));
+  border: 2px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.search-input:focus {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.3);
+}
+
+/* Estilos para el header */
+.header-gradient {
+  background: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--muted)) 100%);
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+/* Estilos para navegación */
+.nav-link {
+  transition: all 0.3s ease;
+  border-radius: 0.375rem;
+}
+
+.nav-link:hover {
+  background: hsl(var(--muted));
+  color: hsl(var(--primary));
+}
+
+.nav-link.active {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+/* Estilos para el breadcrumb */
+.breadcrumb {
+  background: hsl(var(--muted));
+  border-radius: 0.375rem;
+  padding: 0.5rem 1rem;
+}
+
+/* Estilos para tooltips */
+.tooltip {
+  background: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.375rem;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+}
+
+/* Estilos para el modo oscuro */
+@media (prefers-color-scheme: dark) {
+  .hero-gradient {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%);
+  }
+}
+
+/* Estilos para impresión */
 @media print {
-  header,
-  footer,
   .no-print {
     display: none !important;
   }
+  
+  .print-only {
+    display: block !important;
+  }
+}
+
+/* Estilos para accesibilidad */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Estilos para alto contraste */
+@media (prefers-contrast: high) {
+  :root {
+    --border: 0 0% 0%;
+    --ring: 0 0% 0%;
+  }
+}
+
+/* Estilos para el loading global */
+.global-loading {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: hsl(var(--background) / 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+/* Estilos para errores */
+.error-boundary {
+  background: hsl(var(--destructive) / 0.1);
+  border: 1px solid hsl(var(--destructive));
+  border-radius: 0.5rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+/* Estilos para éxito */
+.success-message {
+  background: hsl(var(--secondary) / 0.1);
+  border: 1px solid hsl(var(--secondary));
+  border-radius: 0.5rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+/* Estilos para warnings */
+.warning-message {
+  background: hsl(var(--accent) / 0.1);
+  border: 1px solid hsl(var(--accent));
+  border-radius: 0.5rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+/* Estilos para información */
+.info-message {
+  background: hsl(var(--primary) / 0.1);
+  border: 1px solid hsl(var(--primary));
+  border-radius: 0.5rem;
+  padding: 1rem;
+  text-align: center;
 }

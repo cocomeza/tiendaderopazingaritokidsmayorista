@@ -5,9 +5,8 @@ import Link from 'next/link';
 import { Trash2, Plus, Minus, ShoppingBag, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useCart } from '@/lib/hooks/useCart';
-import { Button } from '@/components/ui/Button';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { Alert } from '@/components/ui/Alert';
+import { Button, Alert } from '@/lib/ui-wrappers';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { formatPrice } from '@/lib/utils/formatters';
 
 export default function CarritoPage() {

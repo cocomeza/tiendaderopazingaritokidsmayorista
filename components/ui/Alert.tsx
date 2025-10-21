@@ -1,77 +1,66 @@
-import { ReactNode } from 'react';
-import { AlertCircle, CheckCircle, Info, AlertTriangle, X } from 'lucide-react';
-import { cn } from '@/lib/utils/cn';
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
 
-export interface AlertProps {
-  variant?: 'info' | 'success' | 'warning' | 'error';
-  title?: string;
-  children: ReactNode;
-  dismissible?: boolean;
-  onDismiss?: () => void;
-  className?: string;
-}
+import { cn } from "@/lib/utils"
 
-const icons = {
-  info: Info,
-  success: CheckCircle,
-  warning: AlertTriangle,
-  error: AlertCircle,
-};
+const alertVariants = cva(
+  "relative w-full rounded-lg border px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 [&>svg]:text-current",
+  {
+    variants: {
+      variant: {
+        default: "bg-card text-card-foreground",
+        destructive:
+          "text-destructive bg-card [&>svg]:text-current *:data-[slot=alert-description]:text-destructive/90",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
 
-const styles = {
-  info: {
-    container: 'bg-blue-50 border-blue-200 text-blue-900',
-    icon: 'text-blue-500',
-  },
-  success: {
-    container: 'bg-green-50 border-green-200 text-green-900',
-    icon: 'text-green-500',
-  },
-  warning: {
-    container: 'bg-yellow-50 border-yellow-200 text-yellow-900',
-    icon: 'text-yellow-500',
-  },
-  error: {
-    container: 'bg-red-50 border-red-200 text-red-900',
-    icon: 'text-red-500',
-  },
-};
-
-export function Alert({
-  variant = 'info',
-  title,
-  children,
-  dismissible = false,
-  onDismiss,
+function Alert({
   className,
-}: AlertProps) {
-  const Icon = icons[variant];
-  const style = styles[variant];
-
+  variant,
+  ...props
+}: React.ComponentProps<"div"> & VariantProps<typeof alertVariants>) {
   return (
     <div
-      className={cn(
-        'flex gap-3 p-4 rounded-lg border',
-        style.container,
-        className
-      )}
+      data-slot="alert"
       role="alert"
-    >
-      <Icon className={cn('flex-shrink-0 w-5 h-5', style.icon)} />
-      <div className="flex-1">
-        {title && <h4 className="font-semibold mb-1">{title}</h4>}
-        <div className="text-sm">{children}</div>
-      </div>
-      {dismissible && (
-        <button
-          onClick={onDismiss}
-          className="flex-shrink-0 text-current opacity-60 hover:opacity-100 transition-opacity"
-          aria-label="Cerrar alerta"
-        >
-          <X size={20} />
-        </button>
-      )}
-    </div>
-  );
+      className={cn(alertVariants({ variant }), className)}
+      {...props}
+    />
+  )
 }
 
+function AlertTitle({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="alert-title"
+      className={cn(
+        "col-start-2 line-clamp-1 min-h-4 font-medium tracking-tight",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function AlertDescription({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="alert-description"
+      className={cn(
+        "text-muted-foreground col-start-2 grid justify-items-start gap-1 text-sm [&_p]:leading-relaxed",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export { Alert, AlertTitle, AlertDescription }

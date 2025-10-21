@@ -2,17 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
-import { Select } from '@/components/ui/Select';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button, Select, Textarea } from '@/lib/ui-wrappers';
 import { Loading } from '@/components/ui/Loading';
-import { Modal, ModalFooter } from '@/components/ui/Modal';
-import { Textarea } from '@/components/ui/Textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Order, OrderWithItems, ORDER_STATUSES, PAYMENT_STATUSES } from '@/lib/types';
 import { formatDate, formatPrice } from '@/lib/utils/formatters';
 import { Eye, Download } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 export default function PedidosAdminPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
@@ -183,15 +181,14 @@ export default function PedidosAdminPage() {
         </div>
       </Card>
 
-      {/* Modal de Detalle */}
+      {/* Dialog de Detalle */}
       {selectedOrder && (
-        <Modal
-          isOpen={detailModalOpen}
-          onClose={() => setDetailModalOpen(false)}
-          title={`Pedido ${selectedOrder.order_number}`}
-          size="lg"
-        >
-          <div className="space-y-6">
+        <Dialog open={detailModalOpen} onOpenChange={setDetailModalOpen}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>Pedido {selectedOrder.order_number}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6">
             {/* Cliente */}
             <div>
               <h3 className="font-bold mb-2">Cliente</h3>
@@ -264,24 +261,24 @@ export default function PedidosAdminPage() {
               fullWidth
             />
 
-            <ModalFooter>
-              <Button
-                variant="ghost"
-                onClick={() => setDetailModalOpen(false)}
-                disabled={updating}
-              >
-                Cerrar
-              </Button>
-              <Button
-                variant="primary"
-                onClick={handleUpdateOrder}
-                loading={updating}
-              >
-                Guardar Cambios
-              </Button>
-            </ModalFooter>
-          </div>
-        </Modal>
+              <DialogFooter>
+                <Button
+                  variant="ghost"
+                  onClick={() => setDetailModalOpen(false)}
+                  disabled={updating}
+                >
+                  Cerrar
+                </Button>
+                <Button
+                  onClick={handleUpdateOrder}
+                  disabled={updating}
+                >
+                  Guardar Cambios
+                </Button>
+              </DialogFooter>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

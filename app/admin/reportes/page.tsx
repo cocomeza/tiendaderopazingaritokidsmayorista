@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Loading } from '@/components/ui/Loading';
 import { formatPrice, formatNumber } from '@/lib/utils/formatters';
 import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Package } from 'lucide-react';

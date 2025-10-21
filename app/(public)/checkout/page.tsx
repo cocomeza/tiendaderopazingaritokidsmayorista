@@ -6,14 +6,11 @@ import { Check, Upload, CreditCard } from 'lucide-react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useCart } from '@/lib/hooks/useCart';
 import { supabase } from '@/lib/supabase/client';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Textarea } from '@/components/ui/Textarea';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { Alert } from '@/components/ui/Alert';
+import { Button, Input, Textarea, Alert } from '@/lib/ui-wrappers';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Loading } from '@/components/ui/Loading';
 import { formatPrice, formatWhatsAppURL } from '@/lib/utils/formatters';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 // DATOS BANCARIOS DE PRUEBA (reemplazar con datos reales del cliente)
 const DATOS_BANCARIOS = {

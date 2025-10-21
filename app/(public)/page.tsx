@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { ArrowRight, ShoppingBag, Shield, Truck, Tag } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/lib/ui-wrappers';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 // TODO: Cuando esté conectado a Supabase, obtener productos reales
 const featuredProducts = [
@@ -156,7 +156,7 @@ export default function HomePage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {featuredProducts.map((product) => (
-              <Card key={product.id} hover padding="none" className="overflow-hidden">
+              <Card key={product.id} className="overflow-hidden hover:shadow-lg transition-shadow p-0">
                 <Link href={`/productos/${product.id}`}>
                   {/* Imagen del Producto */}
                   <div className="relative aspect-square bg-gray-200">
@@ -220,7 +220,7 @@ export default function HomePage() {
               { name: 'Calzado', link: '/productos?category=Calzado', color: 'bg-green-100' },
             ].map((category) => (
               <Link key={category.name} href={category.link}>
-                <Card hover className={`${category.color} h-32 flex items-center justify-center cursor-pointer`}>
+                <Card className={`${category.color} h-32 flex items-center justify-center cursor-pointer hover:shadow-lg transition-shadow`}>
                   <h3 className="text-xl font-bold text-gray-900">
                     {category.name}
                   </h3>

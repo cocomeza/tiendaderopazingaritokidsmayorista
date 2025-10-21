@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
 import { Profile } from '@/lib/types';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);

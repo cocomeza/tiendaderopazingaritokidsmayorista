@@ -6,8 +6,7 @@ import { Search } from 'lucide-react';
 import { useProducts } from '@/lib/hooks/useProducts';
 import { ProductFilter } from '@/components/productos/ProductFilter';
 import { ProductGrid } from '@/components/productos/ProductGrid';
-import { Select } from '@/components/ui/Select';
-import { Input } from '@/components/ui/Input';
+import { Select, Input } from '@/lib/ui-wrappers';
 import { Loading } from '@/components/ui/Loading';
 import { ProductFilters, ProductSortOption } from '@/lib/types';
 

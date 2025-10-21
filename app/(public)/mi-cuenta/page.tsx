@@ -2,11 +2,8 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { Alert } from '@/components/ui/Alert';
+import { Button, Input, Select, Alert } from '@/lib/ui-wrappers';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Loading } from '@/components/ui/Loading';
 import { PROVINCES_ARGENTINA } from '@/lib/types';
 import { User, Package, Heart, Settings } from 'lucide-react';

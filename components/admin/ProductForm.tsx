@@ -3,16 +3,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Textarea } from '@/components/ui/Textarea';
-import { Select } from '@/components/ui/Select';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { Alert } from '@/components/ui/Alert';
+import { Button, Input, Textarea, Select, Alert } from '@/lib/ui-wrappers';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Product, CATEGORIES, GENDERS, AGE_RANGES, SIZES } from '@/lib/types';
 import { generateSKU } from '@/lib/utils/formatters';
 import { X, Upload } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 interface ProductFormProps {
   product?: Product | null;

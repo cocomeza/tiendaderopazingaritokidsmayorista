@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Search, X } from 'lucide-react';
-import { Input } from '@/components/ui/Input';
+import { Input } from '@/lib/ui-wrappers';
 
 interface ProductSearchProps {
   onSearch: (query: string) => void;

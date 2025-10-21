@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { Product, ProductFilters, ProductSortOption } from '@/lib/types';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 export function useProducts(
   filters: ProductFilters = {},

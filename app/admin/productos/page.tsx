@@ -1,18 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
+import { Button, Input, Select } from '@/lib/ui-wrappers';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Loading } from '@/components/ui/Loading';
-import { Modal, ModalFooter } from '@/components/ui/Modal';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Product } from '@/lib/types';
 import { formatPrice } from '@/lib/utils/formatters';
-import { Plus, Search, Edit, Trash2, Eye } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { Plus, Search, Edit, Trash2, Eye, TrendingUp, TrendingDown } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function ProductosAdminPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -21,6 +20,13 @@ export default function ProductosAdminPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState(false);
+  
+  // Estados para actualización masiva de precios
+  const [priceUpdateModalOpen, setPriceUpdateModalOpen] = useState(false);
+  const [priceAdjustment, setPriceAdjustment] = useState<number>(0);
+  const [adjustmentType, setAdjustmentType] = useState<'increase' | 'decrease'>('increase');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [updatingPrices, setUpdatingPrices] = useState(false);
 
   useEffect(() => {
     loadProducts();
@@ -73,6 +79,97 @@ export default function ProductosAdminPage() {
     }
   };
 
+  // Obtener todas las categorías únicas
+  const categories = useMemo(() => {
+    const cats = new Set(products.map(p => p.category).filter(Boolean));
+    return Array.from(cats).sort();
+  }, [products]);
+
+  // Productos que se verán afectados por la actualización de precios
+  const productsToUpdate = useMemo(() => {
+    if (selectedCategory === 'all') {
+      return products;
+    }
+    return products.filter(p => p.category === selectedCategory);
+  }, [products, selectedCategory]);
+
+  // Calcular vista previa de cambios
+  const pricePreview = useMemo(() => {
+    const multiplier = adjustmentType === 'increase' 
+      ? 1 + (priceAdjustment / 100)
+      : 1 - (priceAdjustment / 100);
+
+    return productsToUpdate.slice(0, 5).map(product => ({
+      ...product,
+      oldPrice: product.price,
+      newPrice: Math.round(product.price * multiplier * 100) / 100,
+      oldWholesalePrice: product.wholesale_price,
+      newWholesalePrice: product.wholesale_price 
+        ? Math.round(product.wholesale_price * multiplier * 100) / 100
+        : null,
+    }));
+  }, [productsToUpdate, priceAdjustment, adjustmentType]);
+
+  const handlePriceUpdate = async () => {
+    if (priceAdjustment <= 0 || priceAdjustment > 100) {
+      toast.error('El porcentaje debe estar entre 0 y 100');
+      return;
+    }
+
+    if (productsToUpdate.length === 0) {
+      toast.error('No hay productos para actualizar');
+      return;
+    }
+
+    setUpdatingPrices(true);
+    try {
+      const multiplier = adjustmentType === 'increase' 
+        ? 1 + (priceAdjustment / 100)
+        : 1 - (priceAdjustment / 100);
+
+      // Actualizar cada producto
+      const updates = productsToUpdate.map(product => {
+        const newPrice = Math.round(product.price * multiplier * 100) / 100;
+        const newWholesalePrice = product.wholesale_price
+          ? Math.round(product.wholesale_price * multiplier * 100) / 100
+          : null;
+
+        return supabase
+          .from('products')
+          .update({
+            price: newPrice,
+            wholesale_price: newWholesalePrice || newPrice,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', product.id);
+      });
+
+      // Ejecutar todas las actualizaciones
+      const results = await Promise.all(updates);
+      
+      // Verificar si hubo errores
+      const errors = results.filter(r => r.error);
+      if (errors.length > 0) {
+        throw new Error('Error al actualizar algunos productos');
+      }
+
+      toast.success(`✅ ${productsToUpdate.length} productos actualizados exitosamente`);
+      
+      // Recargar productos
+      await loadProducts();
+      
+      // Cerrar modal y resetear valores
+      setPriceUpdateModalOpen(false);
+      setPriceAdjustment(0);
+      setSelectedCategory('all');
+    } catch (error: any) {
+      console.error('Error updating prices:', error);
+      toast.error('Error al actualizar precios');
+    } finally {
+      setUpdatingPrices(false);
+    }
+  };
+
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     product.sku?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -95,12 +192,23 @@ export default function ProductosAdminPage() {
           <h1 className="text-3xl font-extrabold text-gray-900">Productos</h1>
           <p className="text-gray-600 mt-1">Gestiona el catálogo de productos</p>
         </div>
-        <Link href="/admin/productos/nuevo">
-          <Button variant="primary" size="lg">
-            <Plus size={20} className="mr-2" />
-            Nuevo Producto
+        <div className="flex flex-wrap gap-3">
+          <Button 
+            variant="outline" 
+            size="lg"
+            onClick={() => setPriceUpdateModalOpen(true)}
+            disabled={products.length === 0}
+          >
+            <TrendingUp size={20} className="mr-2" />
+            Actualizar Precios
           </Button>
-        </Link>
+          <Link href="/admin/productos/nuevo">
+            <Button variant="primary" size="lg">
+              <Plus size={20} className="mr-2" />
+              Nuevo Producto
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Search */}
@@ -227,33 +335,188 @@ export default function ProductosAdminPage() {
         </div>
       </Card>
 
-      {/* Delete Confirmation Modal */}
-      <Modal
-        isOpen={deleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
-        title="Eliminar Producto"
-      >
-        <p className="text-gray-600 mb-4">
-          ¿Estás seguro que querés eliminar el producto{' '}
-          <strong>{productToDelete?.name}</strong>? Esta acción no se puede deshacer.
-        </p>
-        <ModalFooter>
-          <Button
-            variant="ghost"
-            onClick={() => setDeleteModalOpen(false)}
-            disabled={deleting}
-          >
-            Cancelar
-          </Button>
-          <Button
-            variant="danger"
-            onClick={handleDeleteConfirm}
-            loading={deleting}
-          >
-            Eliminar
-          </Button>
-        </ModalFooter>
-      </Modal>
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Eliminar Producto</DialogTitle>
+          </DialogHeader>
+          <p className="text-gray-600 mb-4">
+            ¿Estás seguro que querés eliminar el producto{' '}
+            <strong>{productToDelete?.name}</strong>? Esta acción no se puede deshacer.
+          </p>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setDeleteModalOpen(false)}
+              disabled={deleting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              disabled={deleting}
+            >
+              Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Price Update Modal */}
+      <Dialog open={priceUpdateModalOpen} onOpenChange={setPriceUpdateModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Actualizar Precios Masivamente</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Tipo de ajuste */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Tipo de Ajuste
+              </label>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setAdjustmentType('increase')}
+                  className={`flex-1 p-4 rounded-lg border-2 transition-all ${
+                    adjustmentType === 'increase'
+                      ? 'border-green-500 bg-green-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <TrendingUp className={adjustmentType === 'increase' ? 'text-green-600' : 'text-gray-400'} />
+                    <span className={`font-semibold ${adjustmentType === 'increase' ? 'text-green-700' : 'text-gray-600'}`}>
+                      Aumentar
+                    </span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setAdjustmentType('decrease')}
+                  className={`flex-1 p-4 rounded-lg border-2 transition-all ${
+                    adjustmentType === 'decrease'
+                      ? 'border-red-500 bg-red-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <TrendingDown className={adjustmentType === 'decrease' ? 'text-red-600' : 'text-gray-400'} />
+                    <span className={`font-semibold ${adjustmentType === 'decrease' ? 'text-red-700' : 'text-gray-600'}`}>
+                      Disminuir
+                    </span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Porcentaje */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Porcentaje de Ajuste (%)
+              </label>
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={priceAdjustment || ''}
+                onChange={(e) => setPriceAdjustment(parseFloat(e.target.value) || 0)}
+                placeholder="Ej: 3, 5, 10"
+                fullWidth
+              />
+              <p className="text-sm text-gray-500 mt-1">
+                Ingresá el porcentaje que querés {adjustmentType === 'increase' ? 'aumentar' : 'disminuir'}
+              </p>
+            </div>
+
+            {/* Categoría */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Categoría
+              </label>
+              <Select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                fullWidth
+              >
+                <option value="all">Todas las categorías ({products.length} productos)</option>
+                {categories.map(category => {
+                  const count = products.filter(p => p.category === category).length;
+                  return (
+                    <option key={category} value={category}>
+                      {category} ({count} productos)
+                    </option>
+                  );
+                })}
+              </Select>
+            </div>
+
+            {/* Vista Previa */}
+            {priceAdjustment > 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-900 mb-3">
+                  Vista Previa ({productsToUpdate.length} productos se actualizarán)
+                </h4>
+                <div className="space-y-2">
+                  {pricePreview.map((item) => (
+                    <div key={item.id} className="bg-white rounded p-3 text-sm">
+                      <div className="font-medium text-gray-900 mb-1">{item.name}</div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">
+                          {formatPrice(item.oldPrice)} → <strong className={adjustmentType === 'increase' ? 'text-green-600' : 'text-red-600'}>
+                            {formatPrice(item.newPrice)}
+                          </strong>
+                        </span>
+                        <Badge variant={adjustmentType === 'increase' ? 'success' : 'warning'}>
+                          {adjustmentType === 'increase' ? '+' : '-'}{priceAdjustment}%
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                  {productsToUpdate.length > 5 && (
+                    <p className="text-xs text-gray-500 text-center pt-2">
+                      ... y {productsToUpdate.length - 5} productos más
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Advertencia */}
+            {priceAdjustment > 0 && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-sm text-yellow-800">
+                  <strong>⚠️ Atención:</strong> Esta acción modificará los precios de{' '}
+                  <strong>{productsToUpdate.length} productos</strong>. Los cambios se aplicarán inmediatamente.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setPriceUpdateModalOpen(false);
+                setPriceAdjustment(0);
+                setSelectedCategory('all');
+              }}
+              disabled={updatingPrices}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handlePriceUpdate}
+              disabled={updatingPrices || priceAdjustment <= 0}
+            >
+              {updatingPrices ? 'Actualizando...' : `Actualizar ${productsToUpdate.length} Productos`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

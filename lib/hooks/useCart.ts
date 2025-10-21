@@ -3,7 +3,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { CartItem, Product } from '@/lib/types';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 interface CartStore {
   items: CartItem[];

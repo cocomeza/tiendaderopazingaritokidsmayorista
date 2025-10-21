@@ -3,10 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { supabase } from '@/lib/supabase/client';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Loading } from '@/components/ui/Loading';
-import { Alert } from '@/components/ui/Alert';
+import { Alert } from '@/lib/ui-wrappers';
 import { ORDER_STATUSES, PAYMENT_STATUSES, Order, OrderItem } from '@/lib/types';
 import { formatDate, formatPrice } from '@/lib/utils/formatters';
 import { Package, User, Heart } from 'lucide-react';
@@ -156,7 +156,7 @@ export default function MisPedidosPage() {
               </Card>
             ) : (
               orders.map((order) => (
-                <Card key={order.id} hover>
+                <Card key={order.id} className="hover:shadow-lg transition-shadow">
                   <CardContent className="p-6">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                       <div>

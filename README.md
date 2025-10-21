@@ -24,6 +24,10 @@ Tienda online mayorista de ropa infantil con sistema completo de gestión de pro
 ### 🎛️ Panel de Administración
 - ✅ Dashboard con estadísticas en tiempo real
 - ✅ Gestión de productos (CRUD con imágenes)
+- ✅ **Actualización masiva de precios** con un solo click
+  - Aumentar o disminuir precios por porcentaje
+  - Aplicar a todos los productos o por categoría
+  - Vista previa de cambios antes de aplicar
 - ✅ Gestión de pedidos
 - ✅ Gestión de clientes
 - ✅ Reportes y estadísticas
@@ -103,6 +107,47 @@ Abrir [http://localhost:3000](http://localhost:3000)
 - `/admin/clientes` - Lista de clientes
 - `/admin/reportes` - Reportes y estadísticas
 - `/admin/configuracion` - Configuración del negocio
+
+## 💰 Actualización Masiva de Precios
+
+Una de las características más poderosas del panel de administración es la **actualización masiva de precios**. Esta funcionalidad permite modificar los precios de múltiples productos simultáneamente.
+
+### ¿Cómo funciona?
+
+1. **Acceder al módulo:**
+   - Ir a `/admin/productos`
+   - Click en el botón **"Actualizar Precios"**
+
+2. **Configurar el ajuste:**
+   - Elegir **Aumentar** o **Disminuir** precios
+   - Ingresar el **porcentaje deseado** (ej: 3, 5, 10, 15.5)
+   - Seleccionar **categoría específica** o aplicar a **todos los productos**
+
+3. **Vista Previa:**
+   - El sistema muestra una **vista previa en tiempo real**
+   - Ver cuántos productos se actualizarán
+   - Ver ejemplos de precios antes y después
+
+4. **Confirmar:**
+   - Click en **"Actualizar X Productos"**
+   - Los cambios se aplican **inmediatamente** a la base de datos
+
+### Ejemplo de uso:
+```
+Tipo: Aumentar
+Porcentaje: 3%
+Categoría: Remeras
+
+Resultado: Todos los productos de la categoría "Remeras" 
+aumentarán su precio un 3% automáticamente.
+```
+
+### Ventajas:
+- ✅ Ahorra tiempo (no editar producto por producto)
+- ✅ Actualización instantánea en toda la tienda
+- ✅ Vista previa para evitar errores
+- ✅ Se puede aplicar por categoría o globalmente
+- ✅ Acepta decimales para ajustes precisos
 
 ## 👤 Crear Usuario Admin
 

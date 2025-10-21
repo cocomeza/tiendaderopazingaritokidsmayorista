@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import { Card } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/lib/ui-wrappers';
 import { Loading } from '@/components/ui/Loading';
 import { Profile } from '@/lib/types';
 import { formatDate } from '@/lib/utils/formatters';
 import { Search, Mail, Phone, MapPin } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 export default function ClientesAdminPage() {
   const [clients, setClients] = useState<Profile[]>([]);
@@ -101,7 +101,7 @@ export default function ClientesAdminPage() {
       {/* Lista de Clientes */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filteredClients.map((client) => (
-          <Card key={client.id} className="p-6 hover:shadow-lg transition-shadow">
+          <Card key={client.id} className="hover:shadow-lg transition-shadow">
             <div className="space-y-3">
               <div>
                 <h3 className="text-lg font-bold text-gray-900">

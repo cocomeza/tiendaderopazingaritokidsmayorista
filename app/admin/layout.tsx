@@ -14,6 +14,7 @@ import {
   LogOut
 } from 'lucide-react';
 import { Loading } from '@/components/ui/Loading';
+import { Button } from '@/lib/ui-wrappers';
 
 export default function AdminLayout({
   children,
