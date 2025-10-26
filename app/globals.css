@@ -1,101 +1,92 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@custom-variant dark (&:is(.dark *));
-
-/* =====================================================
-   SHADCN/UI + ZINGARITO KIDS THEME
-   ===================================================== */
-
-@layer base {
-  :root {
-    /* SHADCN/UI VARIABLES - ZINGARITO KIDS THEME */
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 262 83% 58%;  /* #7B3FBD - Morado Zingarito */
-    --primary-foreground: 210 40% 98%;
-    --secondary: 194 100% 84%;  /* #00D9D4 - Celeste Zingarito */
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 262 83% 58%;
-    --radius: 0.5rem;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 262 83% 58%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 262 83% 58%;
-  }
+/* Variables CSS personalizadas para la tienda mayorista */
+:root {
+  --primary: #6366f1;
+  --primary-dark: #4f46e5;
+  --secondary: #f59e0b;
+  --accent: #ec4899;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
 }
 
-@layer base {
-  * {
-    border-color: hsl(var(--border));
+/* Estilos base modernos */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.6;
+  color: var(--gray-900);
+  background-color: var(--gray-50);
+}
+
+/* Componentes personalizados */
+@layer components {
+  .btn-primary {
+    @apply bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5;
   }
   
-  body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
-    font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+  .btn-secondary {
+    @apply bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300;
+  }
+  
+  .btn-success {
+    @apply bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5;
+  }
+  
+  .btn-warning {
+    @apply bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5;
+  }
+  
+  .card-modern {
+    @apply bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 border border-gray-100;
+  }
+  
+  .input-modern {
+    @apply w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all duration-300 bg-white;
+  }
+  
+  .badge-modern {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+  }
+  
+  .badge-primary {
+    @apply bg-indigo-100 text-indigo-800;
+  }
+  
+  .badge-success {
+    @apply bg-emerald-100 text-emerald-800;
+  }
+  
+  .badge-warning {
+    @apply bg-amber-100 text-amber-800;
+  }
+  
+  .badge-error {
+    @apply bg-red-100 text-red-800;
   }
 }
 
-/* =====================================================
-   ZINGARITO KIDS CUSTOM STYLES
-   ===================================================== */
-
-/* Scrollbar personalizado */
-::-webkit-scrollbar {
-  width: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: hsl(var(--muted));
-}
-
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--primary));
-  border-radius: 5px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary) / 0.8);
-}
-
-/* Animaciones */
-@keyframes fadeIn {
+/* Animaciones personalizadas */
+@keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(30px);
   }
   to {
     opacity: 1;
@@ -103,10 +94,10 @@
   }
 }
 
-@keyframes slideIn {
+@keyframes slideInRight {
   from {
     opacity: 0;
-    transform: translateX(-20px);
+    transform: translateX(30px);
   }
   to {
     opacity: 1;
@@ -123,336 +114,381 @@
   }
 }
 
-/* Utilidades personalizadas */
-.animate-fade-in {
-  animation: fadeIn 0.5s ease-out;
+.animate-fadeInUp {
+  animation: fadeInUp 0.6s ease-out;
 }
 
-.animate-slide-in {
-  animation: slideIn 0.3s ease-out;
+.animate-slideInRight {
+  animation: slideInRight 0.6s ease-out;
 }
 
-.animate-pulse-slow {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* Estilos para el hero */
-.hero-gradient {
-  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%);
-}
-
-/* Estilos para cards */
-.card-hover {
-  transition: all 0.3s ease;
-}
-
-.card-hover:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-}
-
-/* Estilos para botones */
-.btn-primary {
-  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.8) 100%);
-  transition: all 0.3s ease;
-}
-
-.btn-primary:hover {
-  background: linear-gradient(135deg, hsl(var(--primary) / 0.9) 0%, hsl(var(--primary) / 0.7) 100%);
-  transform: translateY(-1px);
-}
-
-/* Estilos para el WhatsApp */
-.whatsapp-float {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 1000;
+.animate-pulse {
   animation: pulse 2s infinite;
 }
 
-/* Responsive utilities */
+/* Gradientes personalizados */
+.gradient-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.gradient-secondary {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.gradient-success {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+/* Efectos de hover modernos */
+.hover-lift {
+  transition: all 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Efectos de glassmorphism */
+.glass {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+/* Efectos de neumorphism */
+.neumorphism {
+  background: #f0f0f0;
+  box-shadow: 20px 20px 60px #d1d1d1, -20px -20px 60px #ffffff;
+}
+
+/* Responsive design mejorado */
 @media (max-width: 768px) {
-  .hero-gradient {
-    background: linear-gradient(180deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%);
-  }
-}
-
-/* Estilos para formularios */
-.form-input {
-  transition: all 0.3s ease;
-}
-
-.form-input:focus {
-  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.3);
-}
-
-/* Estilos para badges */
-.badge-new {
-  background: linear-gradient(45deg, hsl(var(--primary)), hsl(var(--secondary)));
-  color: white;
-}
-
-.badge-sale {
-  background: linear-gradient(45deg, #ff6b6b, #ffa500);
-  color: white;
-}
-
-/* Estilos para el footer */
-.footer-gradient {
-  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-}
-
-/* Estilos para loading */
-.loading-spinner {
-  border: 2px solid hsl(var(--muted));
-  border-top: 2px solid hsl(var(--primary));
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* Estilos para el admin panel */
-.admin-sidebar {
-  background: linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--muted)) 100%);
-}
-
-/* Estilos para tablas */
-.table-row-hover:hover {
-  background: hsl(var(--muted) / 0.5);
-}
-
-/* Estilos para modales */
-.modal-overlay {
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-}
-
-/* Estilos para notificaciones */
-.notification-success {
-  background: linear-gradient(45deg, #25d366, #128c7e);
-  color: white;
-}
-
-.notification-error {
-  background: linear-gradient(45deg, #dc2626, #b91c1c);
-  color: white;
-}
-
-.notification-warning {
-  background: linear-gradient(45deg, #f59e0b, #d97706);
-  color: white;
-}
-
-/* Estilos para el catálogo */
-.product-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.5rem;
-}
-
-/* Estilos para filtros */
-.filter-section {
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
-  border-radius: 0.5rem;
-}
-
-/* Estilos para la paginación */
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-/* Estilos para el checkout */
-.checkout-step {
-  border: 2px solid hsl(var(--border));
-  border-radius: 0.5rem;
-  transition: all 0.3s ease;
-}
-
-.checkout-step.active {
-  border-color: hsl(var(--primary));
-  background: hsl(var(--primary) / 0.05);
-}
-
-.checkout-step.completed {
-  border-color: hsl(var(--secondary));
-  background: hsl(var(--secondary) / 0.05);
-}
-
-/* Estilos para el carrito */
-.cart-item {
-  border-bottom: 1px solid hsl(var(--border));
-  transition: all 0.3s ease;
-}
-
-.cart-item:hover {
-  background: hsl(var(--muted) / 0.3);
-}
-
-/* Estilos para el perfil de usuario */
-.profile-card {
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
-  border-radius: 0.75rem;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-}
-
-/* Estilos para estadísticas */
-.stat-card {
-  background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--muted)) 100%);
-  border: 1px solid hsl(var(--border));
-  border-radius: 0.75rem;
-}
-
-/* Estilos para gráficos */
-.chart-container {
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
-  border-radius: 0.75rem;
-  padding: 1rem;
-}
-
-/* Estilos para búsqueda */
-.search-input {
-  background: hsl(var(--background));
-  border: 2px solid hsl(var(--border));
-  border-radius: 0.5rem;
-  transition: all 0.3s ease;
-}
-
-.search-input:focus {
-  border-color: hsl(var(--primary));
-  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.3);
-}
-
-/* Estilos para el header */
-.header-gradient {
-  background: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--muted)) 100%);
-  border-bottom: 1px solid hsl(var(--border));
-}
-
-/* Estilos para navegación */
-.nav-link {
-  transition: all 0.3s ease;
-  border-radius: 0.375rem;
-}
-
-.nav-link:hover {
-  background: hsl(var(--muted));
-  color: hsl(var(--primary));
-}
-
-.nav-link.active {
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-}
-
-/* Estilos para el breadcrumb */
-.breadcrumb {
-  background: hsl(var(--muted));
-  border-radius: 0.375rem;
-  padding: 0.5rem 1rem;
-}
-
-/* Estilos para tooltips */
-.tooltip {
-  background: hsl(var(--popover));
-  border: 1px solid hsl(var(--border));
-  border-radius: 0.375rem;
-  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-}
-
-/* Estilos para el modo oscuro */
-@media (prefers-color-scheme: dark) {
-  .hero-gradient {
-    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%);
-  }
-}
-
-/* Estilos para impresión */
-@media print {
-  .no-print {
-    display: none !important;
+  .btn-primary, .btn-secondary, .btn-success, .btn-warning {
+    @apply py-2 px-4 text-sm;
   }
   
-  .print-only {
-    display: block !important;
+  .card-modern {
+    @apply rounded-xl;
   }
 }
 
-/* Estilos para accesibilidad */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
+/* ===================================================== */
+/* ZINGARITO KIDS - ESTILOS GLOBALES */
+/* ===================================================== */
 
-/* Estilos para alto contraste */
-@media (prefers-contrast: high) {
+@layer base {
   :root {
-    --border: 0 0% 0%;
-    --ring: 0 0% 0%;
+    /* Colores principales de Zingarito Kids */
+    --primary: 123 63 189; /* #7B3FBD */
+    --secondary: 0 217 212; /* #00D9D4 */
+    --accent: 255 183 0; /* #FFB700 */
+    
+    /* Colores del gradiente del logo */
+    --gradient-orange: 255 107 53;
+    --gradient-yellow: 247 147 30;
+    --gradient-red: 255 23 68;
+    --gradient-pink: 233 30 99;
+    --gradient-purple: 156 39 176;
+    --gradient-blue: 33 150 243;
+    --gradient-cyan: 0 188 212;
+    --gradient-light-cyan: 0 229 255;
   }
 }
 
-/* Estilos para el loading global */
-.global-loading {
-  position: fixed;
+@layer base {
+  * {
+    @apply border-gray-200;
+  }
+  
+  body {
+    @apply bg-white text-gray-900;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Fuentes personalizadas */
+  .font-zingarito {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+  
+  .font-kids {
+    font-family: 'Brush Script MT', 'Lucida Handwriting', cursive;
+  }
+}
+
+@layer components {
+  /* Componentes personalizados de Zingarito Kids */
+  
+  /* Botones con estilo de marca */
+  .btn-primary {
+    @apply bg-purple-600 text-white hover:bg-purple-700;
+    @apply inline-flex items-center justify-center rounded-md text-sm font-medium;
+    @apply transition-colors focus-visible:outline-none focus-visible:ring-2;
+    @apply focus-visible:ring-purple-500 focus-visible:ring-offset-2;
+    @apply disabled:pointer-events-none disabled:opacity-50;
+  }
+  
+  .btn-secondary {
+    @apply bg-cyan-500 text-white hover:bg-cyan-600;
+    @apply inline-flex items-center justify-center rounded-md text-sm font-medium;
+    @apply transition-colors focus-visible:outline-none focus-visible:ring-2;
+    @apply focus-visible:ring-cyan-500 focus-visible:ring-offset-2;
+    @apply disabled:pointer-events-none disabled:opacity-50;
+  }
+  
+  .btn-accent {
+    @apply bg-yellow-500 text-black hover:bg-yellow-600;
+    @apply inline-flex items-center justify-center rounded-md text-sm font-medium;
+    @apply transition-colors focus-visible:outline-none focus-visible:ring-2;
+    @apply focus-visible:ring-yellow-500 focus-visible:ring-offset-2;
+    @apply disabled:pointer-events-none disabled:opacity-50;
+  }
+  
+  /* Gradientes del logo */
+  .text-gradient-zingarito {
+    background: linear-gradient(135deg, 
+      rgb(var(--gradient-orange)) 0%, 
+      rgb(var(--gradient-pink)) 50%, 
+      rgb(var(--gradient-cyan)) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .text-gradient-horizontal {
+    background: linear-gradient(90deg, 
+      rgb(var(--gradient-orange)) 0%, 
+      rgb(var(--gradient-yellow)) 20%, 
+      rgb(var(--gradient-red)) 40%, 
+      rgb(var(--gradient-pink)) 60%, 
+      rgb(var(--gradient-purple)) 80%, 
+      rgb(var(--gradient-blue)) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .bg-gradient-zingarito {
+    background: linear-gradient(135deg, 
+      rgb(var(--gradient-orange)) 0%, 
+      rgb(var(--gradient-pink)) 50%, 
+      rgb(var(--gradient-cyan)) 100%);
+  }
+  
+  .bg-gradient-zingarito-horizontal {
+    background: linear-gradient(90deg, 
+      rgb(var(--gradient-orange)) 0%, 
+      rgb(var(--gradient-yellow)) 20%, 
+      rgb(var(--gradient-red)) 40%, 
+      rgb(var(--gradient-pink)) 60%, 
+      rgb(var(--gradient-purple)) 80%, 
+      rgb(var(--gradient-blue)) 100%);
+  }
+  
+  /* Cards con hover effect */
+  .card-hover {
+    @apply transition-all duration-300 ease-in-out;
+  }
+  
+  .card-hover:hover {
+    @apply -translate-y-1 shadow-lg;
+  }
+  
+  /* Sombras personalizadas */
+  .shadow-zingarito {
+    box-shadow: 0 4px 20px -2px rgba(123, 63, 189, 0.3);
+  }
+  
+  .shadow-zingarito-lg {
+    box-shadow: 0 10px 40px -4px rgba(123, 63, 189, 0.4);
+  }
+}
+
+/* Estilos específicos para Zingarito Kids */
+.zingarito-header {
+  @apply bg-gradient-zingarito-horizontal text-white;
+}
+
+.zingarito-logo {
+  @apply font-zingarito font-bold text-gradient-horizontal;
+}
+
+.zingarito-kids-text {
+  @apply font-kids text-gradient-zingarito;
+}
+
+/* Responsive design */
+@media (max-width: 640px) {
+  .zingarito-logo {
+    @apply text-2xl;
+  }
+  
+  .zingarito-kids-text {
+    @apply text-lg;
+  }
+}
+
+@media (min-width: 641px) {
+  .zingarito-logo {
+    @apply text-4xl;
+  }
+  
+  .zingarito-kids-text {
+    @apply text-2xl;
+  }
+}
+
+/* ===================================================== */
+/* ACETERNITY UI - ANIMACIONES ESPECTACULARES */
+/* ===================================================== */
+
+@keyframes pulse-spotlight {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.animate-pulse-spotlight {
+  animation: pulse-spotlight 2s ease-in-out infinite alternate;
+}
+
+@keyframes tilt {
+  0%, 50%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(0.5deg);
+  }
+  75% {
+    transform: rotate(-0.5deg);
+  }
+}
+
+.animate-tilt {
+  animation: tilt 10s infinite linear;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(99, 102, 241, 0.8);
+  }
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Efectos de hover mejorados */
+.hover-glow:hover {
+  box-shadow: 0 0 30px rgba(99, 102, 241, 0.6);
+  transition: box-shadow 0.3s ease;
+}
+
+.hover-scale:hover {
+  transform: scale(1.05);
+  transition: transform 0.3s ease;
+}
+
+.hover-rotate:hover {
+  transform: rotate(5deg);
+  transition: transform 0.3s ease;
+}
+
+/* Gradientes animados */
+.bg-gradient-animated {
+  background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+  background-size: 400% 400%;
+  animation: gradient-shift 15s ease infinite;
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Efectos de partículas */
+.particles {
+  position: relative;
+  overflow: hidden;
+}
+
+.particles::before {
+  content: '';
+  position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  background: hsl(var(--background) / 0.8);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
+  right: 0;
+  bottom: 0;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+  animation: particles-move 20s linear infinite;
 }
 
-/* Estilos para errores */
-.error-boundary {
-  background: hsl(var(--destructive) / 0.1);
-  border: 1px solid hsl(var(--destructive));
-  border-radius: 0.5rem;
-  padding: 1rem;
-  text-align: center;
-}
-
-/* Estilos para éxito */
-.success-message {
-  background: hsl(var(--secondary) / 0.1);
-  border: 1px solid hsl(var(--secondary));
-  border-radius: 0.5rem;
-  padding: 1rem;
-  text-align: center;
-}
-
-/* Estilos para warnings */
-.warning-message {
-  background: hsl(var(--accent) / 0.1);
-  border: 1px solid hsl(var(--accent));
-  border-radius: 0.5rem;
-  padding: 1rem;
-  text-align: center;
-}
-
-/* Estilos para información */
-.info-message {
-  background: hsl(var(--primary) / 0.1);
-  border: 1px solid hsl(var(--primary));
-  border-radius: 0.5rem;
-  padding: 1rem;
-  text-align: center;
+@keyframes particles-move {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-100%);
+  }
 }

@@ -1,315 +1,342 @@
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase/client';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Button, Alert } from '@/lib/ui-wrappers';
-import { Loading } from '@/components/ui/Loading';
-import { 
-  DollarSign, 
-  ShoppingCart, 
-  AlertTriangle, 
-  Users,
-  TrendingUp,
-  Package
-} from 'lucide-react';
-import { formatPrice, formatNumber } from '@/lib/utils/formatters';
-import Link from 'next/link';
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { supabase } from '@/lib/supabase/client-fixed'
+import { Spotlight } from '@/components/ui/spotlight'
+import { TextGenerateEffect } from '@/components/ui/text-generate-effect'
+import { BackgroundBeams } from '@/components/ui/background-beams'
+import { CardHoverEffect } from '@/components/ui/card-hover-effect'
+import { motion } from 'framer-motion'
+import { Package, Users, TrendingUp, DollarSign, Plus, Settings, Edit, Trash2, Percent, ArrowLeft } from 'lucide-react'
+
+interface Stats {
+  totalProducts: number
+  activeProducts: number
+  totalCustomers: number
+  lowStockProducts: number
+}
 
 export default function AdminDashboard() {
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    totalSalesMonth: 0,
-    pendingOrders: 0,
-    lowStockProducts: 0,
+  const [stats, setStats] = useState<Stats>({
+    totalProducts: 0,
+    activeProducts: 0,
     totalCustomers: 0,
-  });
-  const [recentOrders, setRecentOrders] = useState<any[]>([]);
-  const [lowStockProducts, setLowStockProducts] = useState<any[]>([]);
+    lowStockProducts: 0
+  })
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    loadStats()
+  }, [])
 
-  const loadDashboardData = async () => {
+  const loadStats = async () => {
     try {
-      setLoading(true);
-
-      // Total ventas del mes actual
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
-
-      const { data: monthOrders } = await supabase
-        .from('orders')
-        .select('total')
-        .gte('created_at', startOfMonth.toISOString())
-        .neq('status', 'cancelado');
-
-      const totalSalesMonth = monthOrders?.reduce((sum, order) => sum + order.total, 0) || 0;
-
-      // Pedidos pendientes
-      const { count: pendingCount } = await supabase
-        .from('orders')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pendiente');
-
-      // Productos con stock bajo
-      const { data: lowStock, count: lowStockCount } = await supabase
+      // Cargar estadísticas de productos
+      const { count: totalProducts } = await supabase
         .from('products')
-        .select('*', { count: 'exact' })
-        .lte('stock', supabase.raw('low_stock_threshold'))
-        .eq('active', true)
-        .limit(5);
+        .select('*', { count: 'exact', head: true })
 
-      // Total clientes
-      const { count: customersCount } = await supabase
+      const { count: activeProducts } = await supabase
+        .from('products')
+        .select('*', { count: 'exact', head: true })
+        .eq('active', true)
+
+      const { count: lowStockProducts } = await supabase
+        .from('products')
+        .select('*', { count: 'exact', head: true })
+        .eq('active', true)
+        .lt('stock', 10)
+
+      // Cargar estadísticas de clientes
+      const { count: totalCustomers } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
-        .eq('is_admin', false);
-
-      // Últimos 5 pedidos
-      const { data: orders } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          profiles:user_id (full_name, email)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(5);
 
       setStats({
-        totalSalesMonth,
-        pendingOrders: pendingCount || 0,
-        lowStockProducts: lowStockCount || 0,
-        totalCustomers: customersCount || 0,
-      });
-
-      setRecentOrders(orders || []);
-      setLowStockProducts(lowStock || []);
+        totalProducts: totalProducts || 0,
+        activeProducts: activeProducts || 0,
+        totalCustomers: totalCustomers || 0,
+        lowStockProducts: lowStockProducts || 0
+      })
     } catch (error) {
-      console.error('Error loading dashboard:', error);
+      console.error('Error cargando estadísticas:', error)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loading size="lg" text="Cargando dashboard..." />
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="relative">
+            <div className="w-20 h-20 border-4 border-purple-200 rounded-full animate-spin"></div>
+            <div className="absolute top-0 left-0 w-20 h-20 border-4 border-transparent border-t-purple-600 rounded-full animate-spin"></div>
+          </div>
+          <p className="mt-6 text-gray-600 font-medium">Cargando panel administrativo...</p>
+          <div className="mt-4 flex justify-center space-x-1">
+            <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
+            <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+            <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+          </div>
+        </div>
       </div>
-    );
+    )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-extrabold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-1">
-          Bienvenido al panel de administración de Zingarito Kids
-        </p>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Ventas del Mes</p>
-                <p className="text-2xl font-extrabold text-gray-900">
-                  {formatPrice(stats.totalSalesMonth)}
-                </p>
-              </div>
-              <div className="bg-green-100 p-3 rounded-full">
-                <DollarSign className="text-green-600" size={24} />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Pedidos Pendientes</p>
-                <p className="text-2xl font-extrabold text-gray-900">
-                  {stats.pendingOrders}
-                </p>
-              </div>
-              <div className="bg-yellow-100 p-3 rounded-full">
-                <ShoppingCart className="text-yellow-600" size={24} />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Stock Bajo</p>
-                <p className="text-2xl font-extrabold text-gray-900">
-                  {stats.lowStockProducts}
-                </p>
-              </div>
-              <div className="bg-red-100 p-3 rounded-full">
-                <AlertTriangle className="text-red-600" size={24} />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Total Clientes</p>
-                <p className="text-2xl font-extrabold text-gray-900">
-                  {formatNumber(stats.totalCustomers)}
-                </p>
-              </div>
-              <div className="bg-blue-100 p-3 rounded-full">
-                <Users className="text-blue-600" size={24} />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Últimos Pedidos */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Últimos Pedidos</CardTitle>
-              <Link
-                href="/admin/pedidos"
-                className="text-sm text-[#7B3FBD] hover:underline"
-              >
-                Ver todos
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {recentOrders.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">
-                No hay pedidos todavía
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {recentOrders.map((order) => (
-                  <div
-                    key={order.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                  >
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-900">
-                        {order.order_number}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {order.profiles?.full_name || 'Cliente'}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-gray-900">
-                        {formatPrice(order.total)}
-                      </p>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        order.status === 'pendiente' ? 'bg-yellow-100 text-yellow-800' :
-                        order.status === 'entregado' ? 'bg-green-100 text-green-800' :
-                        'bg-blue-100 text-blue-800'
-                      }`}>
-                        {order.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Alertas de Stock Bajo */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Alertas de Stock</CardTitle>
-              <Link
-                href="/admin/productos"
-                className="text-sm text-[#7B3FBD] hover:underline"
-              >
-                Ver productos
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {lowStockProducts.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-green-600 font-medium">
-                  ✓ Todos los productos tienen stock suficiente
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {lowStockProducts.map((product) => (
-                  <Alert key={product.id} variant="warning">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-semibold text-gray-900">
-                          {product.name}
-                        </p>
-                        <p className="text-sm">SKU: {product.sku || 'N/A'}</p>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-2xl font-bold text-red-600">
-                          {product.stock}
-                        </span>
-                        <p className="text-xs text-gray-600">unidades</p>
-                      </div>
-                    </div>
-                  </Alert>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Accesos Rápidos */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Accesos Rápidos</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Link
-              href="/admin/productos/nuevo"
-              className="flex items-center gap-3 p-4 bg-[#7B3FBD] text-white rounded-lg hover:bg-[#5A2C8F] transition-colors"
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+      {/* Hero Header with Spotlight and TextGenerateEffect */}
+      <div className="relative h-[40vh] w-full flex items-center justify-center overflow-hidden rounded-b-3xl shadow-xl">
+        <Spotlight
+          className="-top-40 left-0 md:left-60 md:-top-20"
+          fill="white"
+        />
+        <BackgroundBeams className="absolute inset-0 z-0" />
+        <div className="relative z-10 text-center p-4">
+          {/* Botón Volver al Admin */}
+          <div className="mb-6">
+            <Button 
+              variant="ghost" 
+              className="text-white hover:text-white hover:bg-white/20 rounded-xl"
+              asChild
             >
-              <Package size={24} />
-              <span className="font-semibold">Nuevo Producto</span>
-            </Link>
-            <Link
-              href="/admin/pedidos"
-              className="flex items-center gap-3 p-4 bg-[#00D9D4] text-gray-900 rounded-lg hover:bg-[#00B8AE] transition-colors"
-            >
-              <ShoppingCart size={24} />
-              <span className="font-semibold">Ver Pedidos</span>
-            </Link>
-            <Link
-              href="/admin/reportes"
-              className="flex items-center gap-3 p-4 bg-[#FFB700] text-gray-900 rounded-lg hover:bg-[#E5A400] transition-colors"
-            >
-              <TrendingUp size={24} />
-              <span className="font-semibold">Ver Reportes</span>
-            </Link>
+              <a href="/admin">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Volver al Admin
+              </a>
+            </Button>
           </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
+          <TextGenerateEffect
+            words="Panel Administrativo"
+            className="text-4xl md:text-6xl font-bold text-white mb-4 drop-shadow-lg"
+          />
+          <p className="text-lg md:text-xl text-gray-200 mb-8 drop-shadow-md">
+            Dashboard principal de Zingarito Kids
+          </p>
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 mb-8 max-w-xl mx-auto hover:bg-white/20 transition-all duration-300">
+            <p className="text-white font-semibold text-lg mb-2">
+              📊 Dashboard de Control Total
+            </p>
+            <p className="text-white/90">
+              Gestiona productos, precios, clientes y más desde un solo lugar
+            </p>
+          </div>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8, duration: 0.5 }}
+            className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+          >
+            <Button className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold px-8 py-4 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
+              <Plus className="w-5 h-5 mr-2" />
+              Nuevo Producto
+            </Button>
+          </motion.div>
+        </div>
+      </div>
 
+      {/* Estadísticas */}
+      <div className="container mx-auto px-4 py-12">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-gray-800 mb-4">Estadísticas Generales</h2>
+          <p className="text-lg text-gray-600">Resumen completo de tu negocio</p>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+          <CardHoverEffect>
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.5 }}
+            >
+              <Card className="bg-gradient-to-br from-white to-blue-50 border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 rounded-2xl">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-700">Total Productos</CardTitle>
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
+                    <Package className="h-5 w-5 text-white" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-black text-blue-600">{stats.totalProducts}</div>
+                  <p className="text-sm text-gray-600 font-medium">
+                    {stats.activeProducts} activos
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </CardHoverEffect>
+
+          <CardHoverEffect>
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.5 }}
+            >
+              <Card className="bg-gradient-to-br from-white to-green-50 border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 rounded-2xl">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-700">Clientes</CardTitle>
+                  <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
+                    <Users className="h-5 w-5 text-white" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-black text-green-600">{stats.totalCustomers}</div>
+                  <p className="text-sm text-gray-600 font-medium">
+                    Registrados
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </CardHoverEffect>
+
+          <CardHoverEffect>
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.5 }}
+            >
+              <Card className="bg-gradient-to-br from-white to-orange-50 border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 rounded-2xl">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-700">Stock Bajo</CardTitle>
+                  <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center">
+                    <TrendingUp className="h-5 w-5 text-white" />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-black text-orange-600">{stats.lowStockProducts}</div>
+                  <p className="text-sm text-gray-600 font-medium">
+                    Requieren reposición
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </CardHoverEffect>
+
+        </div>
+
+        {/* Acciones Rápidas */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6, duration: 0.5 }}
+          className="text-center mb-12"
+        >
+          <h2 className="text-3xl font-bold text-gray-800 mb-4">Acciones Rápidas</h2>
+          <p className="text-lg text-gray-600">Gestiona tu negocio con herramientas profesionales</p>
+        </motion.div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Gestión de Productos */}
+          <CardHoverEffect>
+            <motion.div
+              initial={{ opacity: 0, x: -50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.7, duration: 0.5 }}
+            >
+              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl">
+                <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-t-2xl">
+                  <CardTitle className="flex items-center gap-3 text-xl font-bold">
+                    <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                      <Package className="w-5 h-5" />
+                    </div>
+                    Gestión de Productos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6 space-y-4">
+                  <Button className="w-full justify-start bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl" asChild>
+                    <a href="/admin/productos">
+                      <Edit className="w-5 h-5 mr-3" />
+                      Ver Todos los Productos
+                    </a>
+                  </Button>
+                  <Button className="w-full justify-start bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl">
+                    <Plus className="w-5 h-5 mr-3" />
+                    Agregar Nuevo Producto
+                  </Button>
+                  <Button className="w-full justify-start bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl">
+                    <TrendingUp className="w-5 h-5 mr-3" />
+                    Productos con Stock Bajo
+                  </Button>
+                  <Button className="w-full justify-start bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl">
+                    <Trash2 className="w-5 h-5 mr-3" />
+                    Productos Inactivos
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </CardHoverEffect>
+
+          {/* Gestión de Precios */}
+          <CardHoverEffect>
+            <motion.div
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.8, duration: 0.5 }}
+            >
+              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl">
+                <CardHeader className="bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-t-2xl">
+                  <CardTitle className="flex items-center gap-3 text-xl font-bold">
+                    <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                      <DollarSign className="w-5 h-5" />
+                    </div>
+                    Gestión de Precios
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6 space-y-4">
+                  <Button className="w-full justify-start bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl" asChild>
+                    <a href="/admin/precios">
+                      <DollarSign className="w-5 h-5 mr-3" />
+                      Gestión de Precios
+                    </a>
+                  </Button>
+                  <Button className="w-full justify-start bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl" asChild>
+                    <a href="/admin/descuentos">
+                      <Percent className="w-5 h-5 mr-3" />
+                      Escala de Descuentos
+                    </a>
+                  </Button>
+                  <Button className="w-full justify-start bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl">
+                    <DollarSign className="w-5 h-5 mr-3" />
+                    Historial de Cambios de Precio
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </CardHoverEffect>
+        </div>
+
+        {/* Gestión de Clientes */}
+        <Card className="mt-12 bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <CardHeader className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-t-lg">
+            <CardTitle className="flex items-center gap-3 text-xl font-bold">
+              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                <Users className="w-5 h-5" />
+              </div>
+              Gestión de Clientes
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Button className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl">
+                Ver Todos los Clientes
+              </Button>
+              <Button className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl">
+                Clientes Activos
+              </Button>
+              <Button className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl">
+                Nuevos Registros
+              </Button>
+              <Button className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl">
+                Exportar Lista
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}

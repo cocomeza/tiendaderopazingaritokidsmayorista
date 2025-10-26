@@ -1,0 +1,25 @@
+# Configuración de Supabase para Zingarito Kids
+# ================================================
+
+# IMPORTANTE: Renombra este archivo a .env.local y configura tus credenciales
+
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_clave_anonima_aqui
+SUPABASE_SERVICE_ROLE_KEY=tu_clave_de_servicio_aqui
+
+# Business Information
+NEXT_PUBLIC_WHATSAPP_NUMBER=543407498045
+NEXT_PUBLIC_BUSINESS_EMAIL=zingaritokids@gmail.com
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+# Optional: Analytics and Monitoring
+NEXT_PUBLIC_GA_ID=your_google_analytics_id
+SENTRY_DSN=your_sentry_dsn
+
+# Instrucciones:
+# 1. Ve a https://supabase.com y crea un nuevo proyecto
+# 2. En Settings > API, copia la URL y las claves
+# 3. Reemplaza los valores de arriba con tus credenciales reales
+# 4. Renombra este archivo a .env.local
+# 5. Ejecuta el script de migración de base de datos

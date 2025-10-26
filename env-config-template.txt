@@ -1,0 +1,108 @@
+# =====================================================
+# ZINGARITO KIDS - CONFIGURACIÓN DE VARIABLES DE ENTORNO
+# =====================================================
+# Configuración para tienda mayorista de ropa infantil
+# Villa Ramallo, Buenos Aires, Argentina
+# =====================================================
+
+# =====================================================
+# SUPABASE CONFIGURACIÓN
+# =====================================================
+# Reemplaza estos valores con los de tu proyecto de Supabase
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+
+# =====================================================
+# INFORMACIÓN DEL NEGOCIO
+# =====================================================
+# Datos específicos de Zingarito Kids
+NEXT_PUBLIC_WHATSAPP_NUMBER=543407498045
+NEXT_PUBLIC_BUSINESS_EMAIL=zingaritokids@gmail.com
+NEXT_PUBLIC_BUSINESS_NAME=Zingarito Kids
+NEXT_PUBLIC_BUSINESS_PHONE=+54 340 749 8045
+NEXT_PUBLIC_BUSINESS_ADDRESS=San Martín 17, Villa Ramallo, Buenos Aires, Argentina
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+# =====================================================
+# CONFIGURACIÓN DE PEDIDOS
+# =====================================================
+# Configuración específica para tienda mayorista
+NEXT_PUBLIC_MIN_ORDER_QUANTITY=5
+NEXT_PUBLIC_MIN_ORDER_AMOUNT=0
+NEXT_PUBLIC_SHIPPING_COST=0
+NEXT_PUBLIC_FREE_SHIPPING_THRESHOLD=50000
+NEXT_PUBLIC_CURRENCY=ARS
+NEXT_PUBLIC_CURRENCY_SYMBOL=$
+
+# =====================================================
+# CONFIGURACIÓN DE STORAGE
+# =====================================================
+# Buckets de Supabase Storage
+NEXT_PUBLIC_PRODUCTS_BUCKET=products
+NEXT_PUBLIC_PAYMENT_PROOFS_BUCKET=payment-proofs
+NEXT_PUBLIC_BUSINESS_BUCKET=business
+
+# =====================================================
+# CONFIGURACIÓN DE AUTENTICACIÓN
+# =====================================================
+# Configuración de NextAuth (si usas autenticación personalizada)
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your_nextauth_secret_here
+
+# =====================================================
+# CONFIGURACIÓN DE DESARROLLO
+# =====================================================
+# Variables para desarrollo
+NODE_ENV=development
+NEXT_PUBLIC_APP_ENV=development
+
+# =====================================================
+# CONFIGURACIÓN OPCIONAL
+# =====================================================
+# Analytics y monitoreo (opcional)
+NEXT_PUBLIC_GA_ID=your_google_analytics_id
+SENTRY_DSN=your_sentry_dsn
+
+# =====================================================
+# CONFIGURACIÓN DE REDES SOCIALES
+# =====================================================
+# URLs de redes sociales (opcional)
+NEXT_PUBLIC_INSTAGRAM_URL=
+NEXT_PUBLIC_FACEBOOK_URL=
+NEXT_PUBLIC_TIKTOK_URL=
+
+# =====================================================
+# CONFIGURACIÓN DE HORARIOS DE ATENCIÓN
+# =====================================================
+# Horarios de atención del negocio
+NEXT_PUBLIC_BUSINESS_HOURS_MONDAY=9:00-18:00
+NEXT_PUBLIC_BUSINESS_HOURS_TUESDAY=9:00-18:00
+NEXT_PUBLIC_BUSINESS_HOURS_WEDNESDAY=9:00-18:00
+NEXT_PUBLIC_BUSINESS_HOURS_THURSDAY=9:00-18:00
+NEXT_PUBLIC_BUSINESS_HOURS_FRIDAY=9:00-18:00
+NEXT_PUBLIC_BUSINESS_HOURS_SATURDAY=9:00-13:00
+NEXT_PUBLIC_BUSINESS_HOURS_SUNDAY=cerrado
+
+# =====================================================
+# CONFIGURACIÓN DE MÉTODOS DE PAGO
+# =====================================================
+# Métodos de pago aceptados
+NEXT_PUBLIC_PAYMENT_METHODS=transferencia,efectivo,mercadopago
+
+# =====================================================
+# CONFIGURACIÓN DE ENVÍO
+# =====================================================
+# Configuración de envíos
+NEXT_PUBLIC_SHIPPING_METHODS=retiro,envio
+NEXT_PUBLIC_SHIPPING_DESCRIPTION=Retiro en local o envío a domicilio
+
+# =====================================================
+# INSTRUCCIONES
+# =====================================================
+# 1. Copia este contenido a un archivo .env.local
+# 2. Reemplaza 'your_supabase_project_url' con la URL de tu proyecto
+# 3. Reemplaza 'your_supabase_anon_key' con tu clave anónima
+# 4. Reemplaza 'your_supabase_service_role_key' con tu clave de servicio
+# 5. Ajusta los valores de negocio según tus necesidades
+# 6. Guarda el archivo y reinicia el servidor de desarrollo

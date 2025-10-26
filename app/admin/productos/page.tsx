@@ -1,523 +1,391 @@
-'use client';
+'use client'
 
-import { useEffect, useState, useMemo } from 'react';
-import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
-import { Button, Input, Select } from '@/lib/ui-wrappers';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Loading } from '@/components/ui/Loading';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Product } from '@/lib/types';
-import { formatPrice } from '@/lib/utils/formatters';
-import { Plus, Search, Edit, Trash2, Eye, TrendingUp, TrendingDown } from 'lucide-react';
-import { toast } from 'sonner';
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
+import { supabase } from '@/lib/supabase/client-fixed'
+import { 
+  Edit, 
+  Trash2, 
+  Plus, 
+  Search,
+  Eye,
+  EyeOff,
+  Save,
+  X
+} from 'lucide-react'
 
-export default function ProductosAdminPage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  
-  // Estados para actualización masiva de precios
-  const [priceUpdateModalOpen, setPriceUpdateModalOpen] = useState(false);
-  const [priceAdjustment, setPriceAdjustment] = useState<number>(0);
-  const [adjustmentType, setAdjustmentType] = useState<'increase' | 'decrease'>('increase');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [updatingPrices, setUpdatingPrices] = useState(false);
+interface Product {
+  id: string
+  name: string
+  description: string | null
+  price: number
+  wholesale_price: number
+  cost_price: number | null
+  images: string[]
+  category_id: string | null
+  sizes: string[]
+  colors: string[]
+  stock: number
+  low_stock_threshold: number
+  active: boolean
+  created_at: string
+  updated_at: string
+}
+
+interface Category {
+  id: string
+  name: string
+}
+
+export default function AdminProductos() {
+  const router = useRouter()
+  const [products, setProducts] = useState<Product[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [showInactive, setShowInactive] = useState(false)
 
   useEffect(() => {
-    loadProducts();
-  }, []);
+    loadData()
+  }, [])
 
-  const loadProducts = async () => {
+  const loadData = async () => {
     try {
-      setLoading(true);
-      const { data, error } = await supabase
+      // Cargar productos
+      const { data: productsData, error: productsError } = await supabase
         .from('products')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
 
-      if (error) throw error;
-      setProducts(data || []);
-    } catch (error: any) {
-      console.error('Error loading products:', error);
-      toast.error('Error al cargar productos');
+      if (productsError) {
+        console.error('Error cargando productos:', productsError)
+        return
+      }
+
+      // Cargar categorías
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('categories')
+        .select('*')
+
+      if (categoriesError) {
+        console.error('Error cargando categorías:', categoriesError)
+      }
+
+      setProducts(productsData || [])
+      setCategories(categoriesData || [])
+    } catch (error) {
+      console.error('Error general:', error)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
-  const handleDeleteClick = (product: Product) => {
-    setProductToDelete(product);
-    setDeleteModalOpen(true);
-  };
+  const filteredProducts = products.filter(product => {
+    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesActive = showInactive || product.active
+    return matchesSearch && matchesActive
+  })
 
-  const handleDeleteConfirm = async () => {
-    if (!productToDelete) return;
+  const formatPrice = (price: number) => {
+    if (price < 1000) {
+      return (price * 1000).toLocaleString('es-AR')
+    }
+    return price.toLocaleString('es-AR')
+  }
 
-    setDeleting(true);
+  const handleEdit = (product: Product) => {
+    setEditingProduct({ ...product })
+  }
+
+  const handleSave = async () => {
+    if (!editingProduct) return
+
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update(editingProduct)
+        .eq('id', editingProduct.id)
+
+      if (error) {
+        console.error('Error actualizando producto:', error)
+        return
+      }
+
+      // Actualizar la lista local
+      setProducts(products.map(p => 
+        p.id === editingProduct.id ? editingProduct : p
+      ))
+      setEditingProduct(null)
+    } catch (error) {
+      console.error('Error guardando:', error)
+    }
+  }
+
+  const handleToggleActive = async (product: Product) => {
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ active: !product.active })
+        .eq('id', product.id)
+
+      if (error) {
+        console.error('Error actualizando estado:', error)
+        return
+      }
+
+      // Actualizar la lista local
+      setProducts(products.map(p => 
+        p.id === product.id ? { ...p, active: !p.active } : p
+      ))
+    } catch (error) {
+      console.error('Error:', error)
+    }
+  }
+
+  const handleDelete = async (product: Product) => {
+    if (!confirm(`¿Estás seguro de eliminar "${product.name}"?`)) return
+
     try {
       const { error } = await supabase
         .from('products')
         .delete()
-        .eq('id', productToDelete.id);
+        .eq('id', product.id)
 
-      if (error) throw error;
-
-      toast.success('Producto eliminado');
-      setProducts(products.filter(p => p.id !== productToDelete.id));
-      setDeleteModalOpen(false);
-      setProductToDelete(null);
-    } catch (error: any) {
-      console.error('Error deleting product:', error);
-      toast.error('Error al eliminar producto');
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  // Obtener todas las categorías únicas
-  const categories = useMemo(() => {
-    const cats = new Set(products.map(p => p.category).filter(Boolean));
-    return Array.from(cats).sort();
-  }, [products]);
-
-  // Productos que se verán afectados por la actualización de precios
-  const productsToUpdate = useMemo(() => {
-    if (selectedCategory === 'all') {
-      return products;
-    }
-    return products.filter(p => p.category === selectedCategory);
-  }, [products, selectedCategory]);
-
-  // Calcular vista previa de cambios
-  const pricePreview = useMemo(() => {
-    const multiplier = adjustmentType === 'increase' 
-      ? 1 + (priceAdjustment / 100)
-      : 1 - (priceAdjustment / 100);
-
-    return productsToUpdate.slice(0, 5).map(product => ({
-      ...product,
-      oldPrice: product.price,
-      newPrice: Math.round(product.price * multiplier * 100) / 100,
-      oldWholesalePrice: product.wholesale_price,
-      newWholesalePrice: product.wholesale_price 
-        ? Math.round(product.wholesale_price * multiplier * 100) / 100
-        : null,
-    }));
-  }, [productsToUpdate, priceAdjustment, adjustmentType]);
-
-  const handlePriceUpdate = async () => {
-    if (priceAdjustment <= 0 || priceAdjustment > 100) {
-      toast.error('El porcentaje debe estar entre 0 y 100');
-      return;
-    }
-
-    if (productsToUpdate.length === 0) {
-      toast.error('No hay productos para actualizar');
-      return;
-    }
-
-    setUpdatingPrices(true);
-    try {
-      const multiplier = adjustmentType === 'increase' 
-        ? 1 + (priceAdjustment / 100)
-        : 1 - (priceAdjustment / 100);
-
-      // Actualizar cada producto
-      const updates = productsToUpdate.map(product => {
-        const newPrice = Math.round(product.price * multiplier * 100) / 100;
-        const newWholesalePrice = product.wholesale_price
-          ? Math.round(product.wholesale_price * multiplier * 100) / 100
-          : null;
-
-        return supabase
-          .from('products')
-          .update({
-            price: newPrice,
-            wholesale_price: newWholesalePrice || newPrice,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', product.id);
-      });
-
-      // Ejecutar todas las actualizaciones
-      const results = await Promise.all(updates);
-      
-      // Verificar si hubo errores
-      const errors = results.filter(r => r.error);
-      if (errors.length > 0) {
-        throw new Error('Error al actualizar algunos productos');
+      if (error) {
+        console.error('Error eliminando producto:', error)
+        return
       }
 
-      toast.success(`✅ ${productsToUpdate.length} productos actualizados exitosamente`);
-      
-      // Recargar productos
-      await loadProducts();
-      
-      // Cerrar modal y resetear valores
-      setPriceUpdateModalOpen(false);
-      setPriceAdjustment(0);
-      setSelectedCategory('all');
-    } catch (error: any) {
-      console.error('Error updating prices:', error);
-      toast.error('Error al actualizar precios');
-    } finally {
-      setUpdatingPrices(false);
+      // Actualizar la lista local
+      setProducts(products.filter(p => p.id !== product.id))
+    } catch (error) {
+      console.error('Error eliminando:', error)
     }
-  };
-
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    product.sku?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    product.category?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loading size="lg" text="Cargando productos..." />
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="relative">
+            <div className="w-20 h-20 border-4 border-purple-200 rounded-full animate-spin"></div>
+            <div className="absolute top-0 left-0 w-20 h-20 border-4 border-transparent border-t-purple-600 rounded-full animate-spin"></div>
+          </div>
+          <p className="mt-6 text-gray-600 font-medium">Cargando productos...</p>
+          <div className="mt-4 flex justify-center space-x-1">
+            <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
+            <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+            <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+          </div>
+        </div>
       </div>
-    );
+    )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-gray-900">Productos</h1>
-          <p className="text-gray-600 mt-1">Gestiona el catálogo de productos</p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <Button 
-            variant="outline" 
-            size="lg"
-            onClick={() => setPriceUpdateModalOpen(true)}
-            disabled={products.length === 0}
-          >
-            <TrendingUp size={20} className="mr-2" />
-            Actualizar Precios
-          </Button>
-          <Link href="/admin/productos/nuevo">
-            <Button variant="primary" size="lg">
-              <Plus size={20} className="mr-2" />
-              Nuevo Producto
-            </Button>
-          </Link>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+      {/* Hero Header */}
+      <div className="relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600"></div>
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="absolute inset-0" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }}></div>
+        
+        <div className="relative container mx-auto px-4 py-12 sm:py-16">
+          <div className="text-center">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black mb-3 sm:mb-4 leading-tight text-white">
+              Gestión de
+              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400">
+                Productos
+              </span>
+            </h1>
+            <p className="text-lg sm:text-xl md:text-2xl mb-4 sm:mb-6 max-w-2xl mx-auto text-white/90 font-light px-4">
+              Administra tu catálogo mayorista completo
+            </p>
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 max-w-xl mx-auto mx-4">
+              <p className="text-white font-semibold text-base sm:text-lg mb-2">
+                📦 {products.length} productos totales
+              </p>
+              <p className="text-white/90 text-sm sm:text-base">
+                Control total sobre precios mayoristas, stock y disponibilidad
+              </p>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center px-4">
+              <Button 
+                className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold px-6 sm:px-8 py-3 sm:py-4 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 w-full sm:w-auto"
+                onClick={() => router.push('/admin/productos/nuevo')}
+              >
+                <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                Nuevo Producto
+              </Button>
+              <Button 
+                className="bg-white/10 backdrop-blur-sm border-white/30 text-white hover:bg-white hover:text-indigo-600 font-bold px-6 sm:px-8 py-3 sm:py-4 rounded-xl transition-all duration-300 w-full sm:w-auto"
+                onClick={() => setShowInactive(!showInactive)}
+              >
+                {showInactive ? <EyeOff className="w-4 h-4 sm:w-5 sm:h-5 mr-2" /> : <Eye className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />}
+                {showInactive ? 'Ocultar Inactivos' : 'Mostrar Inactivos'}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Search */}
-      <Card className="p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-          <Input
-            type="search"
-            placeholder="Buscar por nombre, SKU o categoría..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-            fullWidth
-          />
-        </div>
-      </Card>
-
-      {/* Products Table */}
-      <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Producto
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  SKU
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Categoría
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Precio
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Stock
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Estado
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredProducts.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
-                    {searchQuery ? 'No se encontraron productos' : 'No hay productos todavía'}
-                  </td>
-                </tr>
-              ) : (
-                filteredProducts.map((product) => (
-                  <tr key={product.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-gray-200 rounded flex-shrink-0">
-                          {product.images?.[0] && (
-                            <img
-                              src={product.images[0]}
-                              alt={product.name}
-                              className="w-full h-full object-cover rounded"
-                            />
-                          )}
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-900">{product.name}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {product.sku || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge variant="default">{product.category || 'Sin categoría'}</Badge>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                      {formatPrice(product.wholesale_price || product.price)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge variant={product.stock > product.low_stock_threshold ? 'success' : 'warning'}>
-                        {product.stock}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge variant={product.active ? 'success' : 'danger'}>
-                        {product.active ? 'Activo' : 'Inactivo'}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end gap-2">
-                        <Link href={`/productos/${product.id}`} target="_blank">
-                          <button
-                            className="text-gray-600 hover:text-[#7B3FBD] p-2"
-                            title="Ver producto"
-                          >
-                            <Eye size={18} />
-                          </button>
-                        </Link>
-                        <Link href={`/admin/productos/${product.id}/editar`}>
-                          <button
-                            className="text-blue-600 hover:text-blue-700 p-2"
-                            title="Editar"
-                          >
-                            <Edit size={18} />
-                          </button>
-                        </Link>
-                        <button
-                          onClick={() => handleDeleteClick(product)}
-                          className="text-red-600 hover:text-red-700 p-2"
-                          title="Eliminar"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Eliminar Producto</DialogTitle>
-          </DialogHeader>
-          <p className="text-gray-600 mb-4">
-            ¿Estás seguro que querés eliminar el producto{' '}
-            <strong>{productToDelete?.name}</strong>? Esta acción no se puede deshacer.
-          </p>
-          <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => setDeleteModalOpen(false)}
-              disabled={deleting}
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteConfirm}
-              disabled={deleting}
-            >
-              Eliminar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Price Update Modal */}
-      <Dialog open={priceUpdateModalOpen} onOpenChange={setPriceUpdateModalOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Actualizar Precios Masivamente</DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-6 py-4">
-            {/* Tipo de ajuste */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tipo de Ajuste
-              </label>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setAdjustmentType('increase')}
-                  className={`flex-1 p-4 rounded-lg border-2 transition-all ${
-                    adjustmentType === 'increase'
-                      ? 'border-green-500 bg-green-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <TrendingUp className={adjustmentType === 'increase' ? 'text-green-600' : 'text-gray-400'} />
-                    <span className={`font-semibold ${adjustmentType === 'increase' ? 'text-green-700' : 'text-gray-600'}`}>
-                      Aumentar
-                    </span>
-                  </div>
-                </button>
-                <button
-                  onClick={() => setAdjustmentType('decrease')}
-                  className={`flex-1 p-4 rounded-lg border-2 transition-all ${
-                    adjustmentType === 'decrease'
-                      ? 'border-red-500 bg-red-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <TrendingDown className={adjustmentType === 'decrease' ? 'text-red-600' : 'text-gray-400'} />
-                    <span className={`font-semibold ${adjustmentType === 'decrease' ? 'text-red-700' : 'text-gray-600'}`}>
-                      Disminuir
-                    </span>
-                  </div>
-                </button>
+      {/* Filtros */}
+      <div className="bg-white/80 backdrop-blur-sm border-b border-white/20">
+        <div className="container mx-auto px-4 py-4 sm:py-6">
+          <div className="flex gap-3 sm:gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
+                <Input
+                  placeholder="Buscar productos..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 sm:pl-10 bg-white/80 backdrop-blur-sm border-white/20 rounded-xl shadow-lg text-sm sm:text-base h-10 sm:h-12"
+                />
               </div>
             </div>
+          </div>
+        </div>
+      </div>
 
-            {/* Porcentaje */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Porcentaje de Ajuste (%)
-              </label>
-              <Input
-                type="number"
-                min="0"
-                max="100"
-                step="0.1"
-                value={priceAdjustment || ''}
-                onChange={(e) => setPriceAdjustment(parseFloat(e.target.value) || 0)}
-                placeholder="Ej: 3, 5, 10"
-                fullWidth
-              />
-              <p className="text-sm text-gray-500 mt-1">
-                Ingresá el porcentaje que querés {adjustmentType === 'increase' ? 'aumentar' : 'disminuir'}
-              </p>
-            </div>
-
-            {/* Categoría */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Categoría
-              </label>
-              <Select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                fullWidth
-              >
-                <option value="all">Todas las categorías ({products.length} productos)</option>
-                {categories.map(category => {
-                  const count = products.filter(p => p.category === category).length;
-                  return (
-                    <option key={category} value={category}>
-                      {category} ({count} productos)
-                    </option>
-                  );
-                })}
-              </Select>
-            </div>
-
-            {/* Vista Previa */}
-            {priceAdjustment > 0 && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="font-semibold text-blue-900 mb-3">
-                  Vista Previa ({productsToUpdate.length} productos se actualizarán)
-                </h4>
-                <div className="space-y-2">
-                  {pricePreview.map((item) => (
-                    <div key={item.id} className="bg-white rounded p-3 text-sm">
-                      <div className="font-medium text-gray-900 mb-1">{item.name}</div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-600">
-                          {formatPrice(item.oldPrice)} → <strong className={adjustmentType === 'increase' ? 'text-green-600' : 'text-red-600'}>
-                            {formatPrice(item.newPrice)}
-                          </strong>
-                        </span>
-                        <Badge variant={adjustmentType === 'increase' ? 'success' : 'warning'}>
-                          {adjustmentType === 'increase' ? '+' : '-'}{priceAdjustment}%
+      {/* Lista de Productos */}
+      <div className="container mx-auto px-4 py-6 sm:py-8">
+        <div className="space-y-4 sm:space-y-6">
+          {filteredProducts.map((product) => (
+            <Card key={product.id} className={`bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] ${!product.active ? 'opacity-60' : ''}`}>
+              <CardContent className="p-4 sm:p-6">
+                {editingProduct?.id === product.id ? (
+                  // Modo Edición
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                    <div>
+                      <label className="text-xs sm:text-sm font-medium text-gray-700">Nombre</label>
+                      <Input
+                        value={editingProduct.name}
+                        onChange={(e) => setEditingProduct({
+                          ...editingProduct,
+                          name: e.target.value
+                        })}
+                        className="text-sm sm:text-base"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs sm:text-sm font-bold text-blue-800">Precio Mayorista</label>
+                      <Input
+                        type="number"
+                        value={editingProduct.wholesale_price}
+                        onChange={(e) => setEditingProduct({
+                          ...editingProduct,
+                          wholesale_price: parseFloat(e.target.value)
+                        })}
+                        className="text-sm sm:text-base border-blue-300 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs sm:text-sm font-medium text-gray-700">Stock</label>
+                      <Input
+                        type="number"
+                        value={editingProduct.stock}
+                        onChange={(e) => setEditingProduct({
+                          ...editingProduct,
+                          stock: parseInt(e.target.value)
+                        })}
+                        className="text-sm sm:text-base"
+                      />
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-3 sm:mt-0 sm:col-span-2 lg:col-span-3">
+                      <Button 
+                        size="sm" 
+                        onClick={handleSave}
+                        className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold px-3 sm:px-4 py-2 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl w-full sm:w-auto"
+                      >
+                        <Save className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                        Guardar
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => setEditingProduct(null)}
+                        className="bg-white/80 backdrop-blur-sm border-white/20 hover:bg-white hover:shadow-lg transition-all duration-300 px-3 sm:px-4 py-2 rounded-xl w-full sm:w-auto"
+                      >
+                        <X className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  // Modo Visualización
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-3">
+                        <h3 className="text-base sm:text-lg font-semibold">{product.name}</h3>
+                        <Badge variant={product.active ? 'default' : 'secondary'} className="w-fit">
+                          {product.active ? 'Activo' : 'Inactivo'}
                         </Badge>
                       </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-xs sm:text-sm text-gray-600">
+                        <div className="bg-blue-50 p-2 rounded-lg border border-blue-200">
+                          <span className="font-bold text-blue-800">Precio Mayorista:</span>
+                          <br /><span className="text-lg font-bold text-blue-900">${formatPrice(product.wholesale_price)}</span>
+                        </div>
+                        <div>
+                          <span className="font-medium">Stock:</span>
+                          <br />{product.stock} unidades
+                        </div>
+                        <div>
+                          <span className="font-medium">Categoría:</span>
+                          <br />{categories.find(c => c.id === product.category_id)?.name || 'Sin categoría'}
+                        </div>
+                      </div>
                     </div>
-                  ))}
-                  {productsToUpdate.length > 5 && (
-                    <p className="text-xs text-gray-500 text-center pt-2">
-                      ... y {productsToUpdate.length - 5} productos más
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Advertencia */}
-            {priceAdjustment > 0 && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <p className="text-sm text-yellow-800">
-                  <strong>⚠️ Atención:</strong> Esta acción modificará los precios de{' '}
-                  <strong>{productsToUpdate.length} productos</strong>. Los cambios se aplicarán inmediatamente.
-                </p>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setPriceUpdateModalOpen(false);
-                setPriceAdjustment(0);
-                setSelectedCategory('all');
-              }}
-              disabled={updatingPrices}
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handlePriceUpdate}
-              disabled={updatingPrices || priceAdjustment <= 0}
-            >
-              {updatingPrices ? 'Actualizando...' : `Actualizar ${productsToUpdate.length} Productos`}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                      <Button 
+                        size="sm" 
+                        onClick={() => router.push(`/admin/productos/${product.id}`)}
+                        className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold px-3 sm:px-4 py-2 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl w-full sm:w-auto"
+                      >
+                        <Edit className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                        Editar
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleToggleActive(product)}
+                        className={`font-semibold px-3 sm:px-4 py-2 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl w-full sm:w-auto ${
+                          product.active 
+                            ? 'bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white' 
+                            : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white'
+                        }`}
+                      >
+                        {product.active ? <EyeOff className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" /> : <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />}
+                        {product.active ? 'Desactivar' : 'Activar'}
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleDelete(product)}
+                        className="bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white font-semibold px-3 sm:px-4 py-2 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl w-full sm:w-auto"
+                      >
+                        <Trash2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                        Eliminar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
     </div>
-  );
+  )
 }
-

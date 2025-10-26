@@ -1,318 +1,272 @@
-# 🛍️ Zingarito Kids - Tienda Mayorista
+# 🎨 Zingarito Kids - Sistema de Gestión
 
-![Next.js](https://img.shields.io/badge/Next.js-15.5.6-black?style=for-the-badge&logo=next.js)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?style=for-the-badge&logo=typescript)
-![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green?style=for-the-badge&logo=supabase)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.1-38bdf8?style=for-the-badge&logo=tailwind-css)
+**Sistema web para gestión de tienda mayorista de ropa infantil**
 
-## 📖 Descripción
+## 📋 Descripción
 
-Tienda online mayorista de ropa infantil con sistema completo de gestión de productos, pedidos y clientes. Diseñada específicamente para ventas B2B con compra mínima de 5 productos.
+Zingarito Kids es una plataforma web para tienda mayorista de ropa infantil de diseño sin género. Empresa familiar de Villa Ramallo, Buenos Aires, dedicada 100% al rubro textil, confeccionando cada prenda con amor para que los peques estén siempre cancheros.
 
-## ✨ Características Principales
+---
 
-### 🛒 Frontend Público
-- ✅ Landing page profesional con productos destacados
-- ✅ Catálogo con filtros avanzados (categoría, talle, color, precio, edad)
-- ✅ Búsqueda en tiempo real
-- ✅ Página de detalle de producto con galería
-- ✅ Carrito con validación mayorista (mínimo 5 productos)
-- ✅ Sistema de autenticación completo
-- ✅ Checkout con datos bancarios
-- ✅ Integración WhatsApp
+## 🚀 Características Principales
 
-### 🎛️ Panel de Administración
-- ✅ Dashboard con estadísticas en tiempo real
-- ✅ Gestión de productos (CRUD con imágenes)
-- ✅ **Actualización masiva de precios** con un solo click
-  - Aumentar o disminuir precios por porcentaje
-  - Aplicar a todos los productos o por categoría
-  - Vista previa de cambios antes de aplicar
-- ✅ Gestión de pedidos
-- ✅ Gestión de clientes
-- ✅ Reportes y estadísticas
-- ✅ Configuración editable del negocio
+### ✨ **Página Principal**
+- Diseño moderno y responsive
+- Logo con gradientes de colores vibrantes
+- Hero section con call-to-action
+- Secciones de características y categorías
+- Footer completo con información de contacto
 
-## 🚀 Tecnologías
+### 🎨 **Diseño y Branding**
+- **Colores Principales:**
+  - Violeta: `#7B3FBD` (primary)
+  - Cian: `#00D9D4` (secondary)
+  - Amarillo: `#FFB700` (accent)
+- **Gradientes Personalizados:** Del logo original
+- **Fuentes:** Inter para contenido general
+- **Responsive Design:** Optimizado para móvil, tablet y desktop
 
-- **Framework:** Next.js 15 (App Router)
-- **Lenguaje:** TypeScript
-- **Estilos:** Tailwind CSS v4
-- **Base de datos:** Supabase (PostgreSQL)
-- **Autenticación:** Supabase Auth
-- **Storage:** Supabase Storage
-- **Estado:** Zustand (carrito)
-- **Iconos:** Lucide React
-- **Notificaciones:** React Hot Toast
+---
+
+## 🛠️ Tecnologías
+
+- **Framework:** Next.js 15.5.6
+- **Lenguaje:** TypeScript 5.7.2
+- **Estilos:** Tailwind CSS 3.4.17
+- **Iconos:** Lucide React 0.460.0
+- **Notificaciones:** Sonner 1.7.3
+- **Base de Datos:** Supabase (pendiente configuración)
+
+---
 
 ## 📦 Instalación
 
-### 1. Clonar el repositorio
-```bash
-git clone https://github.com/cocomeza/TiendaDeRopa.git
-cd TiendaDeRopa
-```
+### **Requisitos Previos**
+- Node.js >= 18.0.0
+- npm >= 8.0.0
 
-### 2. Instalar dependencias
+### **Pasos de Instalación**
+
 ```bash
+# 1. Clonar el repositorio
+git clone https://github.com/cocomeza/botoncreativo.git
+cd botoncreativo
+
+# 2. Instalar dependencias
 npm install
-```
 
-### 3. Configurar variables de entorno
-Crear archivo `.env.local` en la raíz:
+# 3. Configurar variables de entorno
+# Crear archivo .env.local con las siguientes variables:
+# NEXT_PUBLIC_SUPABASE_URL=tu_url_de_supabase
+# NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_clave_anonima
+# NEXT_PUBLIC_WHATSAPP_NUMBER=+549XXXXXXXXXX
+# NEXT_PUBLIC_BUSINESS_EMAIL=info@zingaritokids.com
 
-```env
-NEXT_PUBLIC_SUPABASE_URL=tu-url-de-supabase
-NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-anon-key
-SUPABASE_SERVICE_ROLE_KEY=tu-service-key
-
-NEXT_PUBLIC_WHATSAPP_NUMBER=543407498045
-NEXT_PUBLIC_BUSINESS_EMAIL=zingaritokids@gmail.com
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-```
-
-### 4. Configurar Supabase
-
-1. Crear proyecto en [Supabase](https://supabase.com)
-2. Copiar URL y API Keys
-3. Ejecutar el SQL del archivo `supabase/migrations/001_initial_schema.sql` en SQL Editor
-4. Crear Storage Buckets:
-   - `products` (público) - para imágenes de productos
-   - `payment-proofs` (privado) - para comprobantes de pago
-   - `business` (público) - para logo del negocio
-
-### 5. Ejecutar el proyecto
-```bash
+# 4. Ejecutar en modo desarrollo
 npm run dev
 ```
 
-Abrir [http://localhost:3000](http://localhost:3000)
+El proyecto estará disponible en: **http://localhost:3000**
 
-## 🎨 Rutas Principales
+---
 
-### Frontend Público
-- `/` - Home
-- `/productos` - Catálogo
-- `/productos/[id]` - Detalle de producto
-- `/carrito` - Carrito de compras
-- `/checkout` - Finalizar compra
-- `/auth/login` - Iniciar sesión
-- `/auth/registro` - Registro
-- `/mi-cuenta` - Panel del cliente
+## 📁 Estructura del Proyecto
 
-### Panel Admin (requiere permisos)
-- `/admin` - Dashboard
-- `/admin/productos` - Gestión de productos
-- `/admin/pedidos` - Gestión de pedidos
-- `/admin/clientes` - Lista de clientes
-- `/admin/reportes` - Reportes y estadísticas
-- `/admin/configuracion` - Configuración del negocio
-
-## 💰 Actualización Masiva de Precios
-
-Una de las características más poderosas del panel de administración es la **actualización masiva de precios**. Esta funcionalidad permite modificar los precios de múltiples productos simultáneamente.
-
-### ¿Cómo funciona?
-
-1. **Acceder al módulo:**
-   - Ir a `/admin/productos`
-   - Click en el botón **"Actualizar Precios"**
-
-2. **Configurar el ajuste:**
-   - Elegir **Aumentar** o **Disminuir** precios
-   - Ingresar el **porcentaje deseado** (ej: 3, 5, 10, 15.5)
-   - Seleccionar **categoría específica** o aplicar a **todos los productos**
-
-3. **Vista Previa:**
-   - El sistema muestra una **vista previa en tiempo real**
-   - Ver cuántos productos se actualizarán
-   - Ver ejemplos de precios antes y después
-
-4. **Confirmar:**
-   - Click en **"Actualizar X Productos"**
-   - Los cambios se aplican **inmediatamente** a la base de datos
-
-### Ejemplo de uso:
 ```
-Tipo: Aumentar
-Porcentaje: 3%
-Categoría: Remeras
-
-Resultado: Todos los productos de la categoría "Remeras" 
-aumentarán su precio un 3% automáticamente.
+botoncreativo/
+├── app/                      # Páginas y rutas de Next.js
+│   ├── globals.css          # Estilos globales con colores de marca
+│   ├── layout.tsx           # Layout principal con metadata
+│   └── page.tsx             # Página de inicio
+├── components/              # Componentes reutilizables
+│   └── ui/                  # Componentes UI básicos
+│       ├── button.tsx
+│       ├── card.tsx
+│       ├── badge.tsx
+│       └── input.tsx
+├── lib/                     # Utilidades y configuraciones
+│   ├── utils.ts            # Funciones auxiliares
+│   └── zingarito-config.ts # Configuración de colores y estilos
+├── logos/                   # Logos en formato SVG
+│   ├── zingarito-kids-color.svg
+│   ├── zingarito-kids-bw.svg
+│   ├── z-kids-compact.svg
+│   └── favicon.svg
+├── public/                  # Archivos estáticos
+├── tailwind.config.js       # Configuración de Tailwind
+├── next.config.ts           # Configuración de Next.js
+├── tsconfig.json            # Configuración de TypeScript
+└── package.json             # Dependencias del proyecto
 ```
 
-### Ventajas:
-- ✅ Ahorra tiempo (no editar producto por producto)
-- ✅ Actualización instantánea en toda la tienda
-- ✅ Vista previa para evitar errores
-- ✅ Se puede aplicar por categoría o globalmente
-- ✅ Acepta decimales para ajustes precisos
+---
 
-## 👤 Crear Usuario Admin
+## 🎨 Componentes UI
 
-Después de registrarte, ejecutar en Supabase SQL Editor:
+El proyecto incluye componentes UI básicos personalizados:
 
-```sql
-update profiles
-set is_admin = true
-where email = 'tu-email@ejemplo.com';
+### **Button**
+```tsx
+import { Button } from '@/components/ui/button'
+
+<Button variant="default">Comprar Ahora</Button>
+<Button variant="outline">Más Info</Button>
 ```
 
-## 📊 Base de Datos
+### **Card**
+```tsx
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 
-### Tablas Principales
-- `profiles` - Usuarios y clientes
+<Card>
+  <CardHeader>
+    <CardTitle>Título</CardTitle>
+  </CardHeader>
+  <CardContent>
+    Contenido de la tarjeta
+  </CardContent>
+</Card>
+```
+
+### **Badge**
+```tsx
+import { Badge } from '@/components/ui/badge'
+
+<Badge variant="success">Disponible</Badge>
+<Badge variant="warning">Pocas Unidades</Badge>
+```
+
+---
+
+## 🗃️ Base de Datos (Supabase)
+
+El proyecto está diseñado para usar Supabase. Puedes encontrar el schema completo en:
+- **Archivo:** `supabase-schema-zingarito.sql`
+
+### **Tablas Principales:**
+- `profiles` - Perfiles de usuarios
 - `products` - Catálogo de productos
-- `orders` - Pedidos
+- `orders` - Pedidos de clientes
 - `order_items` - Items de cada pedido
+- `categories` - Categorías de productos
+- `inventory_movements` - Movimientos de stock
+- `price_history` - Historial de cambios de precios
+- `notifications` - Sistema de notificaciones
 - `favorites` - Productos favoritos
 - `business_config` - Configuración del negocio
 
-Ver esquema completo en `supabase/migrations/001_initial_schema.sql`
+---
 
-## 🎨 Paleta de Colores
-
-- **Primary:** `#7B3FBD` (Morado)
-- **Secondary:** `#00D9D4` (Celeste)
-- **Accent:** `#FFB700` (Amarillo)
-- **WhatsApp:** `#25D366` (Verde)
-
-## 📱 Responsive Design
-
-- ✅ Mobile-first approach
-- ✅ Diseño adaptado para tablet y desktop
-- ✅ Menú hamburguesa en móvil
-- ✅ Grid responsivo de productos
-- ✅ Filtros optimizados para móvil
-
-## 🔒 Seguridad
-
-- ✅ Middleware de autenticación
-- ✅ Row Level Security (RLS) en Supabase
-- ✅ Rutas protegidas
-- ✅ Validación de formularios
-- ✅ Sanitización de datos
-
-## 📝 Scripts Disponibles
+## 🚀 Scripts Disponibles
 
 ```bash
-npm run dev          # Servidor de desarrollo
-npm run build        # Build de producción
-npm run start        # Servidor de producción
-npm run lint         # Ejecutar linter
+# Desarrollo
+npm run dev          # Inicia servidor en modo desarrollo
+
+# Producción
+npm run build        # Genera build de producción
+npm start            # Inicia servidor en producción
+
+# Linting
+npm run lint         # Ejecuta ESLint
 ```
 
-## 🚀 Deploy en Vercel
+---
 
-### Deploy Básico
+## 🌐 Deploy en Vercel
 
-1. Conectar repositorio a Vercel
-2. Agregar variables de entorno
-3. Deploy automático en cada push a main
-
-### 🌐 Dominio Personalizado
-
-Para que Zingarito Kids tenga su propio dominio profesional, hay varias opciones:
-
-#### Opciones de Dominios
-
-**OPCIÓN 1: Solo .com (Recomendado - Más Simple)**
-- Dominio: `zingaritokids.com`
-- Proveedor: [Namecheap](https://namecheap.com)
-- Costo: ~USD $12/año (~$12,000 ARS/año)
-- ✅ No requiere trámites con AFIP
-- ✅ Más profesional internacionalmente
-- ✅ Configuración en 10 minutos
-- ✅ Ideal para expansión futura
-
-**OPCIÓN 2: .com.ar + .com (Identidad Argentina)**
-- Dominios: `zingaritokids.com.ar` (principal) + `zingaritokids.com` (redirección)
-- Proveedores:
-  - `.com.ar`: [DonWeb](https://donweb.com) (~$4,000 ARS/año)
-  - `.com`: [Namecheap](https://namecheap.com) (~USD $12/año)
-- Costo total: ~$16,000 ARS/año
-- ✅ Identidad argentina clara
-- ⚠️ Requiere Clave Fiscal AFIP para .com.ar
-
-#### Configuración del Dominio con Vercel
-
-**1. Comprar el dominio**
-- Ir a [Namecheap](https://namecheap.com) o [DonWeb](https://donweb.com)
-- Buscar: `zingaritokids.com`
-- Completar la compra
-
-**2. Conectar en Vercel**
+### **Paso 1: Preparar el Proyecto**
 ```bash
-# En Vercel Dashboard:
-1. Ir a tu proyecto → Settings → Domains
-2. Click en "Add Domain"
-3. Ingresar: zingaritokids.com
-4. Vercel te mostrará los registros DNS necesarios
+npm run build  # Verificar que el build funciona
 ```
 
-**3. Configurar DNS en Namecheap**
-```
-1. Login en Namecheap
-2. Domain List → Manage → Advanced DNS
-3. Agregar estos registros:
-
-   Type: A Record
-   Host: @
-   Value: 76.76.21.21
-   TTL: Automatic
-
-   Type: CNAME
-   Host: www
-   Value: cname.vercel-dns.com
-   TTL: Automatic
-```
-
-**4. Verificar y Activar HTTPS**
-- Esperar 24-48 horas para propagación DNS
-- Vercel detecta automáticamente el dominio
-- HTTPS se activa automáticamente (gratis con Let's Encrypt)
-- ✅ Tu sitio estará en: `https://zingaritokids.com`
-
-#### Proveedores de Dominios en Argentina
-
-**Para .com.ar (Dominios Argentinos):**
-- **NIC Argentina** (oficial): https://nic.ar - ~$3,000 ARS/año
-- **DonWeb** (recomendado): https://donweb.com - ~$4,000 ARS/año
-- **HostGator Argentina**: https://hostgator.ar - ~$3,500 ARS/año
-
-**Para .com (Internacionales):**
-- **Namecheap** (recomendado): https://namecheap.com - ~USD $12/año
-- **Google Domains**: https://domains.google - ~USD $12/año
-- **GoDaddy**: https://godaddy.com - ~USD $15/año
-
-#### Verificación del Dominio
-
-Después de configurar el DNS, verificar con:
+### **Paso 2: Deploy**
 ```bash
-# Verificar registros DNS
-nslookup zingaritokids.com
+# Instalar Vercel CLI
+npm install -g vercel
 
-# Verificar propagación global
-# Usar: https://dnschecker.org
+# Hacer deploy
+vercel
+
+# Deploy a producción
+vercel --prod
 ```
+
+### **Paso 3: Configurar Variables de Entorno**
+En el dashboard de Vercel, agregar:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_WHATSAPP_NUMBER`
+- `NEXT_PUBLIC_BUSINESS_EMAIL`
+
+---
+
+## 🎯 Roadmap
+
+### **Fase 1: Estructura Básica** ✅
+- [x] Configuración de Next.js
+- [x] Diseño de página principal
+- [x] Componentes UI básicos
+- [x] Sistema de colores y branding
+
+### **Fase 2: Base de Datos** 🔄
+- [ ] Configurar Supabase
+- [ ] Crear tablas y relaciones
+- [ ] Implementar autenticación
+- [ ] Crear hooks personalizados
+
+### **Fase 3: Funcionalidades Core** 📋
+- [ ] Catálogo de productos
+- [ ] Carrito de compras
+- [ ] Sistema de pedidos
+- [ ] Panel de administración
+
+### **Fase 4: Avanzado** 🚀
+- [ ] Reportes y estadísticas
+- [ ] Notificaciones en tiempo real
+- [ ] Integración con WhatsApp
+- [ ] Sistema de favoritos
+
+---
+
+## 👥 Información de Contacto
+
+**Zingarito Kids**
+- **WhatsApp:** 3407 498045 (543407498045)
+- **Email:** zingaritokids@gmail.com
+- **Instagram:** [@zingaritokids](https://www.instagram.com/zingaritokids)
+- **Ubicación:** San Martín 17, Villa Ramallo, Buenos Aires, Argentina
+
+---
 
 ## 📄 Licencia
 
-Proyecto privado - Zingarito Kids © 2025
-
-## 👨‍💻 Desarrollo
-
-Desarrollado con ❤️ usando las mejores prácticas de Next.js y TypeScript.
+Este proyecto es privado y pertenece a Zingarito Kids. Todos los derechos reservados.
 
 ---
 
-## 📞 Contacto
+## 🤝 Contribuir
 
-- **WhatsApp:** +54 340 749 8045
-- **Email:** zingaritokids@gmail.com
-- **Dirección:** San Martín 17, Villa Ramallo, Buenos Aires, Argentina
+Este es un proyecto privado. Para solicitudes especiales, contactar al equipo de desarrollo.
 
 ---
 
-⭐ **Si te gusta este proyecto, dale una estrella en GitHub!**
+## 📝 Notas de Desarrollo
+
+### **Colores Personalizados**
+Los colores están definidos en `app/globals.css` usando variables CSS:
+```css
+--primary: 123 63 189;      /* Violeta */
+--secondary: 0 217 212;      /* Cian */
+--accent: 255 183 0;         /* Amarillo */
+```
+
+### **Gradientes del Logo**
+Los gradientes están disponibles como clases de Tailwind:
+```css
+.text-gradient-zingarito     /* Gradiente de texto */
+.bg-gradient-zingarito       /* Gradiente de fondo */
+```
+
+---
+
+**Desarrollado con ❤️ para Zingarito Kids**

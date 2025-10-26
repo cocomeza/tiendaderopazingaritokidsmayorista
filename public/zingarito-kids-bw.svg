@@ -1,0 +1,17 @@
+<!-- Logo Zingarito Kids - Versión Blanco y Negro -->
+<svg width="400" height="120" viewBox="0 0 400 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- ZINGARITO Text -->
+  <text x="20" y="60" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#000000">
+    ZINGARITO
+  </text>
+  
+  <!-- KIDS Text -->
+  <text x="280" y="90" font-family="Brush Script MT, cursive" font-size="32" font-weight="bold" fill="#000000">
+    KIDS
+  </text>
+  
+  <!-- Estrella en la i de KIDS -->
+  <g transform="translate(320, 70)">
+    <path d="M0,-8 L2,-2 L8,-2 L3,1 L5,7 L0,4 L-5,7 L-3,1 L-8,-2 L-2,-2 Z" fill="#000000"/>
+  </g>
+</svg>

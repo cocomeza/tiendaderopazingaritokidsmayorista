@@ -1,16 +1,15 @@
 {
   "$schema": "https://ui.shadcn.com/schema.json",
-  "style": "new-york",
+  "style": "default",
   "rsc": true,
   "tsx": true,
   "tailwind": {
-    "config": "",
+    "config": "tailwind.config.js",
     "css": "app/globals.css",
-    "baseColor": "neutral",
+    "baseColor": "slate",
     "cssVariables": true,
     "prefix": ""
   },
-  "iconLibrary": "lucide",
   "aliases": {
     "components": "@/components",
     "utils": "@/lib/utils",
@@ -18,5 +17,125 @@
     "lib": "@/lib",
     "hooks": "@/hooks"
   },
-  "registries": {}
+  "resolver": {
+    "imports": {
+      "components": {
+        "Button": {
+          "name": "Button",
+          "from": "@/components/ui/button",
+          "forwardRef": true
+        },
+        "Input": {
+          "name": "Input",
+          "from": "@/components/ui/input",
+          "forwardRef": true
+        },
+        "Card": {
+          "name": "Card",
+          "from": "@/components/ui/card",
+          "forwardRef": true
+        },
+        "Badge": {
+          "name": "Badge",
+          "from": "@/components/ui/badge",
+          "forwardRef": true
+        },
+        "Dialog": {
+          "name": "Dialog",
+          "from": "@/components/ui/dialog",
+          "forwardRef": true
+        },
+        "Select": {
+          "name": "Select",
+          "from": "@/components/ui/select",
+          "forwardRef": true
+        },
+        "Textarea": {
+          "name": "Textarea",
+          "from": "@/components/ui/textarea",
+          "forwardRef": true
+        },
+        "Alert": {
+          "name": "Alert",
+          "from": "@/components/ui/alert",
+          "forwardRef": true
+        },
+        "Avatar": {
+          "name": "Avatar",
+          "from": "@/components/ui/avatar",
+          "forwardRef": true
+        },
+        "Checkbox": {
+          "name": "Checkbox",
+          "from": "@/components/ui/checkbox",
+          "forwardRef": true
+        },
+        "Command": {
+          "name": "Command",
+          "from": "@/components/ui/command",
+          "forwardRef": true
+        },
+        "DropdownMenu": {
+          "name": "DropdownMenu",
+          "from": "@/components/ui/dropdown-menu",
+          "forwardRef": true
+        },
+        "Form": {
+          "name": "Form",
+          "from": "@/components/ui/form",
+          "forwardRef": true
+        },
+        "Label": {
+          "name": "Label",
+          "from": "@/components/ui/label",
+          "forwardRef": true
+        },
+        "Popover": {
+          "name": "Popover",
+          "from": "@/components/ui/popover",
+          "forwardRef": true
+        },
+        "RadioGroup": {
+          "name": "RadioGroup",
+          "from": "@/components/ui/radio-group",
+          "forwardRef": true
+        },
+        "Separator": {
+          "name": "Separator",
+          "from": "@/components/ui/separator",
+          "forwardRef": true
+        },
+        "Sheet": {
+          "name": "Sheet",
+          "from": "@/components/ui/sheet",
+          "forwardRef": true
+        },
+        "Skeleton": {
+          "name": "Skeleton",
+          "from": "@/components/ui/skeleton",
+          "forwardRef": true
+        },
+        "Sonner": {
+          "name": "Sonner",
+          "from": "@/components/ui/sonner",
+          "forwardRef": true
+        },
+        "Switch": {
+          "name": "Switch",
+          "from": "@/components/ui/switch",
+          "forwardRef": true
+        },
+        "Table": {
+          "name": "Table",
+          "from": "@/components/ui/table",
+          "forwardRef": true
+        },
+        "Tabs": {
+          "name": "Tabs",
+          "from": "@/components/ui/tabs",
+          "forwardRef": true
+        }
+      }
+    }
+  }
 }

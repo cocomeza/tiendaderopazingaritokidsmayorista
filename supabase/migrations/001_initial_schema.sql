@@ -22,6 +22,11 @@ create table if not exists profiles (
 -- RLS policies para profiles
 alter table profiles enable row level security;
 
+-- Eliminar políticas existentes si existen
+drop policy if exists "Public profiles are viewable by admins" on profiles;
+drop policy if exists "Users can update own profile" on profiles;
+drop policy if exists "Users can insert own profile" on profiles;
+
 create policy "Public profiles are viewable by admins"
   on profiles for select
   using (auth.uid() = id or exists (
@@ -44,6 +49,9 @@ begin
   return new;
 end;
 $$ language plpgsql;
+
+-- Eliminar trigger existente si existe
+drop trigger if exists update_profiles_updated_at on profiles;
 
 create trigger update_profiles_updated_at
   before update on profiles
@@ -84,6 +92,12 @@ create index if not exists products_sku_idx on products(sku);
 -- RLS policies para products
 alter table products enable row level security;
 
+-- Eliminar políticas existentes si existen
+drop policy if exists "Products are viewable by everyone" on products;
+drop policy if exists "Only admins can insert products" on products;
+drop policy if exists "Only admins can update products" on products;
+drop policy if exists "Only admins can delete products" on products;
+
 create policy "Products are viewable by everyone"
   on products for select
   using (active = true or exists (
@@ -109,6 +123,8 @@ create policy "Only admins can delete products"
   ));
 
 -- Trigger para actualizar updated_at en products
+drop trigger if exists update_products_updated_at on products;
+
 create trigger update_products_updated_at
   before update on products
   for each row
@@ -147,6 +163,12 @@ create index if not exists orders_order_number_idx on orders(order_number);
 -- RLS policies para orders
 alter table orders enable row level security;
 
+-- Eliminar políticas existentes si existen
+drop policy if exists "Users can view own orders" on orders;
+drop policy if exists "Users can create own orders" on orders;
+drop policy if exists "Only admins can update orders" on orders;
+drop policy if exists "Only admins can delete orders" on orders;
+
 create policy "Users can view own orders"
   on orders for select
   using (auth.uid() = user_id or exists (
@@ -170,6 +192,8 @@ create policy "Only admins can delete orders"
   ));
 
 -- Trigger para actualizar updated_at en orders
+drop trigger if exists update_orders_updated_at on orders;
+
 create trigger update_orders_updated_at
   before update on orders
   for each row
@@ -198,6 +222,12 @@ create index if not exists order_items_product_id_idx on order_items(product_id)
 
 -- RLS policies para order_items
 alter table order_items enable row level security;
+
+-- Eliminar políticas existentes si existen
+drop policy if exists "Order items viewable with order" on order_items;
+drop policy if exists "Order items insertable with order" on order_items;
+drop policy if exists "Only admins can update order items" on order_items;
+drop policy if exists "Only admins can delete order items" on order_items;
 
 create policy "Order items viewable with order"
   on order_items for select
@@ -244,6 +274,10 @@ create index if not exists favorites_product_id_idx on favorites(product_id);
 -- RLS policies para favorites
 alter table favorites enable row level security;
 
+-- Eliminar políticas existentes si existen
+drop policy if exists "Users can view own favorites" on favorites;
+drop policy if exists "Users can manage own favorites" on favorites;
+
 create policy "Users can view own favorites"
   on favorites for select
   using (auth.uid() = user_id);
@@ -281,6 +315,10 @@ on conflict do nothing;
 -- RLS policies para business_config
 alter table business_config enable row level security;
 
+-- Eliminar políticas existentes si existen
+drop policy if exists "Config viewable by everyone" on business_config;
+drop policy if exists "Only admins can update config" on business_config;
+
 create policy "Config viewable by everyone"
   on business_config for select
   using (true);
@@ -292,6 +330,8 @@ create policy "Only admins can update config"
   ));
 
 -- Trigger para actualizar updated_at en business_config
+drop trigger if exists update_business_config_updated_at on business_config;
+
 create trigger update_business_config_updated_at
   before update on business_config
   for each row
@@ -336,6 +376,9 @@ begin
 end;
 $$ language plpgsql;
 
+-- Eliminar trigger existente si existe
+drop trigger if exists decrement_stock_on_order_item on order_items;
+
 create trigger decrement_stock_on_order_item
   after insert on order_items
   for each row
@@ -346,7 +389,8 @@ create trigger decrement_stock_on_order_item
 -- =====================================================
 
 -- Vista de productos con stock bajo
-create or replace view low_stock_products as
+drop view if exists low_stock_products;
+create view low_stock_products as
 select 
   id,
   name,
@@ -360,7 +404,8 @@ where stock <= low_stock_threshold
 order by stock asc;
 
 -- Vista de estadísticas de ventas
-create or replace view sales_stats as
+drop view if exists sales_stats;
+create view sales_stats as
 select 
   date_trunc('day', created_at) as date,
   count(*) as total_orders,
