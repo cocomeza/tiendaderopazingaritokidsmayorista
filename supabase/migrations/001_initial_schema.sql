@@ -14,7 +14,14 @@ create table if not exists profiles (
   city text,
   province text,
   postal_code text,
+  company_name text,
+  cuit text,
+  billing_address text,
+  locality text,
+  sales_type text,
+  ages text,
   is_admin boolean default false,
+  is_active boolean default true,
   created_at timestamp with time zone default now(),
   updated_at timestamp with time zone default now()
 );
@@ -26,6 +33,7 @@ alter table profiles enable row level security;
 drop policy if exists "Public profiles are viewable by admins" on profiles;
 drop policy if exists "Users can update own profile" on profiles;
 drop policy if exists "Users can insert own profile" on profiles;
+drop policy if exists "Only admins can delete profiles" on profiles;
 
 create policy "Public profiles are viewable by admins"
   on profiles for select
@@ -40,6 +48,12 @@ create policy "Users can update own profile"
 create policy "Users can insert own profile"
   on profiles for insert
   with check (auth.uid() = id);
+
+create policy "Only admins can delete profiles"
+  on profiles for delete
+  using (exists (
+    select 1 from profiles where id = auth.uid() and is_admin = true
+  ));
 
 -- Trigger para actualizar updated_at
 create or replace function update_updated_at_column()

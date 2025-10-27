@@ -1,10 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
 import { useCartStore } from '@/lib/stores/cart'
 import { supabase } from '@/lib/supabase/client-fixed'
+import { toast } from 'sonner'
 import { 
   ShoppingCart, 
   CreditCard, 
@@ -13,7 +17,8 @@ import {
   Mail,
   ArrowLeft,
   CheckCircle,
-  MessageCircle
+  MessageCircle,
+  Save
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -27,6 +32,7 @@ interface BusinessInfo {
 }
 
 export default function CheckoutPage() {
+  const router = useRouter()
   const { 
     items, 
     getTotalItems, 
@@ -38,6 +44,9 @@ export default function CheckoutPage() {
   } = useCartStore()
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [notes, setNotes] = useState('')
+  const [profileData, setProfileData] = useState<any>(null)
   
   const businessInfo: BusinessInfo = {
     name: "Zingarito Kids",
@@ -56,11 +65,42 @@ export default function CheckoutPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       setUser(user)
+      
+      // Cargar datos del perfil
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+        
+        setProfileData(profile)
+      }
     } catch (error) {
       console.error('Error checking auth:', error)
     } finally {
       setLoading(false)
     }
+  }
+
+  const generateOrderNumber = async () => {
+    // Generar número de pedido: ZK-YYYYMMDD-0001
+    const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+    
+    const { data } = await supabase
+      .from('orders')
+      .select('order_number')
+      .like('order_number', `ZK-${datePart}-%`)
+      .order('order_number', { ascending: false })
+      .limit(1)
+    
+    let counter = 1
+    if (data && data.length > 0) {
+      const lastNumber = data[0].order_number.split('-')[2]
+      counter = parseInt(lastNumber) + 1
+    }
+    
+    return `ZK-${datePart}-${counter.toString().padStart(4, '0')}`
   }
 
   const formatPrice = (price: number) => {
@@ -90,17 +130,114 @@ export default function CheckoutPage() {
     return encodeURIComponent(message)
   }
 
-  const handleCompleteOrder = () => {
-    const message = generateWhatsAppMessage()
-    const whatsappUrl = `https://wa.me/543407498045?text=${message}`
+  const handleCompleteOrder = async () => {
+    if (!user) return
+
+    setSaving(true)
+
+    try {
+      // Generar número de pedido único
+      const orderNumber = await generateOrderNumber()
+      
+      const subtotal = getTotalWholesalePrice()
+      const discount = getDiscountAmount()
+      const total = getTotalWithDiscount()
+
+      // Crear el pedido en la base de datos
+      const { data: newOrder, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          order_number: orderNumber,
+          user_id: user.id,
+          status: 'pendiente',
+          payment_status: 'pendiente',
+          subtotal: subtotal,
+          discount: discount,
+          total: total,
+          notes: notes || null,
+          shipping_address: profileData?.billing_address || profileData?.address || null
+        })
+        .select()
+        .single()
+
+      if (orderError) {
+        console.error('Error creando pedido:', orderError)
+        toast.error('Error al crear el pedido: ' + orderError.message)
+        return
+      }
+
+      // Crear los items del pedido
+      const orderItems = items.map(item => ({
+        order_id: newOrder.id,
+        product_id: item.id,
+        product_name: item.name,
+        quantity: item.quantity,
+        unit_price: item.wholesale_price,
+        subtotal: item.wholesale_price * item.quantity
+      }))
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems)
+
+      if (itemsError) {
+        console.error('Error creando items del pedido:', itemsError)
+        toast.error('Error al guardar los items del pedido')
+        return
+      }
+
+      // Generar mensaje de WhatsApp con el número de pedido
+      const message = generateWhatsAppMessage(orderNumber)
+      const whatsappUrl = `https://wa.me/543407498045?text=${message}`
+      
+      // Abrir WhatsApp en nueva ventana
+      window.open(whatsappUrl, '_blank')
+      
+      toast.success(`Pedido ${orderNumber} creado exitosamente`)
+      
+      // Limpiar carrito después de un delay
+      setTimeout(() => {
+        clearCart()
+        router.push('/mis-pedidos')
+      }, 1500)
+
+    } catch (error) {
+      console.error('Error general:', error)
+      toast.error('Error inesperado al procesar el pedido')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const generateWhatsAppMessage = (orderNumber: string = '') => {
+    const totalItems = getTotalItems()
+    const totalPrice = getTotalWholesalePrice()
     
-    // Abrir WhatsApp en nueva ventana
-    window.open(whatsappUrl, '_blank')
+    let message = `🛒 *NUEVO PEDIDO - ZINGARITO KIDS*\n\n`
+    if (orderNumber) {
+      message += `📋 *Pedido N°:* ${orderNumber}\n`
+    }
+    message += `👤 *Cliente:* ${profileData?.full_name || user?.email || 'Usuario'}\n`
+    if (profileData?.phone) {
+      message += `📞 *Teléfono:* ${profileData.phone}\n`
+    }
+    message += `📅 *Fecha:* ${new Date().toLocaleDateString('es-AR')}\n\n`
+    message += `📦 *Productos:*\n`
     
-    // Limpiar carrito después de un delay
-    setTimeout(() => {
-      clearCart()
-    }, 1000)
+    items.forEach(item => {
+      message += `• ${item.name} x${item.quantity} - $${formatPrice(item.wholesale_price * item.quantity)}\n`
+    })
+    
+    message += `\n💰 *TOTAL: $${formatPrice(totalPrice)}*\n`
+    message += `📊 *Total de productos: ${totalItems}*\n\n`
+    
+    if (notes) {
+      message += `📝 *Notas:* ${notes}\n\n`
+    }
+    
+    message += `✅ *Confirmo el pedido y procedo con el pago*`
+    
+    return encodeURIComponent(message)
   }
 
   if (loading) {
@@ -277,18 +414,45 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
+              {/* Campo de Notas */}
+              <div className="space-y-2">
+                <Label htmlFor="notes" className="text-sm font-medium text-gray-700">
+                  Notas del Pedido (Opcional)
+                </Label>
+                <Textarea
+                  id="notes"
+                  placeholder="Especificaciones especiales, instrucciones de envío, etc..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                  className="resize-none"
+                />
+              </div>
+
               <div className="space-y-3">
                 <Button 
                   onClick={handleCompleteOrder}
+                  disabled={saving}
                   className="w-full bg-green-600 hover:bg-green-700 text-lg py-6"
                 >
-                  <MessageCircle className="w-5 h-5 mr-2" />
-                  Completar Compra por WhatsApp
+                  {saving ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      Guardando Pedido...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-5 h-5 mr-2" />
+                      Guardar Pedido y Enviar por WhatsApp
+                    </>
+                  )}
                 </Button>
                 
-                <p className="text-xs text-gray-500 text-center">
-                  Al hacer clic, se abrirá WhatsApp con tu pedido completo
-                </p>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-xs text-blue-800 text-center">
+                    💾 Tu pedido se guardará en la base de datos y luego se abrirá WhatsApp para confirmar el pago
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>

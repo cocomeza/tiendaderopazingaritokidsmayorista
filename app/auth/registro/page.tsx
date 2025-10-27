@@ -3,10 +3,11 @@
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Mail, Lock, Eye, EyeOff, User, ArrowLeft } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, User, ArrowLeft, Building2, Phone, FileText, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import Link from 'next/link'
@@ -23,7 +24,13 @@ export default function RegisterPage() {
     password: '',
     confirmPassword: '',
     fullName: '',
-    company: ''
+    phone: '',
+    companyName: '',
+    cuit: '',
+    billingAddress: '',
+    locality: '',
+    salesType: '',
+    ages: ''
   })
 
   const handleInputChange = (field: string, value: string) => {
@@ -32,6 +39,32 @@ export default function RegisterPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Validar campos obligatorios
+    if (!formData.fullName.trim()) {
+      toast.error('Por favor ingresa tu nombre completo')
+      return
+    }
+
+    if (!formData.phone.trim()) {
+      toast.error('Por favor ingresa tu teléfono')
+      return
+    }
+
+    if (!formData.companyName.trim()) {
+      toast.error('Por favor ingresa el nombre de tu empresa')
+      return
+    }
+
+    if (!formData.cuit.trim()) {
+      toast.error('Por favor ingresa el CUIT de tu empresa')
+      return
+    }
+
+    if (!formData.billingAddress.trim()) {
+      toast.error('Por favor ingresa la dirección de facturación')
+      return
+    }
 
     if (formData.password !== formData.confirmPassword) {
       toast.error('Las contraseñas no coinciden')
@@ -43,27 +76,64 @@ export default function RegisterPage() {
       return
     }
 
+    // Validar formato de CUIT (XX-XXXXXXXX-X)
+    const cuitRegex = /^\d{2}-?\d{8}-?\d{1}$/
+    if (!cuitRegex.test(formData.cuit.replace(/-/g, ''))) {
+      toast.error('El formato del CUIT no es válido. Debe tener 11 dígitos.')
+      return
+    }
+
+    if (!formData.locality.trim()) {
+      toast.error('Por favor ingresa tu localidad')
+      return
+    }
+
+    if (!formData.salesType) {
+      toast.error('Por favor selecciona el tipo de venta')
+      return
+    }
+
     setLoading(true)
 
     try {
-      const { error } = await supabase.auth.signUp({
+      // Registro en auth
+      const { data, error } = await supabase.auth.signUp({
         email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: formData.fullName,
-            company: formData.company
-          }
-        }
+        password: formData.password
       })
 
       if (error) {
         toast.error('Error al registrarse: ' + error.message)
-      return
+        setLoading(false)
+        return
+      }
+
+      // Si el registro fue exitoso, actualizar el perfil
+      if (data.user) {
+        // Solo guardar los campos básicos por ahora
+        // Los nuevos campos (locality, sales_type, ages) se guardarán
+        // cuando restaures Supabase y ejecutes la migración
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: data.user.id,
+            email: formData.email,
+            full_name: formData.fullName,
+            phone: formData.phone,
+            company_name: formData.companyName,
+            cuit: formData.cuit.replace(/-/g, ''),
+            billing_address: formData.billingAddress
+          }, { onConflict: 'id' })
+
+      if (profileError) {
+        console.error('Error actualizando perfil:', profileError)
+      }
     }
 
-      toast.success('¡Registro exitoso! Revisa tu email para confirmar tu cuenta')
-      router.push('/auth/login')
+    // En desarrollo, si la confirmación por email está desactivada,
+    // el usuario puede hacer login inmediatamente
+    toast.success('¡Registro exitoso! Ya puedes iniciar sesión')
+    router.push('/auth/login')
     } catch (error) {
       toast.error('Error inesperado al registrarse')
     } finally {
@@ -77,33 +147,40 @@ export default function RegisterPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
+        className="w-full max-w-lg"
       >
-        <Card className="shadow-2xl border-0 bg-white">
-          <CardHeader className="text-center pb-6 pt-8">
+        <Card className="shadow-2xl border-0 bg-white max-h-[90vh] overflow-y-auto">
+          <CardHeader className="text-center pb-6 pt-8 sticky top-0 bg-white z-10 border-b">
             <div className="flex items-center justify-between mb-4">
               <Link href="/productos" className="text-gray-500 hover:text-gray-700">
                 <ArrowLeft className="w-5 h-5" />
               </Link>
               <CardTitle className="text-2xl font-bold text-gray-900">
-            Crear Cuenta
+                Registro Mayorista
               </CardTitle>
               <div className="w-5"></div> {/* Spacer */}
             </div>
             <p className="text-gray-600 text-sm">
-            Regístrate para acceder a precios mayoristas
+              Completa todos los datos para acceder a precios mayoristas
           </p>
           </CardHeader>
 
           <CardContent className="px-6 pb-6">
             <form onSubmit={handleRegister} className="space-y-4">
+              {/* Información Personal */}
+              <div className="space-y-4 mb-6">
+                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  Información Personal
+                </h3>
+                
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Nombre Completo</label>
+                  <label className="text-sm font-medium text-gray-700">Nombre Completo *</label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
                     type="text"
-                    placeholder="Tu nombre completo"
+                      placeholder="Juan Pérez"
                     value={formData.fullName}
                     onChange={(e) => handleInputChange('fullName', e.target.value)}
                     className="pl-10"
@@ -113,18 +190,124 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Empresa</label>
-                <Input
-                  type="text"
-                  placeholder="Nombre de tu empresa"
-                  value={formData.company}
-                  onChange={(e) => handleInputChange('company', e.target.value)}
-                  required
-                />
+                  <label className="text-sm font-medium text-gray-700">Teléfono *</label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      type="tel"
+                      placeholder="11 1234 5678"
+                      value={formData.phone}
+                      onChange={(e) => handleInputChange('phone', e.target.value)}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
               </div>
 
+              {/* Datos del Negocio */}
+              <div className="space-y-4 mb-6">
+                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                  <Building2 className="w-4 h-4" />
+                  Datos del Negocio
+                </h3>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Nombre de la Empresa *</label>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      type="text"
+                      placeholder="Mi Empresa S.A."
+                      value={formData.companyName}
+                      onChange={(e) => handleInputChange('companyName', e.target.value)}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">CUIT *</label>
+                  <div className="relative">
+                    <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      type="text"
+                      placeholder="20-12345678-9"
+                      value={formData.cuit}
+                      onChange={(e) => handleInputChange('cuit', e.target.value)}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500">Formato: XX-XXXXXXXX-X</p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Dirección de Facturación *</label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      type="text"
+                      placeholder="Calle Falsa 123, CABA"
+                      value={formData.billingAddress}
+                      onChange={(e) => handleInputChange('billingAddress', e.target.value)}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Localidad *</label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  type="text"
+                      placeholder="Ciudad Autónoma de Buenos Aires"
+                      value={formData.locality}
+                      onChange={(e) => handleInputChange('locality', e.target.value)}
+                      className="pl-10"
+                  required
+                />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Tipo de Venta *</label>
+                  <Select value={formData.salesType} onValueChange={(value) => handleInputChange('salesType', value)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecciona el tipo de venta" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="local">Local Físico</SelectItem>
+                      <SelectItem value="showroom">Showroom</SelectItem>
+                      <SelectItem value="online">Venta Online</SelectItem>
+                      <SelectItem value="empezando">Por Iniciar</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Edades con las que trabaja (opcional)</label>
+                  <Input
+                    type="text"
+                    placeholder="Ej: 0-2 años, 3-6 años"
+                    value={formData.ages}
+                    onChange={(e) => handleInputChange('ages', e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Credenciales de Acceso */}
+              <div className="space-y-4 mb-6">
+                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                  <Lock className="w-4 h-4" />
+                  Credenciales de Acceso
+                </h3>
+
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Email</label>
+                  <label className="text-sm font-medium text-gray-700">Email *</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
@@ -139,7 +322,7 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Contraseña</label>
+                  <label className="text-sm font-medium text-gray-700">Contraseña *</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
@@ -163,7 +346,7 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Confirmar Contraseña</label>
+                  <label className="text-sm font-medium text-gray-700">Confirmar Contraseña *</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
@@ -174,6 +357,7 @@ export default function RegisterPage() {
                     className="pl-10"
                     required
                   />
+                  </div>
                 </div>
               </div>
 
@@ -182,8 +366,12 @@ export default function RegisterPage() {
                 className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition-colors"
                 disabled={loading}
               >
-                {loading ? 'Creando cuenta...' : 'Crear Cuenta'}
+                {loading ? 'Creando cuenta...' : 'Crear Cuenta Mayorista'}
               </Button>
+
+              <p className="text-xs text-gray-500 text-center mt-2">
+                Todos los campos marcados con * son obligatorios
+              </p>
             </form>
 
             <div className="mt-6 text-center">

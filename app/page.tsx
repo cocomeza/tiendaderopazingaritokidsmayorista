@@ -234,19 +234,19 @@ export default function HomePage() {
       </section>
 
       {/* Información de Negocio */}
-      <section className="relative py-20 overflow-hidden">
+      <section className="relative py-12 sm:py-16 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600"></div>
         <div className="absolute inset-0 bg-black/20"></div>
         
-        <div className="relative container mx-auto px-4 text-center text-white">
-          <h2 className="text-4xl md:text-5xl font-bold mb-6">
+        <div className="relative container mx-auto px-4 text-center text-white pb-8">
+          <h2 className="text-3xl sm:text-4xl font-bold mb-4 sm:mb-6">
             Información Comercial
-            </h2>
-          <p className="text-xl mb-12 max-w-2xl mx-auto opacity-90">
+          </h2>
+          <p className="text-lg sm:text-xl mb-8 sm:mb-10 max-w-2xl mx-auto opacity-90">
             Datos importantes para tu negocio mayorista
           </p>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-6">
               <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">💰 Condiciones de Pago</h3>
               <p className="text-white/90 mb-3 sm:mb-4 text-sm sm:text-base">
@@ -280,22 +280,7 @@ export default function HomePage() {
                 • Precios mayoristas exclusivos<br />
                 • Stock disponible online
                   </p>
-                </div>
               </div>
-          
-          <div className="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-8 text-white/80">
-            <div className="flex items-center gap-2">
-              <Truck className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" />
-              <span className="font-medium text-sm sm:text-base">Envío 24hs</span>
-                  </div>
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-green-400" />
-              <span className="font-medium text-sm sm:text-base">Calidad garantizada</span>
-                </div>
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" />
-              <span className="font-medium text-sm sm:text-base">Atención personalizada</span>
-            </div>
           </div>
         </div>
       </section>

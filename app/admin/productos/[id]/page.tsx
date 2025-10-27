@@ -24,6 +24,7 @@ import { BackgroundBeams } from '@/components/ui/background-beams'
 import { CardHoverEffect } from '@/components/ui/card-hover-effect'
 import { motion } from 'framer-motion'
 import { OptimizedImage } from '@/components/ui/OptimizedImage'
+import { ImageUploader } from '@/components/admin/ImageUploader'
 
 interface Category {
   id: string
@@ -57,8 +58,16 @@ export default function EditarProductoPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingImages, setUploadingImages] = useState(false)
-  const [imageFiles, setImageFiles] = useState<File[]>([])
-  const [imagePreviews, setImagePreviews] = useState<string[]>([])
+  
+  // Nuevo formato para imágenes
+  interface ImageFile {
+    id: string
+    file: File
+    preview: string
+    uploading: boolean
+    url?: string
+  }
+  const [imageFiles, setImageFiles] = useState<ImageFile[]>([])
   
   const [product, setProduct] = useState<Product | null>(null)
   const [formData, setFormData] = useState({
@@ -230,55 +239,7 @@ export default function EditarProductoPage() {
     }
   }
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || [])
-    if (files.length === 0) return
-
-    // Validar tipos de archivo
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
-    const validFiles = files.filter(file => validTypes.includes(file.type))
-    
-    if (validFiles.length !== files.length) {
-      alert('Solo se permiten archivos JPG, PNG y WebP')
-      return
-    }
-
-    // Validar tamaño (máximo 5MB por imagen)
-    const maxSize = 5 * 1024 * 1024 // 5MB
-    const validSizeFiles = validFiles.filter(file => file.size <= maxSize)
-    
-    if (validSizeFiles.length !== validFiles.length) {
-      alert('Las imágenes no pueden superar los 5MB cada una')
-      return
-    }
-
-    setImageFiles(prev => [...prev, ...validSizeFiles])
-
-    // Crear previews
-    validSizeFiles.forEach(file => {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setImagePreviews(prev => [...prev, e.target?.result as string])
-      }
-      reader.readAsDataURL(file)
-    })
-  }
-
-  const removeImage = (index: number) => {
-    // Si es una imagen existente (no nueva), la removemos de la lista de imágenes del producto
-    if (index < formData.images.length) {
-      setFormData(prev => ({
-        ...prev,
-        images: prev.images.filter((_, i) => i !== index)
-      }))
-    } else {
-      // Si es una imagen nueva, la removemos de los archivos y previews
-      const newFileIndex = index - formData.images.length
-      setImageFiles(prev => prev.filter((_, i) => i !== newFileIndex))
-    }
-    
-    setImagePreviews(prev => prev.filter((_, i) => i !== index))
-  }
+  // Las funciones handleImageUpload y removeImage ahora se manejan en ImageUploader
 
   const uploadImagesToSupabase = async (): Promise<string[]> => {
     if (imageFiles.length === 0) return []
@@ -287,14 +248,14 @@ export default function EditarProductoPage() {
     const uploadedUrls: string[] = []
 
     try {
-      for (const file of imageFiles) {
-        const fileExt = file.name.split('.').pop()
+      for (const imageData of imageFiles) {
+        const fileExt = imageData.file.name.split('.').pop()
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
         const filePath = `product-images/${fileName}`
 
         const { error: uploadError } = await supabase.storage
           .from('products')
-          .upload(filePath, file)
+          .upload(filePath, imageData.file)
 
         if (uploadError) {
           console.error('Error subiendo imagen:', uploadError)
@@ -566,20 +527,25 @@ export default function EditarProductoPage() {
                   {/* Imágenes Existentes */}
                   {formData.images.length > 0 && (
                     <div className="mb-6">
-                      <h4 className="text-sm font-medium text-gray-700 mb-3">Imágenes actuales:</h4>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">Imágenes actuales del producto:</h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                         {formData.images.map((imageUrl, index) => (
                           <div key={index} className="relative group">
-                            <OptimizedImage
+                            <img
                               src={imageUrl}
                               alt={`Imagen ${index + 1}`}
-                              className="w-full h-24 rounded-lg border border-gray-200"
+                              className="w-full aspect-square object-cover rounded-lg border border-gray-200"
                             />
                             <button
-                              onClick={() => removeImage(index)}
+                              onClick={() => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  images: prev.images.filter((_, i) => i !== index)
+                                }))
+                              }}
                               className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                             >
-                              <X className="w-3 h-3" />
+                              <X className="w-4 h-4" />
                             </button>
                           </div>
                         ))}
@@ -587,58 +553,15 @@ export default function EditarProductoPage() {
                     </div>
                   )}
                   
-                  {/* Upload Area */}
-                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-gray-400 transition-colors">
-                    <ImageIcon className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                    <p className="text-sm text-gray-600 mb-4">
-                      Arrastra nuevas imágenes aquí o haz clic para seleccionar
-                    </p>
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/jpeg,image/jpg,image/png,image/webp"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                      id="image-upload"
+                  {/* Nuevo sistema de upload mejorado */}
+                  <div className="mt-6">
+                    <h4 className="text-sm font-medium text-gray-700 mb-3">Agregar nuevas imágenes:</h4>
+                    <ImageUploader
+                      images={imageFiles}
+                      onImagesChange={setImageFiles}
+                      maxImages={10}
                     />
-                    <label
-                      htmlFor="image-upload"
-                      className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl cursor-pointer"
-                    >
-                      <Upload className="w-4 h-4 mr-2" />
-                      Agregar Imágenes
-                    </label>
-                    <p className="text-xs text-gray-500 mt-2">
-                      Máximo 5MB por imagen. Formatos: JPG, PNG, WebP
-                    </p>
                   </div>
-
-                  {/* Image Previews */}
-                  {imageFiles.length > 0 && (
-                    <div className="mt-6">
-                      <h4 className="text-sm font-medium text-gray-700 mb-3">Nuevas imágenes:</h4>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                        {imageFiles.map((file, index) => (
-                          <div key={index} className="relative group">
-                            <img
-                              src={URL.createObjectURL(file)}
-                              alt={`Preview ${index + 1}`}
-                              className="w-full h-24 object-cover rounded-lg border border-gray-200"
-                            />
-                            <button
-                              onClick={() => removeImage(formData.images.length + index)}
-                              className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                            <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 rounded-b-lg">
-                              {file.name}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
                 
                 {/* Botones de Acción */}

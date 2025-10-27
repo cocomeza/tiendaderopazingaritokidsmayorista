@@ -29,67 +29,73 @@ export default function Navbar() {
   return (
     <>
       {/* Barra superior con contacto */}
-      <div className="bg-purple-600 text-white text-sm py-2">
+      <div className="bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 text-white text-xs sm:text-sm py-2.5 shadow-sm">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <a href="tel:+543407498045" className="flex items-center gap-1 hover:opacity-80">
-                <Phone className="w-4 h-4" />
-                <span className="hidden sm:inline">3407 498045</span>
+            <div className="flex items-center gap-3 sm:gap-5">
+              <a href="tel:+543407498045" className="flex items-center gap-1.5 hover:opacity-90 transition-opacity">
+                <Phone className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="font-medium">3407 498045</span>
               </a>
-              <button onClick={abrirWhatsApp} className="flex items-center gap-1 hover:opacity-80">
-                <MessageCircle className="w-4 h-4" />
-                <span className="hidden sm:inline">WhatsApp</span>
+              <div className="h-4 w-px bg-white/30"></div>
+              <button onClick={abrirWhatsApp} className="flex items-center gap-1.5 hover:opacity-90 transition-opacity">
+                <MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="font-medium">WhatsApp</span>
               </button>
             </div>
-            <div className="text-xs">
-              <span className="hidden md:inline">🎉 Envíos a todo el país</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-lg">🎉</span>
+              <span className="hidden sm:inline font-medium">Envíos a todo el país</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Navbar principal */}
-      <nav className="bg-white shadow-md sticky top-0 z-50">
+      <nav className="bg-white shadow-lg sticky top-0 z-50 border-b border-gray-100">
         <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex justify-between items-center h-20">
             {/* Logo */}
-            <Link href="/" className="flex items-center" onClick={cerrarMenu}>
-              <div className="text-2xl font-bold text-gradient-horizontal">
-                ZINGARITO
+            <Link href="/" className="flex items-baseline gap-2 group" onClick={cerrarMenu}>
+              <div className="text-3xl sm:text-4xl font-black tracking-tight leading-none">
+                <span className="bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 bg-clip-text text-transparent">
+                  ZINGARITO
+                </span>
               </div>
-              <span className="ml-2 text-sm font-semibold text-purple-600">KIDS</span>
+              <span className="text-base sm:text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600 leading-none">
+                KIDS
+              </span>
             </Link>
 
             {/* Links de navegación - Desktop */}
-            <div className="hidden md:flex items-center space-x-8">
+            <div className="hidden lg:flex items-center space-x-1">
               <Link
                 href="/"
-                className="text-gray-700 hover:text-purple-600 font-medium transition-colors"
+                className="px-4 py-2 text-gray-700 hover:text-purple-600 font-semibold transition-all hover:bg-purple-50 rounded-lg"
               >
                 Inicio
               </Link>
               <Link
                 href="/productos"
-                className="text-gray-700 hover:text-purple-600 font-medium transition-colors"
+                className="px-4 py-2 text-gray-700 hover:text-purple-600 font-semibold transition-all hover:bg-purple-50 rounded-lg"
               >
                 Productos
               </Link>
               <Link
                 href="/sobre-nosotros"
-                className="text-gray-700 hover:text-purple-600 font-medium transition-colors"
+                className="px-4 py-2 text-gray-700 hover:text-purple-600 font-semibold transition-all hover:bg-purple-50 rounded-lg"
               >
                 Nosotros
               </Link>
               <Link
                 href="/contacto"
-                className="text-gray-700 hover:text-purple-600 font-medium transition-colors"
+                className="px-4 py-2 text-gray-700 hover:text-purple-600 font-semibold transition-all hover:bg-purple-50 rounded-lg"
               >
                 Contacto
               </Link>
               <Link
                 href="/admin/login"
-                className="text-gray-700 hover:text-purple-600 font-medium transition-colors flex items-center gap-1"
+                className="px-4 py-2 text-gray-700 hover:text-purple-600 font-semibold transition-all hover:bg-purple-50 rounded-lg flex items-center gap-1.5"
               >
                 <Shield className="h-4 w-4" />
                 Admin

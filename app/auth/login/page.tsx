@@ -38,7 +38,17 @@ export default function LoginPage() {
       })
 
       if (error) {
-        toast.error('Error al iniciar sesión: ' + error.message)
+        console.error('Error de login:', error)
+        console.error('Detalles del error:', error)
+        
+        // Mensajes más específicos según el tipo de error
+        if (error.message.includes('Invalid login credentials')) {
+          toast.error('Email o contraseña incorrectos. Verifica tus credenciales.')
+        } else if (error.message.includes('email_not_confirmed') || error.message.includes('Email not confirmed')) {
+          toast.error('Debes confirmar tu email primero. Revisa tu bandeja de entrada o spam.')
+        } else {
+          toast.error('Error al iniciar sesión: ' + error.message)
+        }
         return
       }
 
@@ -93,7 +103,15 @@ export default function LoginPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Contraseña</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-gray-700">Contraseña</label>
+                  <Link 
+                    href="/auth/recuperar-password"
+                    className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </Link>
+                </div>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input

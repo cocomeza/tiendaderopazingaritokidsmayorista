@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { ShoppingCart, Heart, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ShoppingCart, Heart, ChevronLeft, ChevronRight, Eye } from 'lucide-react'
 import { CardHoverEffect } from '@/components/ui/card-hover-effect'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,7 @@ import { Database } from '@/lib/types/database'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { QuickViewModal } from './QuickViewModal'
 
 type Product = Database['public']['Tables']['products']['Row']
 
@@ -27,6 +28,7 @@ export function ProductCard({ product }: ProductCardProps) {
   const { toggleFavorite, isFavorite, loading: favoritesLoading } = useFavorites()
   const router = useRouter()
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [isQuickViewOpen, setIsQuickViewOpen] = useState(false)
   
   // Obtener imágenes del producto
   const images = product.images || []
@@ -47,8 +49,16 @@ export function ProductCard({ product }: ProductCardProps) {
     e.stopPropagation()
     
     if (!isAuthenticated) {
-      const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/productos'
-      router.push(`/auth/login?redirect=${encodeURIComponent(currentPath)}`)
+      toast.error('Debes iniciar sesión para agregar productos al carrito', {
+        description: 'Serás redirigido al inicio de sesión',
+        duration: 3000,
+      })
+      
+      // Redirigir después de un breve delay para que el usuario vea el mensaje
+      setTimeout(() => {
+        const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/productos'
+        router.push(`/auth/login?redirect=${encodeURIComponent(currentPath)}`)
+      }, 1500)
       return
     }
 
@@ -74,8 +84,16 @@ export function ProductCard({ product }: ProductCardProps) {
     
     if (!isAuthenticated) {
       console.log('❌ User not authenticated, redirecting to login')
-      const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/productos'
-      router.push(`/auth/login?redirect=${encodeURIComponent(currentPath)}`)
+      toast.error('Debes iniciar sesión para agregar productos a favoritos', {
+        description: 'Serás redirigido al inicio de sesión',
+        duration: 3000,
+      })
+      
+      // Redirigir después de un breve delay para que el usuario vea el mensaje
+      setTimeout(() => {
+        const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/productos'
+        router.push(`/auth/login?redirect=${encodeURIComponent(currentPath)}`)
+      }, 1500)
       return
     }
 
@@ -110,6 +128,7 @@ export function ProductCard({ product }: ProductCardProps) {
     : 0
 
   return (
+    <>
     <CardHoverEffect>
       <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -205,6 +224,20 @@ export function ProductCard({ product }: ProductCardProps) {
           
           {/* Overlay gradient */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20"></div>
+          
+          {/* Botón de Vista Rápida - Aparece en hover */}
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-30">
+            <Button
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsQuickViewOpen(true)
+              }}
+              className="bg-white text-purple-600 hover:bg-purple-50 font-semibold px-6 py-3 rounded-full shadow-lg transform hover:scale-105 transition-all"
+            >
+              <Eye className="w-5 h-5 mr-2" />
+              Vista Rápida
+            </Button>
+          </div>
           
           {/* Badge de descuento */}
           {hasDiscount && (
@@ -322,5 +355,13 @@ export function ProductCard({ product }: ProductCardProps) {
       </Card>
     </motion.div>
     </CardHoverEffect>
+
+    {/* Modal de Vista Rápida */}
+    <QuickViewModal
+      product={product}
+      isOpen={isQuickViewOpen}
+      onClose={() => setIsQuickViewOpen(false)}
+    />
+  </>
   )
 }

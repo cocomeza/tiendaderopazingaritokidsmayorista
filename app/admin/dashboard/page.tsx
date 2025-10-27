@@ -99,11 +99,8 @@ export default function AdminDashboard() {
           </div>
           <TextGenerateEffect
             words="Panel Administrativo"
-            className="text-4xl md:text-6xl font-bold text-white mb-4 drop-shadow-lg"
+            className="text-4xl md:text-6xl font-bold text-white mb-8 drop-shadow-lg"
           />
-          <p className="text-lg md:text-xl text-gray-200 mb-8 drop-shadow-md">
-            Dashboard principal de Zingarito Kids
-          </p>
         </div>
       </div>
 

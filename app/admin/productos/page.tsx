@@ -18,8 +18,12 @@ import {
   Eye,
   EyeOff,
   Save,
-  X
+  X,
+  ArrowLeft,
+  Home,
+  LogOut
 } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface Product {
   id: string
@@ -56,6 +60,17 @@ export default function AdminProductos() {
   useEffect(() => {
     loadData()
   }, [])
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut()
+      toast.success('Sesión cerrada correctamente')
+      router.push('/')
+    } catch (error) {
+      console.error('Error cerrando sesión:', error)
+      toast.error('Error al cerrar sesión')
+    }
+  }
 
   const loadData = async () => {
     try {
@@ -202,6 +217,36 @@ export default function AdminProductos() {
         }}></div>
         
         <div className="relative container mx-auto px-4 py-12 sm:py-16">
+          {/* Botones de navegación */}
+          <div className="flex justify-between items-center mb-6">
+            <Button 
+              variant="ghost"
+              onClick={() => router.push('/admin')}
+              className="text-white hover:text-white hover:bg-white/20"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Volver al Admin
+            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="ghost"
+                onClick={() => router.push('/')}
+                className="text-white hover:text-white hover:bg-white/20"
+              >
+                <Home className="w-4 h-4 mr-2" />
+                Home
+              </Button>
+              <Button 
+                variant="ghost"
+                onClick={handleSignOut}
+                className="text-white hover:text-white hover:bg-white/20"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Cerrar Sesión
+              </Button>
+            </div>
+          </div>
+          
           <div className="text-center">
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black mb-3 sm:mb-4 leading-tight text-white">
               Gestión de

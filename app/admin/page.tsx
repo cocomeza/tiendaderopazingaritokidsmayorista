@@ -9,7 +9,9 @@ import { TextGenerateEffect } from '@/components/ui/text-generate-effect'
 import { BackgroundBeams } from '@/components/ui/background-beams'
 import { CardHoverEffect } from '@/components/ui/card-hover-effect'
 import { motion } from 'framer-motion'
-import { Package, Users, TrendingUp, DollarSign, Plus, Settings, Edit, Trash2, Percent, ArrowLeft } from 'lucide-react'
+import { Package, Users, TrendingUp, DollarSign, Plus, Settings, Edit, Trash2, Percent, ArrowLeft, LogOut, Home, ShoppingBag, AlertTriangle } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 
 interface Stats {
   totalProducts: number
@@ -19,6 +21,7 @@ interface Stats {
 }
 
 export default function AdminDashboard() {
+  const router = useRouter()
   const [stats, setStats] = useState<Stats>({
     totalProducts: 0,
     activeProducts: 0,
@@ -30,6 +33,17 @@ export default function AdminDashboard() {
   useEffect(() => {
     loadStats()
   }, [])
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut()
+      toast.success('Sesión cerrada correctamente')
+      router.push('/')
+    } catch (error) {
+      console.error('Error cerrando sesión:', error)
+      toast.error('Error al cerrar sesión')
+    }
+  }
 
   const loadStats = async () => {
     try {
@@ -96,17 +110,23 @@ export default function AdminDashboard() {
         />
         <BackgroundBeams className="absolute inset-0 z-0" />
         <div className="relative z-10 text-center p-4">
-          {/* Botón Volver al Admin */}
-          <div className="mb-6">
+          {/* Botones de Navegación */}
+          <div className="mb-6 flex gap-3 justify-center flex-wrap">
             <Button 
               variant="ghost" 
               className="text-white hover:text-white hover:bg-white/20 rounded-xl"
-              asChild
+              onClick={() => router.push('/')}
             >
-              <a href="/admin">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Volver al Admin
-              </a>
+              <Home className="w-4 h-4 mr-2" />
+              Volver al Home
+            </Button>
+            <Button 
+              variant="ghost" 
+              className="text-white hover:text-white hover:bg-white/20 rounded-xl"
+              onClick={handleSignOut}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Cerrar Sesión
             </Button>
           </div>
           <TextGenerateEffect
@@ -309,23 +329,57 @@ export default function AdminDashboard() {
           </CardHoverEffect>
         </div>
 
-        {/* Gestión de Clientes */}
+          {/* Gestión de Inventario */}
+        <CardHoverEffect>
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.9, duration: 0.5 }}
+          >
+            <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+              <CardHeader className="bg-gradient-to-r from-blue-500 to-cyan-600 text-white rounded-t-2xl">
+                <CardTitle className="flex items-center gap-3 text-xl font-bold">
+                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                    <Package className="w-5 h-5" />
+                  </div>
+                  Gestión de Inventario
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <Button className="w-full justify-start bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl" asChild>
+                  <a href="/admin/inventario">
+                    <Package className="w-5 h-5 mr-3" />
+                    Ver Inventario Completo
+                  </a>
+                </Button>
+                <Button className="w-full justify-start bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <AlertTriangle className="w-5 h-5 mr-3" />
+                  Productos con Stock Bajo
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </CardHoverEffect>
+
+          {/* Gestión de Pedidos */}
         <Card className="mt-12 bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-          <CardHeader className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-t-lg">
+          <CardHeader className="bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-t-lg">
             <CardTitle className="flex items-center gap-3 text-xl font-bold">
               <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                <Users className="w-5 h-5" />
+                <ShoppingBag className="w-5 h-5" />
               </div>
-              Gestión de Clientes
+              Gestión de Pedidos
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Button className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl">
-                Ver Todos los Clientes
+              <Button className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl" asChild>
+                <a href="/admin/pedidos">
+                  Ver Todos los Pedidos
+                </a>
               </Button>
-              <Button className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl">
-                Clientes Activos
+              <Button className="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl">
+                Pedidos Pendientes
               </Button>
               <Button className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl">
                 Nuevos Registros

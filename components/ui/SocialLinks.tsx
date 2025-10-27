@@ -1,6 +1,7 @@
 'use client'
 
 import { Instagram, Facebook, MessageCircle } from 'lucide-react'
+import { motion } from 'framer-motion'
 
 interface SocialLinksProps {
   className?: string
@@ -14,15 +15,15 @@ export function SocialLinks({
   showWhatsApp = true 
 }: SocialLinksProps) {
   const sizeClasses = {
-    sm: 'w-10 h-10',
-    md: 'w-14 h-14',
-    lg: 'w-16 h-16'
+    sm: 'w-10 h-10 sm:w-12 sm:h-12',
+    md: 'w-14 h-14 sm:w-16 sm:h-16',
+    lg: 'w-16 h-16 sm:w-20 sm:h-20'
   }
 
   const iconSizeClasses = {
-    sm: 'w-5 h-5',
-    md: 'w-7 h-7',
-    lg: 'w-8 h-8'
+    sm: 'w-5 h-5 sm:w-6 sm:h-6',
+    md: 'w-7 h-7 sm:w-8 sm:h-8',
+    lg: 'w-8 h-8 sm:w-10 sm:h-10'
   }
 
   const abrirWhatsApp = () => {
@@ -31,39 +32,72 @@ export function SocialLinks({
     window.open(`https://wa.me/${numero}?text=${mensaje}`, '_blank')
   }
 
+  const socialLinks = [
+    {
+      name: 'Instagram',
+      href: 'https://www.instagram.com/zingaritokids/',
+      icon: Instagram,
+      gradient: 'from-purple-500 via-pink-500 to-orange-500',
+      hoverGradient: 'from-purple-400 via-pink-400 to-orange-400',
+      className: 'hover:shadow-purple-500/50'
+    },
+    {
+      name: 'Facebook',
+      href: 'https://www.facebook.com/zingara.ramallo',
+      icon: Facebook,
+      gradient: 'from-blue-600 to-blue-700',
+      hoverGradient: 'from-blue-500 to-blue-600',
+      className: 'hover:shadow-blue-500/50'
+    }
+  ]
+
+  const whatsAppLink = {
+    name: 'WhatsApp',
+    icon: MessageCircle,
+    gradient: 'from-green-500 to-emerald-600',
+    hoverGradient: 'from-green-400 to-emerald-500',
+    className: 'hover:shadow-green-500/50'
+  }
+
   return (
-    <div className={`flex justify-center gap-4 ${className}`}>
+    <div className={`flex justify-center gap-5 sm:gap-6 ${className}`}>
       {/* Instagram */}
-      <a
-        href="https://www.instagram.com/zingaritokids/"
+      <motion.a
+        href={socialLinks[0].href}
         target="_blank"
         rel="noopener noreferrer"
-        className={`${sizeClasses[size]} bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 rounded-full flex items-center justify-center hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg`}
-        aria-label="Instagram de Zingarito Kids"
+        whileHover={{ scale: 1.1, y: -3 }}
+        whileTap={{ scale: 0.95 }}
+        className={`${sizeClasses[size]} bg-gradient-to-br ${socialLinks[0].gradient} rounded-2xl flex items-center justify-center transition-all duration-300 shadow-xl ${socialLinks[0].className} group`}
+        aria-label={socialLinks[0].name}
       >
-        <Instagram className={`${iconSizeClasses[size]} text-white`} />
-      </a>
+        <Instagram className={`${iconSizeClasses[size]} text-white group-hover:scale-110 transition-transform`} />
+      </motion.a>
 
       {/* Facebook */}
-      <a
-        href="https://www.facebook.com/zingara.ramallo"
+      <motion.a
+        href={socialLinks[1].href}
         target="_blank"
         rel="noopener noreferrer"
-        className={`${sizeClasses[size]} bg-blue-600 hover:bg-blue-700 rounded-full flex items-center justify-center hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg`}
-        aria-label="Facebook de Zingarito Kids"
+        whileHover={{ scale: 1.1, y: -3 }}
+        whileTap={{ scale: 0.95 }}
+        className={`${sizeClasses[size]} bg-gradient-to-br ${socialLinks[1].gradient} rounded-2xl flex items-center justify-center transition-all duration-300 shadow-xl ${socialLinks[1].className} group`}
+        aria-label={socialLinks[1].name}
       >
-        <Facebook className={`${iconSizeClasses[size]} text-white`} />
-      </a>
+        <Facebook className={`${iconSizeClasses[size]} text-white group-hover:scale-110 transition-transform`} />
+      </motion.a>
 
       {/* WhatsApp */}
       {showWhatsApp && (
-        <button
+        <motion.button
           onClick={abrirWhatsApp}
-          className={`${sizeClasses[size]} bg-green-500 hover:bg-green-600 rounded-full flex items-center justify-center hover:scale-105 transition-all duration-300 shadow-md hover:shadow-lg`}
-          aria-label="WhatsApp de Zingarito Kids"
+          whileHover={{ scale: 1.1, y: -3 }}
+          whileTap={{ scale: 0.95 }}
+          className={`${sizeClasses[size]} bg-gradient-to-br ${whatsAppLink.gradient} rounded-2xl flex items-center justify-center transition-all duration-300 shadow-xl ${whatsAppLink.className} group`}
+          aria-label={whatsAppLink.name}
         >
-          <MessageCircle className={`${iconSizeClasses[size]} text-white`} />
-        </button>
+          <MessageCircle className={`${iconSizeClasses[size]} text-white group-hover:scale-110 transition-transform`} />
+        </motion.button>
       )}
     </div>
   )
