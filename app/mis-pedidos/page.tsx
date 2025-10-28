@@ -84,20 +84,24 @@ export default function MisPedidosPage() {
         return
       }
 
-      // Para cada pedido, cargar sus items
-      const ordersWithItems = await Promise.all(
-        (data || []).map(async (order) => {
-          const { data: items } = await supabase
-            .from('order_items')
-            .select('*')
-            .eq('order_id', order.id)
+      // Cargar TODOS los items de todos los pedidos en una sola query
+      const orderIds = (data || []).map(order => order.id)
+      
+      let allItems: any[] = []
+      if (orderIds.length > 0) {
+        const { data: itemsData } = await supabase
+          .from('order_items')
+          .select('*')
+          .in('order_id', orderIds)
+        
+        allItems = itemsData || []
+      }
 
-          return {
-            ...order,
-            items: items || []
-          }
-        })
-      )
+      // Agrupar items por pedido
+      const ordersWithItems = (data || []).map(order => ({
+        ...order,
+        items: allItems.filter(item => item.order_id === order.id)
+      }))
 
       setOrders(ordersWithItems)
     } catch (error) {

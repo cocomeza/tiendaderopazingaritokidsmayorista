@@ -1,0 +1,18 @@
+# Resultados de tests
+test-results/
+playwright-report/
+coverage/
+
+# Playwright
+.playwright/
+.playwrightcache/
+
+# Screenshots
+screenshots/
+
+# Videos
+video/
+
+# Logs
+*.log
+

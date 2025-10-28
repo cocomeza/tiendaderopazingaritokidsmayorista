@@ -12,6 +12,10 @@
 
 # testing
 /coverage
+/test-results
+/playwright-report
+/tests/screenshots
+/tests/video
 
 # next.js
 /.next/
@@ -45,3 +49,19 @@ next-env.d.ts
 # ide
 .vscode
 .idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

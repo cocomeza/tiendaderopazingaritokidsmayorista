@@ -6,10 +6,14 @@ import { supabase } from '@/lib/supabase/client'
 import { ProductFilters } from '@/components/productos/ProductFilters'
 import { SearchSort } from '@/components/productos/SearchSort'
 import { ProductCard } from '@/components/productos/ProductCard'
-import { Spotlight } from '@/components/ui/spotlight'
-import { TextGenerateEffect } from '@/components/ui/text-generate-effect'
-import { BackgroundBeams } from '@/components/ui/background-beams'
+import { ProductsGridSkeleton } from '@/components/productos/ProductCardSkeleton'
 import { Filter } from 'lucide-react'
+import dynamic from 'next/dynamic'
+
+// Lazy load de componentes pesados
+const Spotlight = dynamic(() => import('@/components/ui/spotlight').then(mod => ({ default: mod.Spotlight })), { ssr: false })
+const TextGenerateEffect = dynamic(() => import('@/components/ui/text-generate-effect').then(mod => ({ default: mod.TextGenerateEffect })), { ssr: false })
+const BackgroundBeams = dynamic(() => import('@/components/ui/background-beams').then(mod => ({ default: mod.BackgroundBeams })), { ssr: false })
 import { Database } from '@/lib/types/database'
 
 type Product = Database['public']['Tables']['products']['Row']
@@ -41,15 +45,17 @@ export default function ProductosPage() {
     try {
       console.log('🔍 Cargando datos...')
       
-      // Cargar productos
+      // Cargar productos (solo campos necesarios, limitado para performance)
       const { data: productsData, error: productsError } = await supabase
         .from('products')
         .select(`
-          id, name, description, price, wholesale_price, cost_price, 
-          stock, low_stock_threshold, category_id, sizes, colors, 
-          active, images, created_at, updated_at
+          id, name, price, wholesale_price, 
+          stock, category_id, sizes, colors, 
+          active, images
         `)
         .eq('active', true)
+        .order('created_at', { ascending: false })
+        .limit(50) // Reducir a 50 productos inicialmente para mejor performance
 
       if (productsError) {
         console.error('Error productos:', productsError)
@@ -157,17 +163,45 @@ export default function ProductosPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="relative">
-            <div className="w-20 h-20 border-4 border-purple-200 rounded-full animate-spin"></div>
-            <div className="absolute top-0 left-0 w-20 h-20 border-4 border-transparent border-t-purple-600 rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+        {/* Hero Skeleton */}
+        <div className="relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600"></div>
+          <div className="relative container mx-auto px-4 py-12 sm:py-16 md:py-20 text-center">
+            <div className="animate-pulse">
+              <div className="h-8 sm:h-10 md:h-12 bg-white/20 rounded-lg mb-4 w-64 mx-auto"></div>
+              <div className="h-6 sm:h-8 bg-white/10 rounded-lg mb-6 w-96 mx-auto"></div>
+              <div className="h-16 bg-white/10 rounded-2xl max-w-xl mx-auto"></div>
+            </div>
           </div>
-          <p className="mt-6 text-gray-600 font-medium">Cargando productos...</p>
-          <div className="mt-4 flex justify-center space-x-1">
-            <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
-            <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-            <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+        </div>
+
+        {/* Content Skeleton */}
+        <div className="container mx-auto px-4 py-8">
+          <div className="animate-pulse mb-8">
+            <div className="h-8 bg-gray-300 rounded-lg mb-2 w-48"></div>
+            <div className="h-4 bg-gray-200 rounded w-64"></div>
+          </div>
+          
+          {/* Filtros y productos skeleton */}
+          <div className="flex flex-col lg:flex-row gap-6 sm:gap-8">
+            {/* Filtros skeleton - Desktop */}
+            <div className="hidden lg:block lg:w-80 flex-shrink-0">
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="mb-4">
+                    <div className="h-6 bg-gray-300 rounded w-3/4 mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-full"></div>
+                    <div className="h-4 bg-gray-200 rounded w-full mt-1"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Productos skeleton */}
+            <div className="flex-1">
+              <ProductsGridSkeleton count={12} />
+            </div>
           </div>
         </div>
       </div>

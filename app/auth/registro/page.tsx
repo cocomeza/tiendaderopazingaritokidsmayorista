@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Mail, Lock, Eye, EyeOff, User, ArrowLeft, Building2, Phone, FileText, MapPin } from 'lucide-react'
@@ -12,7 +12,7 @@ import { supabase } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirect') || '/productos'
@@ -76,6 +76,13 @@ export default function RegisterPage() {
       return
     }
 
+    // Validar que la contraseña tenga al menos una letra y un número
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)/
+    if (!passwordRegex.test(formData.password)) {
+      toast.error('La contraseña debe tener al menos una letra y un número')
+      return
+    }
+
     // Validar formato de CUIT (XX-XXXXXXXX-X)
     const cuitRegex = /^\d{2}-?\d{8}-?\d{1}$/
     if (!cuitRegex.test(formData.cuit.replace(/-/g, ''))) {
@@ -96,44 +103,94 @@ export default function RegisterPage() {
     setLoading(true)
 
     try {
+      console.log('Intentando registrar usuario:', formData.email)
+      
       // Registro en auth
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
-        password: formData.password
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.fullName,
+            phone: formData.phone,
+            company_name: formData.companyName,
+          }
+        }
       })
 
       if (error) {
+        console.error('Error de Supabase Auth:', error)
+        
+        // Errores comunes y mensajes más amigables
+        if (error.message.includes('already registered')) {
+          toast.error('Este email ya está registrado. Intenta iniciar sesión o recupera tu contraseña.')
+        } else if (error.message.includes('Password')) {
+          toast.error('La contraseña no cumple los requisitos de seguridad')
+        } else if (error.message.includes('Invalid email')) {
+          toast.error('El formato del email no es válido')
+        } else {
         toast.error('Error al registrarse: ' + error.message)
+        }
+        
         setLoading(false)
         return
       }
 
+      console.log('Usuario registrado exitosamente:', data.user?.id)
+
       // Si el registro fue exitoso, actualizar el perfil
       if (data.user) {
-        // Solo guardar los campos básicos por ahora
-        // Los nuevos campos (locality, sales_type, ages) se guardarán
-        // cuando restaures Supabase y ejecutes la migración
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .upsert({
-            id: data.user.id,
-            email: formData.email,
-            full_name: formData.fullName,
-            phone: formData.phone,
-            company_name: formData.companyName,
-            cuit: formData.cuit.replace(/-/g, ''),
-            billing_address: formData.billingAddress
-          }, { onConflict: 'id' })
+        console.log('Creando perfil para usuario:', data.user.id)
+        
+        // Preparar los datos del perfil - solo campos que existen en DB
+        const profileData: any = {
+          id: data.user.id,
+          email: formData.email,
+          full_name: formData.fullName,
+          phone: formData.phone,
+          company_name: formData.companyName,
+          cuit: formData.cuit.replace(/-/g, ''),
+          billing_address: formData.billingAddress
+        }
 
-      if (profileError) {
-        console.error('Error actualizando perfil:', profileError)
-      }
+        // Agregar los nuevos campos solo si están presentes
+        if (formData.locality) {
+          profileData.locality = formData.locality
+        }
+        if (formData.salesType) {
+          profileData.sales_type = formData.salesType
+        }
+        if (formData.ages) {
+          profileData.ages = formData.ages
+        }
+
+        console.log('Datos del perfil a insertar:', profileData)
+
+        const { data: profileInsertData, error: profileError } = await supabase
+          .from('profiles')
+          .upsert(profileData, { onConflict: 'id' })
+
+        console.log('Resultado insert perfil:', profileInsertData)
+        
+        if (profileError) {
+          console.error('Error completo del perfil:', JSON.stringify(profileError, null, 2))
+          console.error('Código de error:', profileError.code)
+          console.error('Mensaje:', profileError.message)
+          console.error('Detalles:', profileError.details)
+          console.error('Hint:', profileError.hint)
+          
+          toast.error('Error al crear el perfil: ' + (profileError.message || 'Error desconocido. Verifica la consola para más detalles.'))
+          setLoading(false)
+      return
     }
+
+        console.log('Perfil creado exitosamente')
+      }
 
     // En desarrollo, si la confirmación por email está desactivada,
     // el usuario puede hacer login inmediatamente
     toast.success('¡Registro exitoso! Ya puedes iniciar sesión')
-    router.push('/auth/login')
+      router.push('/auth/login')
     } catch (error) {
       toast.error('Error inesperado al registrarse')
     } finally {
@@ -392,5 +449,20 @@ export default function RegisterPage() {
         </Card>
       </motion.div>
     </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    }>
+      <RegisterPageContent />
+    </Suspense>
   )
 }

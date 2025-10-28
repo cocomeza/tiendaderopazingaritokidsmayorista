@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Toaster } from 'sonner'
@@ -7,6 +7,17 @@ import Footer from '@/components/Footer'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 
 const inter = Inter({ subsets: ['latin'] })
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  colorScheme: 'light',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#7B3FBD' },
+    { media: '(prefers-color-scheme: dark)', color: '#8B5CF6' },
+  ],
+}
 
 export const metadata: Metadata = {
   title: 'Zingarito Kids - Ventas Mayoristas de Ropa Infantil',
@@ -72,16 +83,6 @@ export const metadata: Metadata = {
   category: 'ecommerce',
   classification: 'Tienda Mayorista',
   referrer: 'origin-when-cross-origin',
-  colorScheme: 'light',
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#7B3FBD' },
-    { media: '(prefers-color-scheme: dark)', color: '#8B5CF6' },
-  ],
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-  },
   icons: {
     icon: [
       { url: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' },

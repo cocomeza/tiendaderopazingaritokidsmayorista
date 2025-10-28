@@ -1,0 +1,21 @@
+# Test results
+test-results/
+playwright-report/
+test-results.json
+coverage/
+
+# Playwright
+playwright/.cache/
+
+# Lighthouse
+lighthouse/
+
+# k6 results
+k6-results/
+
+# Screenshots
+screenshots/
+
+# Videos de tests fallidos
+video/
+

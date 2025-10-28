@@ -2,9 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Menu, X, ShoppingCart, Shield, Phone, MessageCircle } from 'lucide-react'
+import { Menu, X, Shield, Phone, MessageCircle } from 'lucide-react'
 import { Button } from './ui/button'
-import { CartDrawer } from '@/components/cart/CartDrawer'
 import { UserMenu } from '@/components/navigation/UserMenu'
 import { useAuth } from '@/lib/hooks/useAuth'
 
@@ -105,7 +104,6 @@ export default function Navbar() {
             {/* Acciones - Desktop */}
             <div className="hidden md:flex items-center gap-3">
               <UserMenu />
-              {isAuthenticated && <CartDrawer />}
             </div>
 
             {/* Botón de menú móvil */}
@@ -190,12 +188,6 @@ export default function Navbar() {
                 <div className="flex justify-center">
                   <UserMenu />
                 </div>
-                {isAuthenticated && (
-                  <Button variant="outline" className="w-full justify-center" onClick={cerrarMenu}>
-                    <ShoppingCart className="w-5 h-5 mr-2" />
-                    Carrito (0)
-                  </Button>
-                )}
               </div>
             </div>
           </div>

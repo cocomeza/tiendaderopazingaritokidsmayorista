@@ -110,26 +110,6 @@ export default function CheckoutPage() {
     return price.toLocaleString('es-AR')
   }
 
-  const generateWhatsAppMessage = () => {
-    const totalItems = getTotalItems()
-    const totalPrice = getTotalWholesalePrice()
-    
-    let message = `🛒 *NUEVO PEDIDO - ZINGARITO KIDS*\n\n`
-    message += `👤 *Cliente:* ${user?.email || 'Usuario'}\n`
-    message += `📅 *Fecha:* ${new Date().toLocaleDateString('es-AR')}\n\n`
-    message += `📦 *Productos:*\n`
-    
-    items.forEach(item => {
-      message += `• ${item.name} x${item.quantity} - $${formatPrice(item.wholesale_price * item.quantity)}\n`
-    })
-    
-    message += `\n💰 *TOTAL: $${formatPrice(totalPrice)}*\n`
-    message += `📊 *Total de productos: ${totalItems}*\n\n`
-    message += `✅ *Confirmo el pedido y procedo con el pago*`
-    
-    return encodeURIComponent(message)
-  }
-
   const handleCompleteOrder = async () => {
     if (!user) return
 

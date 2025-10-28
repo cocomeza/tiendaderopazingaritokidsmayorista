@@ -1,8 +1,6 @@
 'use client'
 
-import { motion } from 'framer-motion'
 import { ShoppingCart, Heart, ChevronLeft, ChevronRight, Eye } from 'lucide-react'
-import { CardHoverEffect } from '@/components/ui/card-hover-effect'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -129,15 +127,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
   return (
     <>
-    <CardHoverEffect>
-      <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          whileHover={{ y: -4 }}
-          className="group"
-        >
-      <Card className="overflow-hidden transition-all duration-300 hover:shadow-2xl border-0 bg-gradient-to-br from-white to-gray-50 rounded-2xl relative group-hover:shadow-purple-500/20 shadow-lg hover:shadow-purple-500/30">
+      <Card className="overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 border-0 bg-gradient-to-br from-white to-gray-50 rounded-2xl relative shadow-lg hover:shadow-purple-500/30 animate-in fade-in">
         {/* Botón de favoritos */}
         <div className="absolute top-4 right-4 z-20">
           <button
@@ -353,15 +343,13 @@ export function ProductCard({ product }: ProductCardProps) {
           </Button>
         </CardContent>
       </Card>
-    </motion.div>
-    </CardHoverEffect>
 
-    {/* Modal de Vista Rápida */}
-    <QuickViewModal
-      product={product}
-      isOpen={isQuickViewOpen}
-      onClose={() => setIsQuickViewOpen(false)}
-    />
-  </>
+      {/* Modal de Vista Rápida */}
+      <QuickViewModal
+        product={product}
+        isOpen={isQuickViewOpen}
+        onClose={() => setIsQuickViewOpen(false)}
+      />
+    </>
   )
 }
