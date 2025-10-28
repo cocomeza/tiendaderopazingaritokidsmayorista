@@ -18,40 +18,56 @@ Guía completa para configurar la base de datos en Supabase.
 
 ---
 
-## 🔧 Paso 1: Ejecutar Migraciones
+## 🔧 Paso 1: Ejecutar Script SQL Completo
 
-### Orden de Ejecución
+### Opción A: Archivo SQL Completo (Recomendado) ⭐
 
-Las migraciones están en `supabase/migrations/`:
+Hay un archivo SQL con TODA la estructura en un solo lugar: **`database-completo.sql`**
 
-1. `001_initial_schema.sql` - Esquema inicial
-2. `007_ensure_profile_insert_policy.sql` - Políticas RLS
-3. `008_fix_profile_policies.sql` - Correciones
-4. `009_add_performance_indexes.sql` - Índices de performance
+Este archivo único contiene:
+- ✅ Todas las tablas (profiles, products, orders, etc.)
+- ✅ Todos los índices de performance
+- ✅ Todas las políticas RLS
+- ✅ Todas las funciones auxiliares
+- ✅ Todas las vistas
 
-### Cómo Ejecutarlas
+### Cómo Ejecutarlo
 
 1. Ve a tu proyecto en Supabase Dashboard
 2. Ve a **SQL Editor**
-3. Copia el contenido de cada migración
-4. Ejecuta en orden
-5. Verifica que no haya errores
+3. Abre el archivo `database-completo.sql` (está en la raíz del proyecto)
+4. Copia TODO el contenido
+5. Pégalo en el SQL Editor de Supabase
+6. Click en **"Run"**
+7. ✅ ¡Listo! Base de datos completa configurada
+
+**Ventaja:** Un solo archivo en lugar de ejecutar 4-5 archivos separados.
+
+### Opción B: Ejecutar Migraciones Individuales
+
+Si prefieres usar las migraciones por separado (en `supabase/migrations/`):
+1. `001_initial_schema.sql` - Esquema inicial
+2. `007_ensure_profile_insert_policy.sql` - Políticas
+3. `008_fix_profile_policies.sql` - Correcciones
+4. `009_add_performance_indexes.sql` - Índices
 
 ---
 
-## 🔐 Paso 2: Configurar Row Level Security (RLS)
+## 🔐 Paso 2: Verificar que Todo Funcionó
 
-Las políticas RLS están incluidas en las migraciones.
+Si usaste `database-completo.sql`, las políticas RLS ya están configuradas.
 
 ### Verificar Políticas
 
-Ejecuta en Supabase SQL Editor:
+Ejecuta en Supabase SQL Editor para verificar:
 
 ```sql
 SELECT * FROM pg_policies WHERE tablename = 'profiles';
 SELECT * FROM pg_policies WHERE tablename = 'products';
 SELECT * FROM pg_policies WHERE tablename = 'favorites';
 ```
+
+Deberías ver políticas para cada tabla.
 
 ---
 
