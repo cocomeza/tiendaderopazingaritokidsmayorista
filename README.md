@@ -1,198 +1,201 @@
 # 🎨 Zingarito Kids - Tienda Mayorista
 
-E-commerce completo para Zingarito Kids, una tienda mayorista de ropa infantil en Argentina. Desarrollado con las últimas tecnologías web.
+E-commerce moderno para Zingarito Kids, una tienda mayorista de ropa infantil en Argentina.
 
-## 🚀 Características Principales
+[![Deploy](https://vercel.com/button)](https://vercel.com/new)
+[![Next.js](https://img.shields.io/badge/Next.js-15-black)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)](https://www.typescriptlang.org/)
 
-### Frontend
-- **Next.js 15** con App Router
-- **React 18** con componentes modernos
-- **TypeScript** para type safety
-- **Tailwind CSS** para estilos
-- **Framer Motion** para animaciones
-- Diseño responsive y mobile-first
+## 🚀 Inicio Rápido
 
-### Backend y Base de Datos
-- **Supabase** como BaaS (Backend as a Service)
-- **PostgreSQL** para base de datos
-- **Supabase Storage** para imágenes
-- **Row Level Security (RLS)** para seguridad
-
-### Funcionalidades del E-commerce
-- ✅ Catálogo de productos con imágenes múltiples
-- ✅ Carrito de compras
-- ✅ Sistema de favoritos
-- ✅ Filtros y búsqueda de productos
-- ✅ Autenticación de usuarios
-- ✅ Panel administrativo completo
-- ✅ Gestión masiva de precios
-- ✅ Configuración de descuentos
-- ✅ Gestión de clientes
-- ✅ Enlaces a redes sociales
-
-## 📋 Requisitos Previos
-
-- Node.js 18+ 
-- npm o yarn
-- Cuenta de Supabase
-- Git
-
-## 🔧 Instalación
-
-1. **Clonar el repositorio**
+### 1. Instalación
 ```bash
 git clone https://github.com/cocomeza/tiendaderopazingaritokids.git
 cd tiendaderopazingaritokids
-```
-
-2. **Instalar dependencias**
-```bash
 npm install
 ```
 
-3. **Configurar variables de entorno**
-
-Crea un archivo `.env.local` en la raíz del proyecto:
-
+### 2. Configurar Variables de Entorno
+Crea `.env.local`:
 ```env
-# Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-
-# Business Information
-NEXT_PUBLIC_WHATSAPP_NUMBER=543407498045
-NEXT_PUBLIC_BUSINESS_EMAIL=zingaritokids@gmail.com
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-
-# Optional: Analytics and Monitoring
-NEXT_PUBLIC_GA_ID=your_google_analytics_id
-SENTRY_DSN=your_sentry_dsn
+NEXT_PUBLIC_SUPABASE_URL=tu_url_de_supabase
+NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_clave_anon
 ```
 
-4. **Configurar Supabase**
-
-- Ejecuta el script de migración en Supabase SQL Editor: `supabase/migrations/001_initial_schema.sql`
-- Configura las políticas RLS
-- Crea el bucket de Storage para imágenes de productos
-
-5. **Ejecutar el proyecto**
+### 3. Ejecutar
 ```bash
 npm run dev
 ```
 
-El proyecto estará disponible en `http://localhost:3000`
+Abre [http://localhost:3000](http://localhost:3000)
+
+---
+
+## 📖 Documentación
+
+- 📋 [Guía de Instalación Completa](./docs/instalacion.md)
+- 🗄️ [Base de Datos y Configuración de Supabase](./docs/database.md)
+- 🧪 [Tests y Calidad](./docs/tests.md)
+- 🚀 [Deploy en Vercel](./docs/deploy.md)
+- 🎨 [Características de UI/UX](./docs/features.md)
+
+---
+
+## 🛠️ Stack Tecnológico
+
+| Categoría | Tecnología |
+|-----------|-----------|
+| Frontend | Next.js 15, React 18, TypeScript |
+| Estilos | Tailwind CSS, Framer Motion |
+| Backend | Supabase (PostgreSQL) |
+| Autenticación | Supabase Auth |
+| Almacenamiento | Supabase Storage |
+| Testing | Playwright, Jest, axe-core |
+
+---
+
+## ✨ Características
+
+### 🛍️ E-commerce
+- ✅ Catálogo de productos con filtros
+- ✅ Carrito de compras persistente
+- ✅ Sistema de favoritos
+- ✅ Búsqueda en tiempo real
+- ✅ Vista previa rápida de productos
+
+### 👥 Autenticación
+- ✅ Registro y login de usuarios
+- ✅ Perfil de usuario personalizado
+- ✅ Recuperación de contraseña
+- ✅ Autenticación segura con Supabase
+
+### 🔐 Panel Administrativo
+- ✅ Gestión de productos
+- ✅ Gestión de clientes
+- ✅ Actualización masiva de precios
+- ✅ Sistema de descuentos
+- ✅ Control de inventario
+
+---
 
 ## 📁 Estructura del Proyecto
 
 ```
 tiendaderopazingaritokids/
-├── app/                    # App Router de Next.js
+├── app/                    # Next.js App Router
 │   ├── (public)/          # Rutas públicas
 │   ├── admin/             # Panel administrativo
 │   ├── auth/              # Autenticación
 │   └── api/               # API routes
 ├── components/            # Componentes React
-│   ├── ui/               # Componentes UI reutilizables
-│   ├── products/         # Componentes de productos
-│   └── navigation/       # Navegación
-├── lib/                  # Utilidades y hooks
+│   ├── ui/               # UI components (shadcn/ui)
+│   ├── productos/        # Componentes de productos
+│   └── navigation/        # Navegación
+├── lib/                  # Utilidades
 │   ├── supabase/        # Cliente de Supabase
 │   ├── hooks/           # Custom hooks
 │   └── stores/          # Estado global (Zustand)
-├── public/              # Archivos estáticos
-├── supabase/           # Migraciones y esquemas
-└── scripts/            # Scripts de utilidad
+├── docs/                # 📚 Documentación
+├── scripts-sql/         # 🗄️ Scripts SQL
+├── tests/               # 🧪 Tests automatizados
+└── supabase/           # Migraciones de Supabase
 ```
 
-## 🎨 Características de UI/UX
+---
 
-- **Diseño moderno**: Gradientes, efectos glassmorphism
-- **Animaciones suaves**: Framer Motion para transiciones
-- **Responsive**: Adaptable a todos los dispositivos
-- **SEO optimizado**: Metadata dinámica y estructura semántica
-- **Performance**: Carga optimizada de imágenes y lazy loading
+## 🔧 Comandos Principales
+
+```bash
+# Desarrollo
+npm run dev              # Iniciar servidor de desarrollo
+
+# Producción
+npm run build            # Compilar para producción
+npm start                # Servidor de producción
+
+# Testing
+npm run test:e2e         # Tests E2E con Playwright
+npm run test:all         # Todos los tests
+
+# Quality
+npm run lint             # Verificar código
+```
+
+---
+
+## 🚀 Deploy
+
+### Vercel (Recomendado)
+1. Conecta tu repositorio a Vercel
+2. Agrega las variables de entorno
+3. Deploy automático en cada push
+
+Ver [Guía de Deploy](./docs/deploy.md) para más detalles.
+
+---
+
+## 🧪 Testing
+
+El proyecto incluye:
+- ✅ Tests E2E con Playwright
+- ✅ Tests de accesibilidad con axe-core
+- ✅ Tests de carga con k6
+- ✅ 15+ tests automatizados
+
+Ver [Documentación de Tests](./docs/tests.md)
+
+---
+
+## 📊 Performance
+
+- ⚡ First Contentful Paint: < 1.5s
+- 🎯 Largest Contentful Paint: < 2.5s
+- 🔄 Code Splitting automático
+- 💾 Cache inteligente
+- 📱 100% Responsive
+
+---
 
 ## 🔐 Seguridad
 
 - Row Level Security (RLS) en Supabase
 - Validación de datos con Zod
-- Sanitización de inputs
 - Tokens JWT para autenticación
-
-## 📦 Scripts Disponibles
-
-```bash
-# Desarrollo
-npm run dev
-
-# Producción
-npm run build
-npm start
-
-# Testing
-npm test
-npm run test:watch
-
-# Linting
-npm run lint
-```
-
-## 🚀 Despliegue
-
-### Vercel (Recomendado)
-1. Conecta tu repositorio de GitHub a Vercel
-2. Agrega las variables de entorno
-3. Deploy automático en cada push
-
-### Otros proveedores
-- Netlify
-- AWS Amplify
-- DigitalOcean App Platform
-
-## 📚 Documentación Adicional
-
-- [README Profesional](./README-PROFESIONAL.md)
-- [README Botón Creativo](./README-botoncreativo.md)
-- [Configuración de Imágenes](./CONFIGURACION-IMAGENES.md)
-- [Auditoría Responsive](./RESPONSIVE-AUDIT-REPORT.md)
-
-## 🤝 Contribuir
-
-Este es un proyecto privado para Zingarito Kids. Para sugerencias o reportes, contactar al equipo de desarrollo.
-
-## 📄 Licencia
-
-Todos los derechos reservados © 2025 Zingarito Kids
-
-## 👨‍💻 Desarrollo
-
-Desarrollado por **Botón Creativo**
-- Website: https://botoncreativo.onrender.com/
-- Email: zingaritokids@gmail.com
-
-## 🌟 Características Destacadas
-
-### Panel Administrativo
-- Gestión completa de productos
-- Actualización masiva de precios
-- Gestión de clientes
-- Configuración de descuentos
-- Estadísticas y reportes
-
-### E-commerce
-- Carrito de compras persistente
-- Sistema de favoritos
-- Búsqueda y filtros avanzados
-- Carrousel de imágenes múltiples
-- Integración con redes sociales
-
-### Optimizaciones
-- Carga lazy de imágenes
-- Caché inteligente
-- Code splitting automático
-- Optimización de bundles
+- Headers de seguridad configurados
 
 ---
 
-**Desarrollado con ❤️ para Zingarito Kids**
+## 🤝 Desarrollo
+
+1. Fork el proyecto
+2. Crea tu branch (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push al branch (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
+
+---
+
+## 📝 Licencia
+
+Todos los derechos reservados © 2025 Zingarito Kids
+
+---
+
+## 👨‍💻 Desarrollado por
+
+**Botón Creativo**
+- 🌐 Website: [botoncreativo.onrender.com](https://botoncreativo.onrender.com/)
+- 📧 Email: zingaritokids@gmail.com
+
+---
+
+## 🎉 Agradecimientos
+
+- Supabase por el backend
+- Vercel por el hosting
+- Next.js por el framework
+- shadcn/ui por los componentes
+
+---
+
+**Hecho con ❤️ para Zingarito Kids**
