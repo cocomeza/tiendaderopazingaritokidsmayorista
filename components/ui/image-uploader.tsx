@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Upload, X, Image as ImageIcon, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { OptimizedImage } from '@/components/ui/OptimizedImage'
+import { OptimizedImage } from '@/components/ui/optimized-image'
 import { supabase } from '@/lib/supabase/client-fixed'
 
 interface ImageUploaderProps {

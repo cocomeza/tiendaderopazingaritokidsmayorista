@@ -4,7 +4,7 @@ import { ShoppingCart, Heart, ChevronLeft, ChevronRight, Eye } from 'lucide-reac
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { OptimizedImage } from '@/components/ui/OptimizedImage'
+import { OptimizedImage } from '@/components/ui/optimized-image'
 import { useCartStore } from '@/lib/stores/cart'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useFavorites } from '@/lib/hooks/useFavorites'

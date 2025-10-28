@@ -1,6 +1,6 @@
 'use client'
 
-import { SocialLinks } from '@/components/ui/SocialLinks'
+import { SocialLinks } from '@/components/ui/social-links'
 
 export default function Footer() {
 

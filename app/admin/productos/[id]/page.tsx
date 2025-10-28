@@ -23,7 +23,7 @@ import { TextGenerateEffect } from '@/components/ui/text-generate-effect'
 import { BackgroundBeams } from '@/components/ui/background-beams'
 import { CardHoverEffect } from '@/components/ui/card-hover-effect'
 import { motion } from 'framer-motion'
-import { OptimizedImage } from '@/components/ui/OptimizedImage'
+import { OptimizedImage } from '@/components/ui/optimized-image'
 import { ImageUploader } from '@/components/admin/ImageUploader'
 
 interface Category {

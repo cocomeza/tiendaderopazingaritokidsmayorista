@@ -4,7 +4,7 @@ import './globals.css'
 import { Toaster } from 'sonner'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
-import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
 
 const inter = Inter({ subsets: ['latin'] })
 
