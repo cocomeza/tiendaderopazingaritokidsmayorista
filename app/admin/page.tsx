@@ -29,10 +29,49 @@ export default function AdminDashboard() {
     lowStockProducts: 0
   })
   const [loading, setLoading] = useState(true)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
 
   useEffect(() => {
-    loadStats()
+    checkAdminAccess()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (!isCheckingAuth) {
+      loadStats()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCheckingAuth])
+
+  const checkAdminAccess = async () => {
+    try {
+      // Verificar si hay sesión
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        router.push('/admin/login')
+        return
+      }
+
+      // Verificar si es admin
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', session.user.id)
+        .single()
+
+      if (error || !profile?.is_admin) {
+        toast.error('No tienes permisos de administrador')
+        router.push('/')
+        return
+      }
+
+      setIsCheckingAuth(false)
+    } catch (error) {
+      console.error('Error verificando acceso:', error)
+      router.push('/admin/login')
+    }
+  }
 
   const handleSignOut = async () => {
     try {
@@ -81,7 +120,7 @@ export default function AdminDashboard() {
     }
   }
 
-  if (loading) {
+  if (isCheckingAuth || loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center">
         <div className="text-center">
@@ -89,7 +128,9 @@ export default function AdminDashboard() {
             <div className="w-20 h-20 border-4 border-purple-200 rounded-full animate-spin"></div>
             <div className="absolute top-0 left-0 w-20 h-20 border-4 border-transparent border-t-purple-600 rounded-full animate-spin"></div>
           </div>
-          <p className="mt-6 text-gray-600 font-medium">Cargando panel administrativo...</p>
+          <p className="mt-6 text-gray-600 font-medium">
+            {isCheckingAuth ? 'Verificando acceso...' : 'Cargando panel administrativo...'}
+          </p>
           <div className="mt-4 flex justify-center space-x-1">
             <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
             <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>

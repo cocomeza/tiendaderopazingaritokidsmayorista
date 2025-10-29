@@ -75,6 +75,8 @@ Abre [http://localhost:3000](http://localhost:3000)
 - ✅ Actualización masiva de precios
 - ✅ Sistema de descuentos
 - ✅ Control de inventario
+- ✅ Separación completa cliente/admin
+- ✅ Interfaz simplificada para administradores
 
 ---
 
@@ -130,7 +132,17 @@ npm run lint             # Verificar código
 2. Agrega las variables de entorno
 3. Deploy automático en cada push
 
-Ver [Guía de Deploy](./docs/deploy.md) para más detalles.
+**Variables de Entorno Requeridas:**
+```env
+NEXT_PUBLIC_SUPABASE_URL=tu_url_supabase
+NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_clave_anon
+```
+
+### Configuración de Base de Datos
+1. Crea un proyecto en Supabase
+2. Ejecuta el archivo `database-completo.sql` en el SQL Editor
+3. Crea un usuario administrador desde Authentication
+4. Ejecuta el script de creación de admin (ver scripts/)
 
 ---
 
@@ -158,10 +170,14 @@ Ver [Documentación de Tests](./docs/tests.md)
 
 ## 🔐 Seguridad
 
-- Row Level Security (RLS) en Supabase
-- Validación de datos con Zod
-- Tokens JWT para autenticación
-- Headers de seguridad configurados
+- ✅ Row Level Security (RLS) en Supabase
+- ✅ Validación de datos con Zod
+- ✅ Tokens JWT para autenticación
+- ✅ Headers de seguridad configurados
+- ✅ Autenticación separada para admin y clientes
+- ✅ Verificación de permisos en servidor
+- ✅ Protección contra acceso no autorizado
+- ✅ Roles diferenciados (admin/cliente)
 
 ---
 

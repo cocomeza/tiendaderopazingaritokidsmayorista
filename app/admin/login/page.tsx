@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label'
 import { AlertCircle, Shield, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase/client'
+import { toast } from 'sonner'
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('')
@@ -22,23 +24,80 @@ export default function AdminLoginPage() {
     setError('')
 
     try {
-      // Aquí iría la lógica de autenticación real
-      // Por ahora, usaremos credenciales de ejemplo
-      if (email === 'admin@zingarito.com' && password === 'admin123') {
-        // Guardar en localStorage que es admin
-        localStorage.setItem('isAdmin', 'true')
-        localStorage.setItem('adminEmail', email)
-        
-        // Redirigir al panel admin
-        router.push('/admin')
-      } else {
-        setError('Credenciales incorrectas')
+      // Limpiar sesión anterior si existe
+      await supabase.auth.signOut()
+
+      // Pequeño delay para que se limpien las cookies
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      // Autenticar con Supabase
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
+
+      if (authError) {
+        console.error('Error de autenticación:', authError)
+        setError(`Email o contraseña incorrectos: ${authError.message}`)
+        toast.error('Credenciales incorrectas')
+        return
       }
+
+      if (!authData.user) {
+        setError('Error al iniciar sesión')
+        return
+      }
+
+      // Verificar que el usuario tiene permisos de admin en la base de datos
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', authData.user.id)
+        .single()
+
+      if (profileError) {
+        console.error('Error verificando perfil:', profileError)
+        // Si el error es que no se encontró el perfil, dale una advertencia más clara
+        if (profileError.code === 'PGRST116' || profileError.message?.includes('No rows')) {
+          setError('Tu perfil no está configurado. Contacta al administrador del sistema.')
+          toast.error('Perfil no encontrado')
+        } else {
+          setError('Error verificando permisos. Intenta nuevamente.')
+          toast.error('Error al verificar permisos')
+        }
+        await supabase.auth.signOut()
+        return
+      }
+
+      if (!profile) {
+        setError('No se encontró tu perfil en la base de datos')
+        toast.error('Perfil no configurado')
+        await supabase.auth.signOut()
+        return
+      }
+
+      if (!profile.is_admin) {
+        // Cerrar sesión si no es admin
+        await supabase.auth.signOut()
+        setError('No tienes permisos de administrador')
+        toast.error('Acceso denegado: no eres administrador')
+        return
+      }
+
+      toast.success('Sesión iniciada correctamente')
+      router.push('/admin')
     } catch (err) {
+      console.error('Error:', err)
       setError('Error al iniciar sesión')
+      toast.error('Error al iniciar sesión')
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleClearSession = async () => {
+    await supabase.auth.signOut()
+    toast.success('Sesión limpiada. Intenta iniciar sesión nuevamente.')
   }
 
   return (
@@ -102,19 +161,45 @@ export default function AdminLoginPage() {
               </Button>
             </form>
 
-            <div className="mt-6 text-center">
-              <Link href="/" className="text-sm text-gray-600 hover:text-gray-900 flex items-center justify-center gap-2">
-                <ArrowLeft className="h-4 w-4" />
-                Volver al sitio principal
-              </Link>
+            <div className="mt-6 space-y-3">
+              <div className="text-center">
+                <Link href="/" className="text-sm text-gray-600 hover:text-gray-900 flex items-center justify-center gap-2">
+                  <ArrowLeft className="h-4 w-4" />
+                  Volver al sitio principal
+                </Link>
+              </div>
+              
+              <div className="pt-3 border-t border-gray-200">
+                <Link href="/auth/login" className="text-xs text-gray-500 hover:text-gray-700 transition-colors text-center">
+                  ¿Eres cliente? Accede aquí
+                </Link>
+              </div>
             </div>
 
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h4 className="font-medium text-blue-900 mb-2">Credenciales de Prueba:</h4>
-              <p className="text-sm text-blue-800">
-                <strong>Email:</strong> admin@zingarito.com<br />
-                <strong>Contraseña:</strong> admin123
-              </p>
+            <div className="mt-6 space-y-4">
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <h4 className="font-medium text-red-900 mb-2">⚠️ Acceso Restringido</h4>
+                <p className="text-sm text-red-800">
+                  Solo personal autorizado con permisos de administrador puede acceder a esta sección.
+                </p>
+              </div>
+
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="font-medium text-blue-900 mb-2">💡 ¿Problemas de acceso?</h4>
+                <p className="text-sm text-blue-800 mb-3">
+                  Si estás teniendo problemas para iniciar sesión:
+                </p>
+                <Button
+                  onClick={handleClearSession}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                  size="sm"
+                >
+                  Limpiar Sesión
+                </Button>
+                <p className="text-xs text-blue-700 mt-3">
+                  También intenta limpiar las cookies de tu navegador si el problema persiste.
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>

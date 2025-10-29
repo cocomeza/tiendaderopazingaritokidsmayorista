@@ -1,6 +1,6 @@
 'use client'
 
-import { User, LogOut, Heart, Settings, ShoppingBag } from 'lucide-react'
+import { User, LogOut, Heart, Settings, ShoppingBag, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -12,11 +12,13 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useFavorites } from '@/lib/hooks/useFavorites'
+import { useAdmin } from '@/lib/hooks/useAdmin'
 import { useRouter } from 'next/navigation'
 
 export function UserMenu() {
   const { user, isAuthenticated, signOut } = useAuth()
   const { favorites } = useFavorites()
+  const { isAdmin } = useAdmin()
   const router = useRouter()
 
   const handleSignOut = async () => {
@@ -79,23 +81,35 @@ export function UserMenu() {
             </p>
           </div>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => router.push('/mi-perfil')}>
-            <Settings className="w-4 h-4 mr-2" />
-            Mi Perfil
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => router.push('/mis-pedidos')}>
-            <ShoppingBag className="w-4 h-4 mr-2" />
-            Mis Pedidos
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => router.push('/favoritos')}>
-            <Heart className="w-4 h-4 mr-2" />
-            Mis Favoritos
-            {favorites.length > 0 && (
-              <Badge className="ml-auto bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">
-                {favorites.length}
-              </Badge>
-            )}
-          </DropdownMenuItem>
+          
+          {/* Si es admin, solo mostrar panel admin. Si no, mostrar opciones de cliente */}
+          {isAdmin ? (
+            <DropdownMenuItem onClick={() => router.push('/admin')}>
+              <Shield className="w-4 h-4 mr-2" />
+              Panel Administrativo
+            </DropdownMenuItem>
+          ) : (
+            <>
+              <DropdownMenuItem onClick={() => router.push('/mi-perfil')}>
+                <Settings className="w-4 h-4 mr-2" />
+                Mi Perfil
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/mis-pedidos')}>
+                <ShoppingBag className="w-4 h-4 mr-2" />
+                Mis Pedidos
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/favoritos')}>
+                <Heart className="w-4 h-4 mr-2" />
+                Mis Favoritos
+                {favorites.length > 0 && (
+                  <Badge className="ml-auto bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                    {favorites.length}
+                  </Badge>
+                )}
+              </DropdownMenuItem>
+            </>
+          )}
+          
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleSignOut}>
             <LogOut className="w-4 h-4 mr-2" />

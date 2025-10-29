@@ -1,6 +1,6 @@
 'use client'
 
-import { ShoppingCart, Heart, ChevronLeft, ChevronRight, Eye } from 'lucide-react'
+import { ShoppingCart, Heart, ChevronLeft, ChevronRight, Eye, Shield } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -8,6 +8,7 @@ import { OptimizedImage } from '@/components/ui/optimized-image'
 import { useCartStore } from '@/lib/stores/cart'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useFavorites } from '@/lib/hooks/useFavorites'
+import { useAdmin } from '@/lib/hooks/useAdmin'
 import { Database } from '@/lib/types/database'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
@@ -24,6 +25,7 @@ export function ProductCard({ product }: ProductCardProps) {
   const { addItem } = useCartStore()
   const { isAuthenticated } = useAuth()
   const { toggleFavorite, isFavorite, loading: favoritesLoading } = useFavorites()
+  const { isAdmin } = useAdmin()
   const router = useRouter()
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false)
@@ -45,6 +47,11 @@ export function ProductCard({ product }: ProductCardProps) {
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation()
+    
+    // Si es admin, no puede agregar al carrito
+    if (isAdmin) {
+      return
+    }
     
     if (!isAuthenticated) {
       toast.error('Debes iniciar sesión para agregar productos al carrito', {
@@ -128,24 +135,26 @@ export function ProductCard({ product }: ProductCardProps) {
   return (
     <>
       <Card className="overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 border-0 bg-gradient-to-br from-white to-gray-50 rounded-2xl relative shadow-lg hover:shadow-purple-500/30 animate-in fade-in">
-        {/* Botón de favoritos */}
-        <div className="absolute top-4 right-4 z-20">
-          <button
-            className={`w-10 h-10 p-0 bg-white hover:bg-gray-50 rounded-full shadow-lg border-2 transition-all duration-200 flex items-center justify-center ${
-              isFavorite(product.id) 
-                ? 'text-red-500 border-red-200 bg-red-50 hover:bg-red-100' 
-                : 'text-gray-400 border-gray-200 hover:text-red-400 hover:border-red-200'
-            }`}
-            onClick={() => {
-              console.log('🖱️ Heart button clicked!', product.id)
-              handleAddToFavorites()
-            }}
-            disabled={favoritesLoading}
-            type="button"
-          >
-            <Heart className={`w-5 h-5 ${isFavorite(product.id) ? 'fill-current' : ''}`} />
-          </button>
-        </div>
+        {/* Botón de favoritos - Solo para clientes, no para admins */}
+        {!isAdmin && (
+          <div className="absolute top-4 right-4 z-20">
+            <button
+              className={`w-10 h-10 p-0 bg-white hover:bg-gray-50 rounded-full shadow-lg border-2 transition-all duration-200 flex items-center justify-center ${
+                isFavorite(product.id) 
+                  ? 'text-red-500 border-red-200 bg-red-50 hover:bg-red-100' 
+                  : 'text-gray-400 border-gray-200 hover:text-red-400 hover:border-red-200'
+              }`}
+              onClick={() => {
+                console.log('🖱️ Heart button clicked!', product.id)
+                handleAddToFavorites()
+              }}
+              disabled={favoritesLoading}
+              type="button"
+            >
+              <Heart className={`w-5 h-5 ${isFavorite(product.id) ? 'fill-current' : ''}`} />
+            </button>
+          </div>
+        )}
 
         {/* Indicador de múltiples imágenes */}
         {hasMultipleImages && (
@@ -332,15 +341,25 @@ export function ProductCard({ product }: ProductCardProps) {
             <span className="text-xs text-gray-500">Compra mín: 5</span>
           </div>
 
-          {/* Botón de agregar */}
-          <Button
-            onClick={handleAddToCart}
-            disabled={product.stock === 0}
-            className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white font-bold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-purple-500/30 transform hover:scale-105"
-          >
-            <ShoppingCart className="w-4 h-4 mr-2" />
-            {product.stock === 0 ? 'Sin Stock' : 'Agregar al Carrito'}
-          </Button>
+          {/* Botón de agregar - Solo para clientes, no para admins */}
+          {!isAdmin ? (
+            <Button
+              onClick={handleAddToCart}
+              disabled={product.stock === 0}
+              className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white font-bold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-purple-500/30 transform hover:scale-105"
+            >
+              <ShoppingCart className="w-4 h-4 mr-2" />
+              {product.stock === 0 ? 'Sin Stock' : 'Agregar al Carrito'}
+            </Button>
+          ) : (
+            <Button
+              disabled
+              className="w-full bg-gray-400 text-white font-bold py-3 rounded-xl cursor-not-allowed"
+            >
+              <Shield className="w-4 h-4 mr-2" />
+              Modo Administrador
+            </Button>
+          )}
         </CardContent>
       </Card>
 

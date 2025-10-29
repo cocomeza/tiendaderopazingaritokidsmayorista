@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Menu, X, Shield, Phone, MessageCircle } from 'lucide-react'
+import { Menu, X, Phone, MessageCircle } from 'lucide-react'
 import { Button } from './ui/button'
 import { UserMenu } from '@/components/navigation/UserMenu'
 import { useAuth } from '@/lib/hooks/useAuth'
@@ -92,13 +92,6 @@ export default function Navbar() {
               >
                 Contacto
               </Link>
-              <Link
-                href="/admin/login"
-                className="px-4 py-2 text-gray-700 hover:text-purple-600 font-semibold transition-all hover:bg-purple-50 rounded-lg flex items-center gap-1.5"
-              >
-                <Shield className="h-4 w-4" />
-                Admin
-              </Link>
             </div>
 
             {/* Acciones - Desktop */}
@@ -166,14 +159,6 @@ export default function Navbar() {
               >
                 Contacto
               </Link>
-                <Link
-                  href="/admin/login"
-                  onClick={cerrarMenu}
-                  className="block py-3 px-4 text-center text-gray-700 hover:text-purple-600 hover:bg-purple-50 font-medium transition-all rounded-lg flex items-center justify-center gap-2"
-                >
-                  <Shield className="h-4 w-4" />
-                  Panel Admin
-                </Link>
               <Link
                 href="/auth/login"
                 onClick={cerrarMenu}

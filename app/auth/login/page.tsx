@@ -3,7 +3,7 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Mail, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, ArrowLeft, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -143,16 +143,28 @@ function LoginPageContent() {
               </Button>
             </form>
 
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                ¿No tienes cuenta?{' '}
+            <div className="mt-6 space-y-4">
+              <div className="text-center">
+                <p className="text-sm text-gray-600">
+                  ¿No tienes cuenta?{' '}
+                  <Link 
+                    href={`/auth/registro?redirect=${encodeURIComponent(redirectTo)}`}
+                    className="text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    Regístrate aquí
+                  </Link>
+                </p>
+              </div>
+              
+              <div className="pt-4 border-t border-gray-200">
                 <Link 
-                  href={`/auth/registro?redirect=${encodeURIComponent(redirectTo)}`}
-                  className="text-blue-600 hover:text-blue-700 font-medium"
+                  href="/admin/login"
+                  className="flex items-center justify-center gap-2 text-xs text-gray-500 hover:text-gray-700 transition-colors"
                 >
-                  Regístrate aquí
+                  <Shield className="w-3 h-3" />
+                  Acceso Administrativo
                 </Link>
-              </p>
+              </div>
             </div>
           </CardContent>
         </Card>

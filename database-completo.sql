@@ -4,7 +4,15 @@
 -- =====================================================
 -- Este archivo contiene TODA la estructura de la base de datos
 -- Úsalo para configurar una base de datos desde cero
--- Última actualización: 2025
+-- 
+-- INSTRUCCIONES DE MIGRACIÓN:
+-- 1. Crear nuevo proyecto en Supabase
+-- 2. Ejecutar este script completo en SQL Editor
+-- 3. Crear usuario admin desde Authentication > Add user
+-- 4. Ejecutar: UPDATE profiles SET is_admin = true WHERE email = 'tu-email@admin.com';
+-- 5. Configurar variables de entorno en .env.local
+-- 
+-- Última actualización: Enero 2025
 -- =====================================================
 
 -- =====================================================

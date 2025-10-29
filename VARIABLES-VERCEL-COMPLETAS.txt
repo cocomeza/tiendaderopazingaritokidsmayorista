@@ -1,0 +1,84 @@
+# 🔐 Variables de Entorno Completas para Vercel
+
+## ✅ Variables OBLIGATORIAS (Necesitas estas 3)
+
+### 1. NEXT_PUBLIC_SUPABASE_URL
+```
+Valor: https://hjlmrphltpsibkzfcgvu.supabase.co
+Environment: Production, Preview, Development
+```
+**Descripción:** URL de tu proyecto Supabase
+
+---
+
+### 2. NEXT_PUBLIC_SUPABASE_ANON_KEY
+```
+Valor: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhqbG1ycGhsdHBzaWJremZjZ3Z1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk0MTcyNDcsImV4cCI6MjA0NDk5MzI0N30.jGIQi0XxFxJ2Nqhyz8a8_8Q3j_GfT5J7V1K7L8V9L0c
+Environment: Production, Preview, Development
+```
+**Descripción:** Clave pública/anónima de Supabase (puede ser compartida)
+
+---
+
+### 3. NEXT_PUBLIC_SITE_URL
+```
+Valor: https://tiendaderopazingaritokidsmayorista.vercel.app
+Environment: Production (solo Production)
+```
+**Descripción:** URL de tu sitio en Vercel
+
+---
+
+## ❓ Variable OPCIONAL
+
+### 4. SUPABASE_SERVICE_ROLE_KEY (NO NECESARIA)
+
+**¿Cuándo la necesitas?**
+- Solo si ejecutas scripts administrativos en producción
+- Solo si necesitas bypassear RLS desde el código
+- Los scripts en `/scripts` la usan, pero esos son solo para desarrollo local
+
+**Para la app en Vercel:** NO es necesaria
+- La app usa `NEXT_PUBLIC_SUPABASE_ANON_KEY` que es suficiente
+- RLS funciona correctamente con anon key
+- No necesitas service_role_key a menos que tengas scripts en producción
+
+---
+
+## ✅ CONCLUSIÓN
+
+**Para deploy en Vercel necesitas solo:**
+1. ✅ NEXT_PUBLIC_SUPABASE_URL
+2. ✅ NEXT_PUBLIC_SUPABASE_ANON_KEY
+3. ✅ NEXT_PUBLIC_SITE_URL
+
+**SUPABASE_SERVICE_ROLE_KEY es OPCIONAL** - No la necesitas para que funcione la app.
+
+---
+
+## 📝 Cómo Obtener las Claves
+
+Ve a: https://supabase.com/dashboard
+
+1. Selecciona tu proyecto
+2. Settings → API
+3. Copia:
+   - **URL** → `NEXT_PUBLIC_SUPABASE_URL`
+   - **anon public** → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - **service_role** → (solo si la necesitas para scripts)
+
+---
+
+## 🎯 CONFIGURACIÓN COMPLETA EN VERCEL
+
+Agrega estas 3 variables en Vercel:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://hjlmrphltpsibkzfcgvu.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+NEXT_PUBLIC_SITE_URL=https://tiendaderopazingaritokidsmayorista.vercel.app
+```
+
+✅ ¡Eso es todo!
+
+
