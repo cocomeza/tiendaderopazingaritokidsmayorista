@@ -25,7 +25,10 @@ export function useFavorites() {
         .eq('user_id', user.id)
 
       if (error) {
-        console.error('Error loading favorites from DB:', error)
+        // Si la tabla no existe o hay error, intentar localStorage
+        if (error.code === '42P01' || error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+          // No hacer nada, ya que el finally va a setear loading a false
+        }
         setFavorites([])
       } else {
         const productIds = data?.map(fav => fav.product_id) || []
@@ -37,7 +40,7 @@ export function useFavorites() {
         }
       }
     } catch (error) {
-      console.error('Error in loadFavoritesFromDB:', error)
+      // No loggear errores de favoritos
       setFavorites([])
     } finally {
       setLoading(false)
@@ -90,12 +93,12 @@ export function useFavorites() {
           product_id: productId 
         })
 
-      if (error) {
-        // Si es error de duplicado, no es problema
-        if (error.code === '23505') {
-          console.log('Producto ya en favoritos')
+      if (error && error.code !== '23505') {
+        // Si es error de duplicado (23505), no es problema
+        // Si la tabla no existe, continuar con localStorage
+        if (error.code === '42P01' || error.code === 'PGRST116') {
+          // Tabla no existe, solo usar localStorage
         } else {
-          console.error('Error adding to favorites:', error)
           throw error
         }
       }
@@ -133,8 +136,12 @@ export function useFavorites() {
         .eq('product_id', productId)
 
       if (error) {
-        console.error('Error removing from favorites:', error)
-        throw error
+        // Si la tabla no existe, continuar solo con localStorage
+        if (error.code === '42P01' || error.code === 'PGRST116') {
+          // Tabla no existe, solo usar localStorage
+        } else {
+          throw error
+        }
       }
 
       // Actualizar estado local

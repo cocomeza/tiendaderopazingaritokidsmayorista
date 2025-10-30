@@ -30,6 +30,26 @@ export function ProductCard({ product }: ProductCardProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false)
   
+  // Estados para selección de color y talle
+  const [selectedColor, setSelectedColor] = useState<string | null>(null)
+  const [selectedSize, setSelectedSize] = useState<string | null>(null)
+  
+  // Obtener opciones disponibles
+  const colors = product.colors || []
+  const sizes = product.sizes || []
+  
+  // Calcular stock disponible basado en selección
+  const getAvailableStock = () => {
+    // Si no hay selección, mostrar stock general
+    if (!selectedColor && !selectedSize) {
+      return product.stock || 0
+    }
+    
+    // Por ahora, retornamos el stock general ya que no tenemos variantes cargadas
+    // Esto se puede mejorar cuando se carguen las variantes desde product_variants
+    return product.stock || 0
+  }
+  
   // Obtener imágenes del producto
   const images = product.images || []
   const hasMultipleImages = images.length > 1
@@ -43,6 +63,26 @@ export function ProductCard({ product }: ProductCardProps) {
   const prevImage = (e: React.MouseEvent) => {
     e.stopPropagation()
     setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length)
+  }
+
+  // Función para convertir nombres de colores a códigos hex
+  const getColorHex = (colorName: string) => {
+    const colorMap: { [key: string]: string } = {
+      'negro': '#000000',
+      'blanco': '#FFFFFF',
+      'rojo': '#FF0000',
+      'azul': '#0000FF',
+      'verde': '#008000',
+      'amarillo': '#FFFF00',
+      'rosa': '#FFC0CB',
+      'gris': '#808080',
+      'celeste': '#87CEEB',
+      'naranja': '#FFA500',
+      'morado': '#800080',
+      'bordó': '#800020',
+      'azul claro': '#ADD8E6',
+    }
+    return colorMap[colorName.toLowerCase()] || '#CCCCCC'
   }
 
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -76,7 +116,6 @@ export function ProductCard({ product }: ProductCardProps) {
         image: product.images?.[0] || '/placeholder.jpg',
         stock: product.stock || 0,
       })
-      
       toast.success('Producto agregado al carrito')
     } catch (error) {
       console.error('Error adding to cart:', error)
@@ -318,55 +357,81 @@ export function ProductCard({ product }: ProductCardProps) {
             </div>
           </div>
 
-          {/* Características principales */}
-          <div className="space-y-2">
-            {/* Colores */}
-            {product.colors && product.colors.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-600 font-medium">Colores:</span>
-                <div className="flex gap-1">
-                  {product.colors.slice(0, 4).map((color, index) => (
+          {/* Selección de Color */}
+          {product.colors && product.colors.length > 0 && (
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-900">
+                Color: <span className="text-purple-600 capitalize">{selectedColor || 'Elegí'}</span>
+                {selectedColor && (
+                  <span className="text-xs text-gray-500 ml-2">({getAvailableStock()} disponibles)</span>
+                )}
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {product.colors.map((color, index) => (
+                  <button
+                    key={color}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setSelectedColor(color)
+                      setSelectedSize(null) // Limpiar talle al cambiar color
+                    }}
+                    className={`w-10 h-10 rounded-full border-2 transition-all ${
+                      selectedColor === color
+                        ? 'border-purple-600 scale-110 shadow-md'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    title={color}
+                  >
                     <div
-                      key={index}
-                      className="w-4 h-4 rounded-full border-2 border-white shadow-sm"
-                      style={{ backgroundColor: color.toLowerCase() }}
-                      title={color}
+                      className="w-full h-full rounded-full"
+                      style={{ backgroundColor: getColorHex(color) }}
                     />
-                  ))}
-                  {product.colors.length > 4 && (
-                    <span className="text-xs text-gray-500 ml-1">+{product.colors.length - 4}</span>
-                  )}
-                </div>
+                  </button>
+                ))}
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Tallas */}
-            {product.sizes && product.sizes.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-600 font-medium">Tallas:</span>
-                <div className="flex gap-1 flex-wrap">
-                  {product.sizes.slice(0, 5).map((size, index) => (
-                    <span key={index} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-md font-medium">
-                      {size}
-                    </span>
-                  ))}
-                  {product.sizes.length > 5 && (
-                    <span className="text-xs text-gray-500">+{product.sizes.length - 5}</span>
-                  )}
-                </div>
+          {/* Selección de Talle */}
+          {product.sizes && product.sizes.length > 0 && (
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-900">
+                Talle: {selectedSize || 'Elegí'}
+                {selectedSize && (
+                  <span className="text-xs text-gray-500 ml-2">({getAvailableStock()} disponibles)</span>
+                )}
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {product.sizes.map((size) => (
+                  <button
+                    key={size}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setSelectedSize(size)
+                      setSelectedColor(null) // Limpiar color al cambiar talle
+                    }}
+                    className={`w-12 h-12 text-sm font-medium rounded-lg border-2 transition-all ${
+                      selectedSize === size
+                        ? 'border-purple-600 bg-purple-50 text-purple-600'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                    }`}
+                  >
+                    {size}
+                  </button>
+                ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Stock */}
+          {/* Stock Disponible */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${
-                product.stock > 10 ? 'bg-green-500' : 
-                product.stock > 0 ? 'bg-yellow-500' : 'bg-red-500'
+                getAvailableStock() > 10 ? 'bg-green-500' : 
+                getAvailableStock() > 0 ? 'bg-yellow-500' : 'bg-red-500'
               }`} />
               <span className="text-sm text-gray-600">
-                {product.stock > 0 ? `${product.stock} disponibles` : 'Sin stock'}
+                {getAvailableStock() > 0 ? `${getAvailableStock()} disponibles` : 'Sin stock'}
               </span>
             </div>
             <span className="text-xs text-gray-500">Compra mín: 5</span>
