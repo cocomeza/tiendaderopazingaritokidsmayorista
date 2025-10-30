@@ -65,3 +65,6 @@ logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Documentación local para cliente
+RESUMEN_CAMBIOS_HOY.txt
