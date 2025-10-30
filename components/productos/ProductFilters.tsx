@@ -15,6 +15,9 @@ interface FilterProps {
 export function ProductFilters({ products, onFilterChange, categories }: FilterProps) {
   const [filters, setFilters] = useState({
     category: '',
+    menuCategory: '',
+    ageCategory: '',
+    backToSchoolCategory: '',
     colors: [] as string[],
     sizes: [] as string[],
     priceMin: '',
@@ -25,7 +28,9 @@ export function ProductFilters({ products, onFilterChange, categories }: FilterP
   })
 
   const [expandedSections, setExpandedSections] = useState({
-    categories: true,
+    menuCategories: true,
+    ageCategories: false,
+    backToSchoolCategories: false,
     colors: false,
     sizes: false,
     price: false,
@@ -35,6 +40,23 @@ export function ProductFilters({ products, onFilterChange, categories }: FilterP
   // Extraer opciones únicas de los productos
   const allColors = [...new Set(products.flatMap(p => p.colors || []))].sort()
   const allSizes = [...new Set(products.flatMap(p => p.sizes || []))].sort()
+
+  // Organizar categorías por grupos
+  const menuCategories = categories.filter(cat => cat.group_type === 'menu')
+    .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+  
+  const ageCategories = categories.filter(cat => cat.group_type === 'age')
+    .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+  
+  const backToSchoolCategories = categories.filter(cat => cat.group_type === 'back-to-school')
+    .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+  
+  // Agrupar categorías por rango de edad
+  const ageGroups = {
+    'BEBÉS': ageCategories.filter(cat => cat.age_range === 'BEBÉS'),
+    'NIÑOS': ageCategories.filter(cat => cat.age_range === 'NIÑOS'),
+    'ADULTOS': ageCategories.filter(cat => cat.age_range === 'ADULTOS')
+  }
 
   // Contar productos por filtro
   const getColorCount = (color: string) => 
@@ -96,6 +118,9 @@ export function ProductFilters({ products, onFilterChange, categories }: FilterP
   const clearFilters = () => {
     const clearedFilters = {
       category: '',
+      menuCategory: '',
+      ageCategory: '',
+      backToSchoolCategory: '',
       colors: [] as string[],
       sizes: [] as string[],
       priceMin: '',
@@ -117,6 +142,9 @@ export function ProductFilters({ products, onFilterChange, categories }: FilterP
 
   const activeFiltersCount = 
     (filters.category ? 1 : 0) +
+    (filters.menuCategory ? 1 : 0) +
+    (filters.ageCategory ? 1 : 0) +
+    (filters.backToSchoolCategory ? 1 : 0) +
     filters.colors.length +
     filters.sizes.length +
     (filters.priceMin || filters.priceMax ? 1 : 0)
@@ -143,43 +171,132 @@ export function ProductFilters({ products, onFilterChange, categories }: FilterP
 
       <div className="p-4 space-y-4">
 
-        {/* Categorías */}
-        <div className="bg-white border-2 border-gray-200 rounded-lg">
-          <Button
-            variant="ghost"
-            className="w-full justify-between p-4 h-auto border-b border-gray-200"
-            onClick={() => toggleSection('categories')}
-          >
-            <span className="font-bold text-gray-800 text-left">
-              📂 CATEGORÍAS
-            </span>
-            {expandedSections.categories ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-          </Button>
-          
-          {expandedSections.categories && (
-            <div className="p-4 space-y-2">
-              <Button
-                variant={filters.category === '' ? 'default' : 'ghost'}
-                size="sm"
-                className="w-full justify-start font-semibold"
-                onClick={() => handleFilterChange('category', '')}
-              >
-                Todas las categorías
-              </Button>
-              {categories.map((category) => (
+        {/* Categorías del Menú Principal */}
+        {menuCategories.length > 0 && (
+          <div className="bg-white border-2 border-gray-200 rounded-lg">
+            <Button
+              variant="ghost"
+              className="w-full justify-between p-4 h-auto border-b border-gray-200"
+              onClick={() => toggleSection('menuCategories')}
+            >
+              <span className="font-bold text-gray-800 text-left">
+                📂 MENÚ PRINCIPAL
+              </span>
+              {expandedSections.menuCategories ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+            </Button>
+            
+            {expandedSections.menuCategories && (
+              <div className="p-4 space-y-2">
                 <Button
-                  key={category.id}
-                  variant={filters.category === category.id ? 'default' : 'ghost'}
+                  variant={filters.menuCategory === '' ? 'default' : 'ghost'}
                   size="sm"
-                  className="w-full justify-start"
-                  onClick={() => handleFilterChange('category', category.id)}
+                  className="w-full justify-start font-semibold"
+                  onClick={() => handleFilterChange('menuCategory', '')}
                 >
-                  {category.name}
+                  Todas
                 </Button>
-              ))}
-            </div>
-          )}
-        </div>
+                {menuCategories.map((category) => (
+                  <Button
+                    key={category.id}
+                    variant={filters.menuCategory === category.id ? 'default' : 'ghost'}
+                    size="sm"
+                    className="w-full justify-start"
+                    onClick={() => handleFilterChange('menuCategory', category.id)}
+                  >
+                    {category.name}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Categorías por Edad */}
+        {ageCategories.length > 0 && (
+          <div className="bg-white border-2 border-gray-200 rounded-lg">
+            <Button
+              variant="ghost"
+              className="w-full justify-between p-4 h-auto border-b border-gray-200"
+              onClick={() => toggleSection('ageCategories')}
+            >
+              <span className="font-bold text-gray-800 text-left">
+                👶 POR EDAD
+              </span>
+              {expandedSections.ageCategories ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+            </Button>
+            
+            {expandedSections.ageCategories && (
+              <div className="p-4 space-y-4">
+                {Object.entries(ageGroups).map(([ageRange, cats]) => (
+                  cats.length > 0 && (
+                    <div key={ageRange} className="space-y-2">
+                      <h4 className="font-semibold text-sm text-gray-600 px-2">{ageRange}</h4>
+                      <Button
+                        variant={filters.ageCategory === ageRange ? 'default' : 'ghost'}
+                        size="sm"
+                        className="w-full justify-start"
+                        onClick={() => handleFilterChange('ageCategory', filters.ageCategory === ageRange ? '' : ageRange)}
+                      >
+                        Todos {ageRange}
+                      </Button>
+                      {cats.map((category) => (
+                        <Button
+                          key={category.id}
+                          variant={filters.ageCategory === category.id ? 'default' : 'ghost'}
+                          size="sm"
+                          className="w-full justify-start text-sm pl-4"
+                          onClick={() => handleFilterChange('ageCategory', category.id)}
+                        >
+                          {category.name.replace(` ${ageRange}`, '')}
+                        </Button>
+                      ))}
+                    </div>
+                  )
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Back to School */}
+        {backToSchoolCategories.length > 0 && (
+          <div className="bg-white border-2 border-gray-200 rounded-lg">
+            <Button
+              variant="ghost"
+              className="w-full justify-between p-4 h-auto border-b border-gray-200"
+              onClick={() => toggleSection('backToSchoolCategories')}
+            >
+              <span className="font-bold text-gray-800 text-left">
+                🎒 BACK TO SCHOOL
+              </span>
+              {expandedSections.backToSchoolCategories ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+            </Button>
+            
+            {expandedSections.backToSchoolCategories && (
+              <div className="p-4 space-y-2">
+                <Button
+                  variant={filters.backToSchoolCategory === '' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="w-full justify-start font-semibold"
+                  onClick={() => handleFilterChange('backToSchoolCategory', '')}
+                >
+                  Todos Back to School
+                </Button>
+                {backToSchoolCategories.map((category) => (
+                  <Button
+                    key={category.id}
+                    variant={filters.backToSchoolCategory === category.id ? 'default' : 'ghost'}
+                    size="sm"
+                    className="w-full justify-start"
+                    onClick={() => handleFilterChange('backToSchoolCategory', category.id)}
+                  >
+                    {category.name.replace(' BACK TO SCHOOL', '')}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Colores */}
         {allColors.length > 0 && (

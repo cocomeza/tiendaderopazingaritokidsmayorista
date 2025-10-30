@@ -88,6 +88,10 @@ export interface Database {
           id: string
           name: string
           description: string | null
+          parent_id: string | null
+          group_type: 'menu' | 'age' | 'back-to-school' | null
+          age_range: string | null
+          display_order: number
           active: boolean
           created_at: string
           updated_at: string
@@ -96,6 +100,10 @@ export interface Database {
           id?: string
           name: string
           description?: string | null
+          parent_id?: string | null
+          group_type?: 'menu' | 'age' | 'back-to-school' | null
+          age_range?: string | null
+          display_order?: number
           active?: boolean
           created_at?: string
           updated_at?: string
@@ -104,6 +112,10 @@ export interface Database {
           id?: string
           name?: string
           description?: string | null
+          parent_id?: string | null
+          group_type?: 'menu' | 'age' | 'back-to-school' | null
+          age_range?: string | null
+          display_order?: number
           active?: boolean
           created_at?: string
           updated_at?: string

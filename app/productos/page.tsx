@@ -28,6 +28,9 @@ export default function ProductosPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [filters, setFilters] = useState({
     category: '',
+    menuCategory: '',
+    ageCategory: '',
+    backToSchoolCategory: '',
     colors: [] as string[],
     sizes: [] as string[],
     priceMin: '',
@@ -106,9 +109,24 @@ export default function ProductosPage() {
       )
     }
 
-    // Filtro por categoría
+    // Filtro por categoría (compatibilidad hacia atrás)
     if (currentFilters.category) {
       filtered = filtered.filter(product => product.category_id === currentFilters.category)
+    }
+
+    // Filtro por categoría de menú
+    if (currentFilters.menuCategory) {
+      filtered = filtered.filter(product => product.category_id === currentFilters.menuCategory)
+    }
+
+    // Filtro por categoría de edad
+    if (currentFilters.ageCategory) {
+      filtered = filtered.filter(product => product.category_id === currentFilters.ageCategory)
+    }
+
+    // Filtro por categoría Back to School
+    if (currentFilters.backToSchoolCategory) {
+      filtered = filtered.filter(product => product.category_id === currentFilters.backToSchoolCategory)
     }
 
     // Filtro por colores

@@ -186,6 +186,10 @@ create table if not exists categories (
   id uuid default gen_random_uuid() primary key,
   name text not null,
   description text,
+  parent_id uuid references categories(id) on delete cascade,
+  group_type text check (group_type in ('menu', 'age', 'back-to-school')),
+  age_range text, -- 'BEBÉS', 'NIÑOS', 'ADULTOS'
+  display_order integer default 0,
   active boolean default true,
   created_at timestamp with time zone default now(),
   updated_at timestamp with time zone default now()
@@ -194,6 +198,10 @@ create table if not exists categories (
 -- Índices para categories
 create index if not exists categories_active_idx on categories(active);
 create index if not exists categories_name_idx on categories(name);
+create index if not exists categories_parent_id_idx on categories(parent_id);
+create index if not exists categories_group_type_idx on categories(group_type);
+create index if not exists categories_age_range_idx on categories(age_range);
+create index if not exists categories_display_order_idx on categories(display_order);
 
 -- Habilitar RLS
 alter table categories enable row level security;
