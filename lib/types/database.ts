@@ -83,6 +83,50 @@ export interface Database {
           updated_at?: string
         }
       }
+      product_variants: {
+        Row: {
+          id: string
+          product_id: string
+          sku: string | null
+          size: string | null
+          color: string | null
+          stock: number
+          price_override: number | null
+          wholesale_price_override: number | null
+          active: boolean
+          images: string[]
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          product_id: string
+          sku?: string | null
+          size?: string | null
+          color?: string | null
+          stock?: number
+          price_override?: number | null
+          wholesale_price_override?: number | null
+          active?: boolean
+          images?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          product_id?: string
+          sku?: string | null
+          size?: string | null
+          color?: string | null
+          stock?: number
+          price_override?: number | null
+          wholesale_price_override?: number | null
+          active?: boolean
+          images?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+      }
       categories: {
         Row: {
           id: string

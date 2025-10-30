@@ -1,13 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, ShoppingCart, Heart, Share2, Truck, Shield, Star, Plus, Minus } from 'lucide-react'
+import { ArrowLeft, ShoppingCart, Heart, Share2, Truck, Shield, Star, Plus, Minus, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { supabase } from '@/lib/supabase/client'
+import { Database } from '@/lib/types/database'
 
-// Datos de ejemplo (mock data) - en producción vendría de la base de datos
+type Product = Database['public']['Tables']['products']['Row']
+type ProductVariant = Database['public']['Tables']['product_variants']['Row']
+
+// Datos de ejemplo temporal mientras cargamos de la BD
 const PRODUCTO_MOCK = {
   id: 1,
   nombre: 'Remera Estampada Niños',
@@ -58,13 +64,100 @@ const PRODUCTOS_RELACIONADOS = [
   },
 ]
 
-export default function ProductoDetallePage({ params }: { params: { id: string } }) {
-  const { id } = params
-  console.log('Product ID:', id)
+export default function ProductoDetallePage() {
+  const params = useParams()
+  const id = params?.id as string
+  
+  const [product, setProduct] = useState<Product | null>(null)
+  const [variants, setVariants] = useState<ProductVariant[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string>('')
+  
   const [imagenSeleccionada, setImagenSeleccionada] = useState(0)
   const [talleSeleccionado, setTalleSeleccionado] = useState<string | null>(null)
-  const [colorSeleccionado, setColorSeleccionado] = useState<number | null>(null)
-  const [cantidad, setCantidad] = useState(PRODUCTO_MOCK.minimo)
+  const [colorSeleccionado, setColorSeleccionado] = useState<string | null>(null)
+  const [cantidad, setCantidad] = useState(6) // Mínimo por defecto
+  const [stockDisponible, setStockDisponible] = useState<number>(0)
+
+  useEffect(() => {
+    if (id) {
+      loadProductData()
+    }
+  }, [id])
+
+  const loadProductData = async () => {
+    try {
+      setLoading(true)
+      
+      // Cargar producto
+      const { data: productData, error: productError } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (productError) throw productError
+      if (!productData) throw new Error('Producto no encontrado')
+
+      setProduct(productData)
+
+      // Cargar variantes del producto
+      const { data: variantsData, error: variantsError } = await supabase
+        .from('product_variants')
+        .select('*')
+        .eq('product_id', id)
+        .eq('active', true)
+
+      if (variantsError) {
+        console.warn('No se pudieron cargar variantes:', variantsError)
+        // Si no hay variantes, no es un error fatal
+      } else if (variantsData && variantsData.length > 0) {
+        setVariants(variantsData)
+      } else {
+        // Si no hay variantes, crear estructura básica desde arrays del producto
+        const sizes = productData.sizes || []
+        const colors = productData.colors || []
+        setVariants([]) // Sin variantes específicas
+      }
+      
+    } catch (err: any) {
+      console.error('Error cargando producto:', err)
+      setError(err.message || 'Error al cargar el producto')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Obtener colores disponibles
+  const getAvailableColors = () => {
+    if (variants.length > 0) {
+      return [...new Set(variants.map(v => v.color).filter(Boolean))]
+    }
+    return product?.colors || []
+  }
+
+  // Obtener talles disponibles
+  const getAvailableSizes = () => {
+    if (variants.length > 0) {
+      return [...new Set(variants.map(v => v.size).filter(Boolean))]
+    }
+    return product?.sizes || []
+  }
+
+  // Obtener stock de una combinación específica
+  const getVariantStock = (size?: string | null, color?: string | null) => {
+    if (variants.length > 0 && size && color) {
+      const variant = variants.find(v => v.size === size && v.color === color)
+      return variant?.stock || 0
+    }
+    return product?.stock || 0
+  }
+
+  // Actualizar stock cuando cambia color o talle
+  useEffect(() => {
+    const stock = getVariantStock(talleSeleccionado, colorSeleccionado)
+    setStockDisponible(stock)
+  }, [talleSeleccionado, colorSeleccionado, variants, product])
 
   const formatearPrecio = (precio: number) => {
     return new Intl.NumberFormat('es-AR', {
@@ -75,13 +168,57 @@ export default function ProductoDetallePage({ params }: { params: { id: string }
   }
 
   const incrementarCantidad = () => {
-    setCantidad(prev => prev + 1)
+    if (cantidad < stockDisponible) {
+      setCantidad(prev => prev + 1)
+    }
   }
 
   const decrementarCantidad = () => {
-    if (cantidad > PRODUCTO_MOCK.minimo) {
+    const minimo = 6 // Mínimo de compra
+    if (cantidad > minimo) {
       setCantidad(prev => prev - 1)
     }
+  }
+
+  const getColorHex = (colorName: string) => {
+    const colorMap: { [key: string]: string } = {
+      'negro': '#000000',
+      'blanco': '#FFFFFF',
+      'rojo': '#FF0000',
+      'azul': '#0000FF',
+      'verde': '#008000',
+      'amarillo': '#FFFF00',
+      'rosa': '#FFC0CB',
+      'gris': '#808080',
+      'marrón': '#A52A2A',
+      'naranja': '#FFA500',
+      'morado': '#800080',
+      'celeste': '#87CEEB',
+      'azul claro': '#ADD8E6',
+      'verde claro': '#90EE90',
+    }
+    return colorMap[colorName.toLowerCase()] || '#CCCCCC'
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+      </div>
+    )
+  }
+
+  if (error || !product) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error || 'Producto no encontrado'}</p>
+          <Link href="/productos">
+            <Button>Volver a Productos</Button>
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -94,7 +231,7 @@ export default function ProductoDetallePage({ params }: { params: { id: string }
             <span className="text-gray-400">/</span>
             <Link href="/productos" className="text-gray-600 hover:text-purple-600">Productos</Link>
             <span className="text-gray-400">/</span>
-            <span className="text-gray-900 font-medium">{PRODUCTO_MOCK.categoria}</span>
+            <span className="text-gray-900 font-medium">Producto</span>
           </div>
         </div>
       </div>
