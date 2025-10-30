@@ -53,7 +53,8 @@ export default function AdminClientes() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<Customer | null>(null)
-  const [showActiveOnly, setShowActiveOnly] = useState(true)
+  const [permanentDeleteMode, setPermanentDeleteMode] = useState(false)
+  const [showActiveOnly, setShowActiveOnly] = useState(false)
 
 
   useEffect(() => {
@@ -73,6 +74,8 @@ export default function AdminClientes() {
 
   const loadCustomers = async () => {
     try {
+      // Cargar todos los perfiles y filtrar clientes (no admins) en JavaScript
+      // Esto es más robusto si algunos registros tienen is_admin como null
       const { data: customersData, error: customersError } = await supabase
         .from('profiles')
         .select('*')
@@ -80,25 +83,37 @@ export default function AdminClientes() {
 
       if (customersError) {
         console.error('Error cargando clientes:', customersError)
+        toast.error('Error al cargar clientes: ' + customersError.message)
         return
       }
 
-      setCustomers(customersData || [])
+      // Filtrar solo clientes, excluyendo administradores
+      const clientsOnly = (customersData || []).filter(
+        profile => !profile.is_admin || profile.is_admin === false
+      )
+
+      console.log('Clientes cargados:', clientsOnly.length)
+      console.log('Datos de primer cliente:', clientsOnly[0])
+      
+      setCustomers(clientsOnly)
     } catch (error) {
       console.error('Error general:', error)
+      toast.error('Error inesperado al cargar clientes')
     } finally {
       setLoading(false)
     }
   }
 
   const filteredCustomers = customers.filter(customer => {
-    // Filtrar por estado activo/inactivo
-    const matchesActiveStatus = showActiveOnly ? customer.is_active : true
+    // Filtrar por estado activo/inactivo (si is_active es null, considerar como activo)
+    const isActive = customer.is_active !== false // null o true = activo
+    const matchesActiveStatus = showActiveOnly ? isActive : true
     
-    const matchesSearch = 
+    const matchesSearch = searchTerm.trim() === '' || 
       customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (customer.full_name && customer.full_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (customer.phone && customer.phone.includes(searchTerm))
+    
     return matchesActiveStatus && matchesSearch
   })
 
@@ -136,27 +151,86 @@ export default function AdminClientes() {
     if (!deleteConfirm) return
 
     try {
-      // Marcar como inactivo en lugar de eliminar
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_active: false })
-        .eq('id', deleteConfirm.id)
-
-      if (error) {
-        console.error('Error desactivando cliente:', error)
-        toast.error('Error al desactivar el cliente: ' + error.message)
+      // Verificar que el usuario es admin antes de continuar
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        toast.error('No estás autenticado')
         return
       }
 
-      // Actualizar la lista local
-      setCustomers(customers.map(c => 
-        c.id === deleteConfirm.id ? { ...c, is_active: false } : c
-      ))
-      toast.success(`Cliente ${deleteConfirm.full_name || deleteConfirm.email} desactivado correctamente`)
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', user.id)
+        .single()
+
+      if (profileError || !profile?.is_admin) {
+        toast.error('No tienes permisos de administrador')
+        return
+      }
+
+      if (permanentDeleteMode) {
+        // Eliminación permanente - esto también eliminará el usuario de auth.users por cascade
+        const { error } = await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', deleteConfirm.id)
+
+        if (error) {
+          console.error('Error eliminando cliente permanentemente:', JSON.stringify(error, null, 2))
+          
+          if (error.code === 'PGRST116' || error.message?.includes('permission denied') || error.message?.includes('policy')) {
+            toast.error('Error de permisos: No tienes permisos para eliminar este perfil. Verifica las políticas RLS en Supabase.')
+          } else {
+            toast.error('Error al eliminar el cliente: ' + (error.message || JSON.stringify(error)))
+          }
+          return
+        }
+
+        // Actualizar la lista local removiendo el cliente
+        setCustomers(customers.filter(c => c.id !== deleteConfirm.id))
+        toast.success(`Cliente ${deleteConfirm.full_name || deleteConfirm.email} eliminado permanentemente`)
+      } else {
+        // Desactivación (soft delete)
+        const { error, data } = await supabase
+          .from('profiles')
+          .update({ is_active: false })
+          .eq('id', deleteConfirm.id)
+          .select()
+
+        if (error) {
+          console.error('Error completo desactivando cliente:', JSON.stringify(error, null, 2))
+          console.error('Código:', error.code)
+          console.error('Mensaje:', error.message)
+          console.error('Detalles:', error.details)
+          console.error('Hint:', error.hint)
+          
+          // Mensaje más específico según el tipo de error
+          if (error.code === 'PGRST116' || error.message?.includes('permission denied') || error.message?.includes('policy')) {
+            toast.error('Error de permisos: No tienes permisos para actualizar este perfil. Verifica las políticas RLS en Supabase.')
+          } else {
+            toast.error('Error al desactivar el cliente: ' + (error.message || JSON.stringify(error)))
+          }
+          return
+        }
+
+        if (!data || data.length === 0) {
+          toast.error('No se pudo actualizar el cliente. Verifica que el ID sea correcto.')
+          return
+        }
+
+        // Actualizar la lista local
+        setCustomers(customers.map(c => 
+          c.id === deleteConfirm.id ? { ...c, is_active: false } : c
+        ))
+        toast.success(`Cliente ${deleteConfirm.full_name || deleteConfirm.email} desactivado correctamente`)
+      }
+
       setDeleteConfirm(null)
-    } catch (error) {
+      setPermanentDeleteMode(false)
+    } catch (error: any) {
       console.error('Error general:', error)
-      toast.error('Error inesperado al desactivar el cliente')
+      toast.error('Error inesperado: ' + (error?.message || 'Error desconocido'))
     }
   }
 
@@ -234,7 +308,7 @@ export default function AdminClientes() {
       {/* Filtros */}
       <div className="bg-white border-b">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -245,6 +319,16 @@ export default function AdminClientes() {
                   className="pl-10"
                 />
               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant={showActiveOnly ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowActiveOnly(!showActiveOnly)}
+                className="whitespace-nowrap"
+              >
+                {showActiveOnly ? 'Solo Activos' : 'Todos'}
+              </Button>
             </div>
           </div>
         </div>
@@ -296,7 +380,7 @@ export default function AdminClientes() {
                   </div>
                 </div>
 
-                {/* Información del cliente */}
+                {/* Información del cliente - Resumen */}
                 <div className="space-y-2 text-sm mb-4">
                   {customer.phone && (
                     <div className="flex items-center gap-2 text-gray-600 bg-gray-50 rounded-lg p-2">
@@ -305,10 +389,22 @@ export default function AdminClientes() {
                     </div>
                   )}
                   
-                  {customer.billing_address && (
-                    <div className="flex items-start gap-2 text-gray-600 bg-green-50 rounded-lg p-2">
-                      <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />
-                      <span className="line-clamp-1 text-xs">{customer.billing_address}</span>
+                  {customer.locality && (
+                    <div className="flex items-start gap-2 text-gray-600 bg-indigo-50 rounded-lg p-2">
+                      <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5 text-indigo-600" />
+                      <span className="line-clamp-1 text-xs">{customer.locality}</span>
+                    </div>
+                  )}
+
+                  {customer.sales_type && (
+                    <div className="flex items-center gap-2 text-gray-600 bg-cyan-50 rounded-lg p-2">
+                      <ShoppingBag className="w-4 h-4 flex-shrink-0 text-cyan-600" />
+                      <span className="text-xs capitalize">
+                        {customer.sales_type === 'local' && 'Local Físico'}
+                        {customer.sales_type === 'showroom' && 'Showroom'}
+                        {customer.sales_type === 'online' && 'Venta Online'}
+                        {customer.sales_type === 'empezando' && 'Por Iniciar'}
+                      </span>
                     </div>
                   )}
 
@@ -320,13 +416,23 @@ export default function AdminClientes() {
 
                 {/* Footer con badge y botón */}
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 pt-3 border-t">
-                  <Badge variant="outline" className="self-start sm:self-auto bg-green-50 text-green-700 border-green-200">
-                    ✓ Cliente Activo
+                  <Badge 
+                    variant="outline" 
+                    className={`self-start sm:self-auto ${
+                      customer.is_active !== false
+                        ? "bg-green-50 text-green-700 border-green-200"
+                        : "bg-red-50 text-red-700 border-red-200"
+                    }`}
+                  >
+                    {customer.is_active !== false ? '✓ Cliente Activo' : '✗ Cliente Inactivo'}
                   </Badge>
                   <Button 
                     size="sm" 
                     variant="outline" 
                     className="w-full sm:w-auto hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300"
+                    onClick={() => {
+                      router.push(`/admin/pedidos?cliente=${customer.id}`)
+                    }}
                   >
                     Ver Pedidos
                   </Button>
@@ -384,32 +490,70 @@ export default function AdminClientes() {
             <CardContent className="space-y-4 px-4 sm:px-6">
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <p className="text-sm text-red-800 font-semibold mb-2">
-                  ¿Estás seguro de que deseas eliminar este cliente?
+                  {permanentDeleteMode 
+                    ? '⚠️ Eliminación Permanente' 
+                    : '¿Desactivar o eliminar este cliente?'}
                 </p>
-                <p className="text-sm text-red-700">
-                  Esta acción eliminará permanentemente la cuenta del cliente <strong>{deleteConfirm.full_name || deleteConfirm.email}</strong> y no se puede deshacer.
+                <p className="text-sm text-red-700 mb-3">
+                  {permanentDeleteMode ? (
+                    <>
+                      Esta acción <strong>eliminará permanentemente</strong> la cuenta del cliente <strong>{deleteConfirm.full_name || deleteConfirm.email}</strong> de la base de datos y <strong>no se puede deshacer</strong>. Se perderán todos los datos relacionados.
+                    </>
+                  ) : (
+                    <>
+                      Selecciona cómo deseas proceder con el cliente <strong>{deleteConfirm.full_name || deleteConfirm.email}</strong>:
+                    </>
+                  )}
                 </p>
-                <div className="mt-3 text-sm text-gray-600">
+                <div className="mt-3 text-sm text-gray-600 mb-3">
                   <p><strong>Email:</strong> {deleteConfirm.email}</p>
                   {deleteConfirm.full_name && (
                     <p><strong>Nombre:</strong> {deleteConfirm.full_name}</p>
                   )}
                 </div>
+                
+                {!permanentDeleteMode && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-3">
+                    <div className="flex items-start gap-2 mb-2">
+                      <input
+                        type="checkbox"
+                        id="permanent-delete"
+                        checked={permanentDeleteMode}
+                        onChange={(e) => setPermanentDeleteMode(e.target.checked)}
+                        className="mt-1"
+                      />
+                      <label htmlFor="permanent-delete" className="text-sm font-medium text-yellow-800 cursor-pointer">
+                        Eliminar permanentemente (no recomendado)
+                      </label>
+                    </div>
+                    <p className="text-xs text-yellow-700 ml-6">
+                      Por defecto se desactiva el cliente (se mantienen los datos para historial). 
+                      Solo marca esto si realmente quieres eliminar todos los datos del cliente.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col sm:flex-row gap-2">
                 <Button 
-                  className="flex-1 bg-red-600 hover:bg-red-700"
+                  className={`flex-1 ${permanentDeleteMode ? 'bg-red-700 hover:bg-red-800' : 'bg-orange-600 hover:bg-orange-700'}`}
                   onClick={handleDeleteCustomer}
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">Confirmar Eliminación</span>
-                  <span className="sm:hidden">Eliminar</span>
+                  <span className="hidden sm:inline">
+                    {permanentDeleteMode ? 'Confirmar Eliminación Permanente' : 'Desactivar Cliente'}
+                  </span>
+                  <span className="sm:hidden">
+                    {permanentDeleteMode ? 'Eliminar' : 'Desactivar'}
+                  </span>
                 </Button>
                 <Button 
                   variant="outline"
                   className="flex-1"
-                  onClick={() => setDeleteConfirm(null)}
+                  onClick={() => {
+                    setDeleteConfirm(null)
+                    setPermanentDeleteMode(false)
+                  }}
                 >
                   Cancelar
                 </Button>
@@ -448,111 +592,116 @@ export default function AdminClientes() {
                   <Mail className="w-4 h-4" />
                   Información de Contacto
                 </h3>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div>
                     <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email</label>
-                    <p className="text-gray-900 font-medium break-all">{selectedCustomer.email}</p>
+                    <p className="text-gray-900 font-medium break-all mt-1">
+                      {selectedCustomer.email || <span className="text-gray-400 italic">No proporcionado</span>}
+                    </p>
                   </div>
-                  {selectedCustomer.phone && (
-              <div>
-                      <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Teléfono</label>
-                      <p className="text-gray-900 font-medium">{selectedCustomer.phone}</p>
-                    </div>
-                  )}
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Teléfono</label>
+                    <p className="text-gray-900 font-medium mt-1">
+                      {selectedCustomer.phone || <span className="text-gray-400 italic">No proporcionado</span>}
+                    </p>
+                  </div>
                 </div>
               </div>
               
               {/* Información Personal */}
-              {selectedCustomer.full_name && (
-                <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-4 border border-blue-100">
-                  <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                    <User className="w-4 h-4" />
-                    Información Personal
-                  </h3>
-              <div>
+              <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-4 border border-blue-100">
+                <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  Información Personal
+                </h3>
+                <div className="space-y-3">
+                  <div>
                     <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nombre Completo</label>
-                    <p className="text-gray-900 font-medium">{selectedCustomer.full_name}</p>
-                  </div>
-              </div>
-              )}
-
-              {/* Datos de la Empresa */}
-              {(selectedCustomer.company_name || selectedCustomer.cuit || selectedCustomer.billing_address) && (
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-100">
-                  <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                    <Building2 className="w-4 h-4" />
-                    Datos de la Empresa
-                  </h3>
-                  <div className="space-y-2">
-                    {selectedCustomer.company_name && (
-                      <div>
-                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nombre de la Empresa</label>
-                        <p className="text-gray-900 font-medium">{selectedCustomer.company_name}</p>
-                      </div>
-                    )}
-                    {selectedCustomer.cuit && (
-                      <div>
-                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">CUIT</label>
-                        <p className="text-gray-900 font-medium">{selectedCustomer.cuit}</p>
-                      </div>
-                    )}
-                    {selectedCustomer.billing_address && (
-              <div>
-                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Dirección de Facturación</label>
-                        <p className="text-gray-900 font-medium">{selectedCustomer.billing_address}</p>
-                      </div>
-                    )}
-                  </div>
-              </div>
-              )}
-
-              {/* Dirección de Envío */}
-              {selectedCustomer.address && (
-                <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-4 border border-amber-100">
-                  <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                    <MapPin className="w-4 h-4" />
-                    Dirección de Envío
-                  </h3>
-              <div>
-                    <p className="text-gray-900 font-medium">{selectedCustomer.address}</p>
-                  </div>
-              </div>
-              )}
-
-              {/* Información de Negocio */}
-              {(selectedCustomer.locality || selectedCustomer.sales_type || selectedCustomer.ages) && (
-                <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-100">
-                  <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                    <Building2 className="w-4 h-4" />
-                    Información del Negocio
-                  </h3>
-                  <div className="space-y-2">
-                    {selectedCustomer.locality && (
-                      <div>
-                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Localidad</label>
-                        <p className="text-gray-900 font-medium">{selectedCustomer.locality}</p>
-                      </div>
-                    )}
-                    {selectedCustomer.sales_type && (
-                      <div>
-                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Tipo de Venta</label>
-                        <p className="text-gray-900 font-medium">
-                          {selectedCustomer.sales_type === 'local' && 'Local Físico'}
-                          {selectedCustomer.sales_type === 'showroom' && 'Showroom'}
-                          {selectedCustomer.sales_type === 'online' && 'Venta Online'}
-                          {selectedCustomer.sales_type === 'empezando' && 'Por Iniciar'}
-                        </p>
-                      </div>
-                    )}
-                    {selectedCustomer.ages && (
-                      <div>
-                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Edades</label>
-                        <p className="text-gray-900 font-medium">{selectedCustomer.ages}</p>
-                      </div>
-                    )}
+                    <p className="text-gray-900 font-medium mt-1">
+                      {selectedCustomer.full_name || <span className="text-gray-400 italic">No proporcionado</span>}
+                    </p>
                   </div>
                 </div>
-              )}
+              </div>
+
+              {/* Datos de la Empresa */}
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-100">
+                <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <Building2 className="w-4 h-4" />
+                  Datos de la Empresa
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nombre de la Empresa</label>
+                    <p className="text-gray-900 font-medium mt-1">
+                      {selectedCustomer.company_name || <span className="text-gray-400 italic">No proporcionado</span>}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">CUIT</label>
+                    <p className="text-gray-900 font-medium mt-1">
+                      {selectedCustomer.cuit ? (
+                        selectedCustomer.cuit.length === 11 
+                          ? `${selectedCustomer.cuit.slice(0, 2)}-${selectedCustomer.cuit.slice(2, 10)}-${selectedCustomer.cuit.slice(10)}`
+                          : selectedCustomer.cuit
+                      ) : <span className="text-gray-400 italic">No proporcionado</span>}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Dirección de Facturación</label>
+                    <p className="text-gray-900 font-medium mt-1">
+                      {selectedCustomer.billing_address || <span className="text-gray-400 italic">No proporcionado</span>}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dirección de Envío */}
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-4 border border-amber-100">
+                <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <MapPin className="w-4 h-4" />
+                  Dirección de Envío
+                </h3>
+                <div>
+                  <p className="text-gray-900 font-medium">
+                    {selectedCustomer.address || <span className="text-gray-400 italic">No proporcionado</span>}
+                  </p>
+                </div>
+              </div>
+
+              {/* Información del Negocio */}
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-100">
+                <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <Building2 className="w-4 h-4" />
+                  Información del Negocio
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Localidad</label>
+                    <p className="text-gray-900 font-medium mt-1">
+                      {selectedCustomer.locality || <span className="text-gray-400 italic">No proporcionado</span>}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Tipo de Venta</label>
+                    <p className="text-gray-900 font-medium mt-1">
+                      {selectedCustomer.sales_type ? (
+                        selectedCustomer.sales_type === 'local' ? 'Local Físico' :
+                        selectedCustomer.sales_type === 'showroom' ? 'Showroom' :
+                        selectedCustomer.sales_type === 'online' ? 'Venta Online' :
+                        selectedCustomer.sales_type === 'empezando' ? 'Por Iniciar' :
+                        selectedCustomer.sales_type
+                      ) : <span className="text-gray-400 italic">No proporcionado</span>}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Edades con las que trabaja</label>
+                    <p className="text-gray-900 font-medium mt-1">
+                      {selectedCustomer.ages || <span className="text-gray-400 italic">No proporcionado</span>}
+                    </p>
+                  </div>
+                </div>
+              </div>
               
               {/* Metadatos */}
               <div className="flex items-center justify-between pt-4 border-t">
@@ -562,12 +711,12 @@ export default function AdminClientes() {
                 </div>
                 <Badge 
                   variant="outline" 
-                  className={customer.is_active 
+                  className={selectedCustomer.is_active !== false
                     ? "bg-green-50 text-green-700 border-green-200" 
                     : "bg-red-50 text-red-700 border-red-200"
                   }
                 >
-                  {customer.is_active ? '✓ Cliente Activo' : '✗ Cliente Inactivo'}
+                  {selectedCustomer.is_active !== false ? '✓ Cliente Activo' : '✗ Cliente Inactivo'}
                 </Badge>
               </div>
 

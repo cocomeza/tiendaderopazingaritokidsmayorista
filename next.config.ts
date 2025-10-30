@@ -103,7 +103,23 @@ const nextConfig: NextConfig = {
   
   // Configuración de webpack
   webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
-    // Configuración personalizada de webpack si es necesario
+    // Mejorar el manejo de chunks para evitar ChunkLoadError
+    if (!isServer) {
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          ...config.optimization.splitChunks,
+          cacheGroups: {
+            ...config.optimization.splitChunks?.cacheGroups,
+            default: {
+              minChunks: 2,
+              priority: -20,
+              reuseExistingChunk: true,
+            },
+          },
+        },
+      }
+    }
     return config
   },
   

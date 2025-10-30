@@ -1,113 +1,182 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/lib/supabase/client'
+import { supabase } from '@/lib/supabase/client-fixed'
 import { useAuth } from './useAuth'
 
 export function useFavorites() {
-  const { user } = useAuth()
+  const { user, isAuthenticated } = useAuth()
   const [favorites, setFavorites] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
 
-  // Función helper para leer de localStorage
-  const getFavoritesFromLocalStorage = useCallback((): string[] => {
-    if (typeof window === 'undefined') return []
-    try {
-      const stored = localStorage.getItem('favorites')
-      if (!stored) return []
-      return JSON.parse(stored)
-    } catch {
-      return []
+  // Cargar favoritos desde la base de datos
+  const loadFavoritesFromDB = useCallback(async () => {
+    if (!user || !isAuthenticated) {
+      setFavorites([])
+      setLoading(false)
+      return
     }
-  }, [])
 
-  // Inicializar favorites al montar
-  useEffect(() => {
-    const stored = getFavoritesFromLocalStorage()
-    setFavorites(stored)
-    console.log('📦 Initial favorites loaded:', stored)
-  }, [getFavoritesFromLocalStorage])
+    try {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('favorites')
+        .select('product_id')
+        .eq('user_id', user.id)
 
-  // Toggle favorito - SIMPLE y ROBUSTO
-  const toggleFavorite = useCallback(async (productId: string): Promise<boolean> => {
-    console.log('🔄 toggleFavorite called', { productId })
-    
-    // Usar función de actualización para leer el estado MÁS RECIENTE
-    setFavorites(current => {
-      const isFavorite = current.includes(productId)
-      console.log('❤️ Is favorite?', isFavorite, 'Current:', current)
-      
-      let newFavorites: string[]
-      if (isFavorite) {
-        // Quitar
-        newFavorites = current.filter(id => id !== productId)
-        console.log('🗑️ Removing:', productId, 'New:', newFavorites)
+      if (error) {
+        console.error('Error loading favorites from DB:', error)
+        setFavorites([])
       } else {
-        // Agregar
-        newFavorites = [...current, productId]
-        console.log('➕ Adding:', productId, 'New:', newFavorites)
-      }
-      
-      // Actualizar localStorage con el nuevo estado
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('favorites', JSON.stringify(newFavorites))
-        console.log('💾 Saved to localStorage:', newFavorites)
-      }
-      
-      // Sincronizar con DB en background (no esperar)
-      if (user) {
-        if (isFavorite) {
-          supabase
-            .from('favorites')
-            .delete()
-            .eq('user_id', user.id)
-            .eq('product_id', productId)
-            .then(({ error }) => {
-              if (error) console.log('⚠️ DB delete error:', error.message)
-              else console.log('✅ Removed from DB')
-            })
-        } else {
-          supabase
-            .from('favorites')
-            .insert({ user_id: user.id, product_id: productId })
-            .then(({ error }) => {
-              if (error) console.log('⚠️ DB insert error:', error.message)
-              else console.log('✅ Added to DB')
-            })
+        const productIds = data?.map(fav => fav.product_id) || []
+        setFavorites(productIds)
+        
+        // Sincronizar con localStorage como backup
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('favorites', JSON.stringify(productIds))
         }
       }
-      
-      return newFavorites
-    })
+    } catch (error) {
+      console.error('Error in loadFavoritesFromDB:', error)
+      setFavorites([])
+    } finally {
+      setLoading(false)
+    }
+  }, [user, isAuthenticated])
+
+  // Cargar favoritos cuando el usuario inicia sesión o cambia
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      loadFavoritesFromDB()
+    } else {
+      // Si no está autenticado, leer de localStorage como backup
+      if (typeof window !== 'undefined') {
+        try {
+          const stored = localStorage.getItem('favorites')
+          if (stored) {
+            const parsed = JSON.parse(stored)
+            setFavorites(Array.isArray(parsed) ? parsed : [])
+          } else {
+            setFavorites([])
+          }
+        } catch {
+          setFavorites([])
+        }
+      } else {
+        setFavorites([])
+      }
+      setLoading(false)
+    }
+  }, [isAuthenticated, user, loadFavoritesFromDB])
+
+  // Agregar a favoritos
+  const addToFavorites = useCallback(async (productId: string): Promise<boolean> => {
+    if (!isAuthenticated || !user) {
+      console.warn('Usuario no autenticado, no se puede agregar a favoritos')
+      return false
+    }
+
+    try {
+      // Verificar si ya es favorito
+      if (favorites.includes(productId)) {
+        return true
+      }
+
+      // Insertar en la base de datos
+      const { error } = await supabase
+        .from('favorites')
+        .insert({ 
+          user_id: user.id, 
+          product_id: productId 
+        })
+
+      if (error) {
+        // Si es error de duplicado, no es problema
+        if (error.code === '23505') {
+          console.log('Producto ya en favoritos')
+        } else {
+          console.error('Error adding to favorites:', error)
+          throw error
+        }
+      }
+
+      // Actualizar estado local
+      setFavorites(prev => {
+        const newFavorites = [...prev, productId]
+        // Actualizar localStorage
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('favorites', JSON.stringify(newFavorites))
+        }
+        return newFavorites
+      })
+
+      return true
+    } catch (error) {
+      console.error('Error in addToFavorites:', error)
+      return false
+    }
+  }, [user, isAuthenticated, favorites])
+
+  // Eliminar de favoritos (permanentemente)
+  const removeFromFavorites = useCallback(async (productId: string): Promise<boolean> => {
+    if (!isAuthenticated || !user) {
+      console.warn('Usuario no autenticado, no se puede eliminar de favoritos')
+      return false
+    }
+
+    try {
+      // Eliminar de la base de datos permanentemente
+      const { error } = await supabase
+        .from('favorites')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('product_id', productId)
+
+      if (error) {
+        console.error('Error removing from favorites:', error)
+        throw error
+      }
+
+      // Actualizar estado local
+      setFavorites(prev => {
+        const newFavorites = prev.filter(id => id !== productId)
+        // Actualizar localStorage
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('favorites', JSON.stringify(newFavorites))
+        }
+        return newFavorites
+      })
+
+      return true
+    } catch (error) {
+      console.error('Error in removeFromFavorites:', error)
+      return false
+    }
+  }, [user, isAuthenticated])
+
+  // Toggle favorito (agregar o eliminar)
+  const toggleFavorite = useCallback(async (productId: string): Promise<boolean> => {
+    const isFavorite = favorites.includes(productId)
     
-    return true
-  }, [user])
+    if (isFavorite) {
+      return await removeFromFavorites(productId)
+    } else {
+      return await addToFavorites(productId)
+    }
+  }, [favorites, addToFavorites, removeFromFavorites])
 
   // Verificar si es favorito
   const isFavorite = useCallback((productId: string): boolean => {
     return favorites.includes(productId)
   }, [favorites])
 
-  // Funciones legacy
-  const addToFavorites = async (productId: string) => {
-    return toggleFavorite(productId)
-  }
-
-  const removeFromFavorites = async (productId: string) => {
-    return toggleFavorite(productId)
-  }
-
-  const loadFavorites = useCallback(() => {
-    const stored = getFavoritesFromLocalStorage()
-    setFavorites(stored)
-  }, [getFavoritesFromLocalStorage])
-
   return {
     favorites,
-    loading: false,
+    loading,
     addToFavorites,
     removeFromFavorites,
     toggleFavorite,
     isFavorite,
-    loadFavorites
+    loadFavorites: loadFavoritesFromDB
   }
 }

@@ -22,6 +22,15 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    // Manejar errores de chunks específicamente
+    if (error.name === 'ChunkLoadError' || error.message.includes('chunk')) {
+      // Forzar recarga de la página para errores de chunks
+      if (typeof window !== 'undefined') {
+        setTimeout(() => {
+          window.location.reload()
+        }, 1000)
+      }
+    }
     return { hasError: true, error }
   }
 

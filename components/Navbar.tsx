@@ -11,6 +11,12 @@ export default function Navbar() {
   const [menuAbierto, setMenuAbierto] = useState(false)
   const { isAuthenticated } = useAuth()
 
+  const abrirWhatsApp = () => {
+    const numero = '543407498045'
+    const mensaje = encodeURIComponent('Hola! Me gustaría obtener más información sobre Zingarito Kids.')
+    window.open(`https://wa.me/${numero}?text=${mensaje}`, '_blank')
+  }
+
   const toggleMenu = () => {
     setMenuAbierto(!menuAbierto)
   }
@@ -19,11 +25,6 @@ export default function Navbar() {
     setMenuAbierto(false)
   }
 
-  const abrirWhatsApp = () => {
-    const numero = '543407498045'
-    const mensaje = encodeURIComponent('Hola! Me gustaría obtener más información sobre Zingarito Kids.')
-    window.open(`https://wa.me/${numero}?text=${mensaje}`, '_blank')
-  }
 
   return (
     <>

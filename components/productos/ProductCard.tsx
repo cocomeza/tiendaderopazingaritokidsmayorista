@@ -84,17 +84,15 @@ export function ProductCard({ product }: ProductCardProps) {
     }
   }
 
-  const handleAddToFavorites = async () => {
-    console.log('🔥 handleAddToFavorites called!', product.id)
+  const handleAddToFavorites = async (e: React.MouseEvent) => {
+    e.stopPropagation()
     
     if (!isAuthenticated) {
-      console.log('❌ User not authenticated, redirecting to login')
       toast.error('Debes iniciar sesión para agregar productos a favoritos', {
         description: 'Serás redirigido al inicio de sesión',
         duration: 3000,
       })
       
-      // Redirigir después de un breve delay para que el usuario vea el mensaje
       setTimeout(() => {
         const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/productos'
         router.push(`/auth/login?redirect=${encodeURIComponent(currentPath)}`)
@@ -102,16 +100,22 @@ export function ProductCard({ product }: ProductCardProps) {
       return
     }
 
-    console.log('✅ User is authenticated, proceeding with toggle')
     const wasFavorite = isFavorite(product.id)
-    console.log('📊 Current favorite status:', wasFavorite)
     
-    const success = await toggleFavorite(product.id)
-    console.log('🔄 Toggle result:', success)
-    
-    if (success) {
-      toast.success(wasFavorite ? 'Eliminado de favoritos' : 'Agregado a favoritos')
-    } else {
+    try {
+      const success = await toggleFavorite(product.id)
+      
+      if (success) {
+        toast.success(
+          wasFavorite 
+            ? 'Eliminado de favoritos' 
+            : 'Agregado a favoritos'
+        )
+      } else {
+        toast.error('Error al actualizar favoritos')
+      }
+    } catch (error) {
+      console.error('Error in handleAddToFavorites:', error)
       toast.error('Error al actualizar favoritos')
     }
   }
@@ -144,12 +148,10 @@ export function ProductCard({ product }: ProductCardProps) {
                   ? 'text-red-500 border-red-200 bg-red-50 hover:bg-red-100' 
                   : 'text-gray-400 border-gray-200 hover:text-red-400 hover:border-red-200'
               }`}
-              onClick={() => {
-                console.log('🖱️ Heart button clicked!', product.id)
-                handleAddToFavorites()
-              }}
+              onClick={handleAddToFavorites}
               disabled={favoritesLoading}
               type="button"
+              title={isFavorite(product.id) ? 'Eliminar de favoritos' : 'Agregar a favoritos'}
             >
               <Heart className={`w-5 h-5 ${isFavorite(product.id) ? 'fill-current' : ''}`} />
             </button>
@@ -267,23 +269,52 @@ export function ProductCard({ product }: ProductCardProps) {
             
           </div>
 
-          {/* Precio Mayorista */}
-          <div className="space-y-2">
-            <div className="space-y-1">
+          {/* Precio Mayorista - Sección Mejorada */}
+          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 border-2 border-orange-200 p-4 shadow-sm hover:shadow-md transition-all duration-300">
+            {/* Decoración de fondo */}
+            <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-orange-200/30 to-amber-200/30 rounded-full blur-2xl -mr-10 -mt-10"></div>
+            <div className="absolute bottom-0 left-0 w-16 h-16 bg-gradient-to-tr from-yellow-200/30 to-orange-200/30 rounded-full blur-xl -ml-8 -mb-8"></div>
+            
+            <div className="relative space-y-3">
+              {/* Badge destacado */}
+              <div className="flex items-center justify-between">
+                <Badge className="bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold px-3 py-1 text-xs shadow-md border-0">
+                  💼 Precio Mayorista
+                </Badge>
+                {hasDiscount && (
+                  <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold px-2 py-1 text-xs shadow-md border-0">
+                    Ahorra {discountPercentage}%
+                  </Badge>
+                )}
+              </div>
+
+              {/* Precio destacado */}
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-gray-900">
+                <span className="text-3xl font-extrabold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
                   {formatPrice(product.wholesale_price)}
                 </span>
-                <span className="text-sm text-gray-500">por unidad</span>
+                <span className="text-sm font-medium text-orange-700">por unidad</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs px-2 py-1 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border-blue-200">
-                  Precio Mayorista
-                </Badge>
-                <span className="text-xs text-blue-600 font-medium">
-                  Compra mínima: 5 unidades
-                </span>
+
+              {/* Información adicional */}
+              <div className="flex items-center gap-2 pt-2 border-t border-orange-200/50">
+                <div className="flex items-center gap-1.5 text-xs text-orange-700">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="font-semibold">Compra mínima:</span>
+                  <span className="font-bold">5 unidades</span>
+                </div>
               </div>
+
+              {/* Precio regular tachado si hay descuento */}
+              {hasDiscount && (
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-gray-500 line-through">
+                    Precio regular: {formatPrice(product.price)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 

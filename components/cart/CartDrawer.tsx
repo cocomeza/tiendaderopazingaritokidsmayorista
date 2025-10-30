@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useCartStore } from '@/lib/stores/cart'
+import { toast } from 'sonner'
 
 export function CartButton() {
   const { getTotalItems } = useCartStore()
@@ -26,16 +27,25 @@ export function CartButton() {
 
 export function CartDrawer() {
   const [isOpen, setIsOpen] = useState(false)
-  const { items, updateQuantity, removeItem, clearCart, getTotalWholesalePrice } = useCartStore()
+  const { items, updateQuantity, removeItem, clearCart, getTotalWholesalePrice, getTotalItems } = useCartStore()
 
   const total = getTotalWholesalePrice()
-  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0)
+  const totalItems = getTotalItems()
 
   const abrirWhatsApp = () => {
+    // Verificar que el total de unidades sea >= 5
+    if (totalItems < 5) {
+      toast.error('Compra mínima requerida', {
+        description: 'Debes agregar al menos 5 unidades en total para realizar un pedido. Actualmente tienes ' + totalItems + ' unidades.',
+        duration: 5000,
+      })
+      return
+    }
+
     const numero = '543407498045'
     const mensaje = `Hola! Quiero hacer un pedido MAYORISTA:\n\n${items.map(item => 
       `• ${item.name} - Cantidad: ${item.quantity} - $${(item.wholesale_price * item.quantity).toLocaleString('es-AR')}`
-    ).join('\n')}\n\nTotal: $${total.toLocaleString('es-AR')}\n\n(Compra mínima: 5 unidades por producto)`
+    ).join('\n')}\n\nTotal: $${total.toLocaleString('es-AR')}\n\n(Compra mínima: 5 unidades en total)`
     
     window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank')
   }
@@ -143,11 +153,28 @@ export function CartDrawer() {
 
             {items.length > 0 && (
               <div className="border-t p-4 space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-semibold">Total:</span>
-                  <span className="text-xl font-bold text-purple-600">
-                    ${total.toLocaleString('es-AR')}
-                  </span>
+                <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-3 border border-purple-100 mb-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-lg font-semibold text-gray-700">Total:</span>
+                    <span className="text-xl font-bold text-purple-600">
+                      ${total.toLocaleString('es-AR')}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-gray-600 text-center">
+                      Compra mínima: 5 unidades en total
+                    </p>
+                    {totalItems < 5 && (
+                      <p className="text-xs font-semibold text-orange-600 text-center bg-orange-50 rounded-lg py-1 px-2">
+                        ⚠️ Faltan {5 - totalItems} unidad{5 - totalItems !== 1 ? 'es' : ''} para realizar el pedido
+                      </p>
+                    )}
+                    {totalItems >= 5 && (
+                      <p className="text-xs font-semibold text-green-600 text-center bg-green-50 rounded-lg py-1 px-2">
+                        ✅ Cumples con el mínimo de compra
+                      </p>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="flex gap-2">
@@ -160,10 +187,15 @@ export function CartDrawer() {
                   </Button>
                   <Button
                     onClick={abrirWhatsApp}
-                    className="flex-1 bg-green-600 hover:bg-green-700"
+                    disabled={totalItems < 5}
+                    className={`flex-1 h-11 font-bold transition-all duration-200 ${
+                      totalItems >= 5
+                        ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60'
+                    }`}
                   >
                     <MessageCircle className="w-4 h-4 mr-2" />
-                    Pedir por WhatsApp
+                    {totalItems >= 5 ? 'Pedir por WhatsApp' : `Faltan ${5 - totalItems} unidades`}
                   </Button>
                 </div>
               </div>

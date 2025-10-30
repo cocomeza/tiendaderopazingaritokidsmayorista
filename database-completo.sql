@@ -86,7 +86,14 @@ create table if not exists profiles (
   city text,
   province text,
   postal_code text,
+  company_name text,
+  cuit text,
+  billing_address text,
+  locality text,
+  sales_type text,
+  ages text,
   is_admin boolean default false,
+  is_active boolean default true,
   is_wholesale_client boolean default true,
   min_order_amount numeric(10, 2) default 0,
   created_at timestamp with time zone default now(),
@@ -96,6 +103,7 @@ create table if not exists profiles (
 -- Índices para profiles
 create index if not exists profiles_email_idx on profiles(email);
 create index if not exists profiles_is_admin_idx on profiles(is_admin);
+create index if not exists profiles_is_active_idx on profiles(is_active);
 create index if not exists profiles_is_wholesale_client_idx on profiles(is_wholesale_client);
 
 -- Habilitar RLS
@@ -133,6 +141,24 @@ create policy "Users can insert own profile"
 create policy "Users can update own profile"
   on profiles for update
   using (auth.uid() = id);
+
+-- Política: Admins pueden actualizar todos los perfiles
+create policy "Admins can update all profiles"
+  on profiles for update
+  using (
+    exists (
+      select 1 from profiles 
+      where id = auth.uid() 
+      and is_admin = true
+    )
+  )
+  with check (
+    exists (
+      select 1 from profiles 
+      where id = auth.uid() 
+      and is_admin = true
+    )
+  );
 
 -- Política: Solo admins pueden eliminar perfiles
 create policy "Only admins can delete profiles"

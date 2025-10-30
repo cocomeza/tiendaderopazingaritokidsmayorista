@@ -22,9 +22,15 @@ export default function FavoritosPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Cargar productos favoritos
+  // Cargar productos favoritos desde la base de datos
   const loadFavoriteProducts = async () => {
-    if (!user || favorites.length === 0) {
+    if (!user || !isAuthenticated) {
+      setProducts([])
+      setLoading(false)
+      return
+    }
+
+    if (favorites.length === 0) {
       setProducts([])
       setLoading(false)
       return
@@ -32,45 +38,24 @@ export default function FavoritosPage() {
 
     setLoading(true)
     try {
+      // Cargar productos usando una consulta que incluye la relación con favorites
       const { data, error } = await supabase
         .from('products')
-        .select(`
-          id,
-          name,
-          description,
-          sku,
-          price,
-          wholesale_price,
-          cost_price,
-          stock,
-          low_stock_threshold,
-          category_id,
-          subcategory,
-          sizes,
-          colors,
-          gender,
-          age_range,
-          season,
-          material,
-          care_instructions,
-          featured,
-          active,
-          images,
-          tags,
-          weight,
-          dimensions,
-          created_at,
-          updated_at
-        `)
+        .select('*')
         .in('id', favorites)
         .eq('active', true)
+        .order('created_at', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error('Error loading favorite products:', error)
+        throw error
+      }
 
       setProducts(data || [])
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading favorite products:', error)
-      toast.error('Error al cargar productos favoritos')
+      toast.error('Error al cargar productos favoritos: ' + (error.message || 'Error desconocido'))
+      setProducts([])
     } finally {
       setLoading(false)
     }
@@ -91,12 +76,17 @@ export default function FavoritosPage() {
 
   // Eliminar de favoritos
   const handleRemoveFromFavorites = async (productId: string) => {
-    const success = await removeFromFavorites(productId)
-    if (success) {
-      toast.success('Eliminado de favoritos')
-      // Recargar productos
-      loadFavoriteProducts()
-    } else {
+    try {
+      const success = await removeFromFavorites(productId)
+      if (success) {
+        toast.success('Eliminado de favoritos')
+        // Actualizar la lista local removiendo el producto
+        setProducts(prev => prev.filter(p => p.id !== productId))
+      } else {
+        toast.error('Error al eliminar de favoritos')
+      }
+    } catch (error) {
+      console.error('Error removing from favorites:', error)
       toast.error('Error al eliminar de favoritos')
     }
   }
@@ -112,8 +102,10 @@ export default function FavoritosPage() {
   }
 
   useEffect(() => {
-    loadFavoriteProducts()
-  }, [favorites, user])
+    if (isAuthenticated && user) {
+      loadFavoriteProducts()
+    }
+  }, [favorites, user, isAuthenticated])
 
   if (!isAuthenticated) {
     return (
@@ -230,23 +222,47 @@ export default function FavoritosPage() {
                       </p>
                     </div>
 
-                    {/* Precio Mayorista */}
-                    <div className="space-y-2">
-                      <div className="space-y-1">
+                    {/* Precio Mayorista - Sección Mejorada */}
+                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 border-2 border-orange-200 p-4 shadow-sm hover:shadow-md transition-all duration-300">
+                      {/* Decoración de fondo */}
+                      <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-orange-200/30 to-amber-200/30 rounded-full blur-2xl -mr-10 -mt-10"></div>
+                      <div className="absolute bottom-0 left-0 w-16 h-16 bg-gradient-to-tr from-yellow-200/30 to-orange-200/30 rounded-full blur-xl -ml-8 -mb-8"></div>
+                      
+                      <div className="relative space-y-3">
+                        {/* Badge destacado */}
+                        <div className="flex items-center justify-between">
+                          <Badge className="bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold px-3 py-1 text-xs shadow-md border-0">
+                            💼 Precio Mayorista
+                          </Badge>
+                        </div>
+
+                        {/* Precio destacado */}
                         <div className="flex items-baseline gap-2">
-                          <span className="text-2xl font-bold text-gray-900">
+                          <span className="text-3xl font-extrabold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
                             {formatPrice(product.wholesale_price)}
                           </span>
-                          <span className="text-sm text-gray-500">por unidad</span>
+                          <span className="text-sm font-medium text-orange-700">por unidad</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs px-2 py-1 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border-blue-200">
-                            Precio Mayorista
-                          </Badge>
-                          <span className="text-xs text-blue-600 font-medium">
-                            Compra mínima: 5 unidades
-                          </span>
+
+                        {/* Información adicional */}
+                        <div className="flex items-center gap-2 pt-2 border-t border-orange-200/50">
+                          <div className="flex items-center gap-1.5 text-xs text-orange-700">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="font-semibold">Compra mínima:</span>
+                            <span className="font-bold">5 unidades</span>
+                          </div>
                         </div>
+
+                        {/* Precio regular si existe */}
+                        {product.price && product.price !== product.wholesale_price && (
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="text-gray-500 line-through">
+                              Precio regular: {formatPrice(product.price)}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
 

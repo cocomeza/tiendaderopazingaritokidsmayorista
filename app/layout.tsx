@@ -1,10 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import { Toaster } from 'sonner'
-import Navbar from '@/components/Navbar'
-import Footer from '@/components/Footer'
-import { ErrorBoundary } from '@/components/ui/error-boundary'
+import { LayoutWrapper } from '@/components/layout-wrapper'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -111,20 +108,9 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
       </head>
       <body className={`${inter.className} antialiased`}>
-        <ErrorBoundary>
-          <Navbar />
-          <main className="min-h-screen">
-            {children}
-          </main>
-          <Footer />
-          <Toaster 
-            position="top-right"
-            expand={true}
-            richColors={true}
-            closeButton={true}
-            duration={4000}
-          />
-        </ErrorBoundary>
+        <LayoutWrapper>
+          {children}
+        </LayoutWrapper>
       </body>
     </html>
   )
