@@ -123,7 +123,8 @@ export default function EditarProductoPage() {
           images: data.images || [],
           active: data.active || true
         })
-        setImagePreviews(data.images || [])
+        // Las imágenes existentes se manejan a través de formData.images
+        // No necesitamos setImagePreviews ya que el nuevo sistema usa ImageUploader
       }
     } catch (error) {
       console.error('Error cargando producto:', error)
