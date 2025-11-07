@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { supabase } from '@/lib/supabase/client-fixed'
+import { supabase } from '@/lib/supabase/client'
 import { 
   Users, 
   ShoppingBag, 

@@ -19,13 +19,28 @@ import { useState } from 'react'
 import { Plus, Minus, Trash2, MessageCircle, X } from 'lucide-react'
 import { toast } from 'sonner'
 
-export function UserMenu() {
+interface UserMenuProps {
+  cartDrawerOpen?: boolean
+  setCartDrawerOpen?: (open: boolean) => void
+}
+
+const DATOS_TRANSFERENCIA = {
+  alias: 'ZINGARITO.KIDS',
+  cbu: '0170123456789012345678',
+  medios: 'Transferencia bancaria, efectivo o cheque'
+}
+
+export function UserMenu({ cartDrawerOpen: externalCartDrawerOpen, setCartDrawerOpen: externalSetCartDrawerOpen }: UserMenuProps = {}) {
   const { user, isAuthenticated, signOut } = useAuth()
   const { favorites } = useFavorites()
   const { isAdmin } = useAdmin()
   const { getTotalItems, items, updateQuantity, removeItem, clearCart, getTotalWholesalePrice } = useCartStore()
   const router = useRouter()
-  const [cartDrawerOpen, setCartDrawerOpen] = useState(false)
+  const [internalCartDrawerOpen, setInternalCartDrawerOpen] = useState(false)
+  
+  // Usar el estado externo si está disponible, sino el interno
+  const cartDrawerOpen = externalCartDrawerOpen !== undefined ? externalCartDrawerOpen : internalCartDrawerOpen
+  const setCartDrawerOpen = externalSetCartDrawerOpen || setInternalCartDrawerOpen
 
   const totalCartItems = getTotalItems()
   const cartTotal = getTotalWholesalePrice()
@@ -40,10 +55,46 @@ export function UserMenu() {
       return
     }
 
-    const numero = '543407498045'
-    const mensaje = `Hola! Quiero hacer un pedido MAYORISTA:\n\n${items.map(item => 
-      `• ${item.name} - Cantidad: ${item.quantity} - $${(item.wholesale_price * item.quantity).toLocaleString('es-AR')}`
-    ).join('\n')}\n\nTotal: $${cartTotal.toLocaleString('es-AR')}\n\n(Compra mínima: 5 unidades por producto)`
+    const numero = '543407440243'
+    const resumenProductos = items.map(item => {
+      const detalles = [
+        item.size ? `Talle: ${item.size}` : null,
+        item.color ? `Color: ${item.color}` : null,
+      ].filter(Boolean).join(' | ')
+
+      const resumenProducto = detalles ? `${item.name} (${detalles})` : item.name
+
+      return `• ${resumenProducto} - Cantidad: ${item.quantity} - $${(item.wholesale_price * item.quantity).toLocaleString('es-AR')}`
+    }).join('\n')
+
+    const total = `Total: $${cartTotal.toLocaleString('es-AR')}`
+
+    const datosTransferencia =
+      DATOS_TRANSFERENCIA.alias || DATOS_TRANSFERENCIA.cbu || DATOS_TRANSFERENCIA.medios
+        ? [
+            'Datos para pago:',
+            DATOS_TRANSFERENCIA.medios ? `Medios aceptados: ${DATOS_TRANSFERENCIA.medios}` : null,
+            DATOS_TRANSFERENCIA.alias ? `Alias: ${DATOS_TRANSFERENCIA.alias}` : null,
+            DATOS_TRANSFERENCIA.cbu ? `CBU: ${DATOS_TRANSFERENCIA.cbu}` : null,
+            'Recordá enviar el comprobante o captura del pago para confirmar tu pedido.'
+          ]
+            .filter(Boolean)
+            .join('\n')
+        : ''
+
+    const mensaje = [
+      'Hola! Quiero hacer un pedido MAYORISTA:',
+      '',
+      resumenProductos,
+      '',
+      total,
+      '',
+      'Compra mínima: 5 unidades por producto',
+      '',
+      datosTransferencia
+    ]
+      .filter(Boolean)
+      .join('\n')
     
     window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank')
   }
@@ -146,10 +197,21 @@ export function UserMenu() {
                           </div>
                           
                           {/* Información del producto */}
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0 space-y-1">
                             <h4 className="font-bold text-sm sm:text-base text-gray-900 mb-1.5 line-clamp-2">
                               {item.name}
                             </h4>
+                            {(item.size || item.color) && (
+                              <div className="flex flex-wrap items-center gap-1 text-[11px] sm:text-xs text-gray-500">
+                                {item.size && <span>Talle: {item.size}</span>}
+                                {item.size && item.color && <span className="text-gray-300">|</span>}
+                                {item.color && <span>Color: {item.color}</span>}
+                              </div>
+                            )}
+                            <div className="flex items-center gap-1 text-[11px] sm:text-xs text-gray-500">
+                              <span>Cantidad:</span>
+                              <span className="font-semibold text-gray-700">{item.quantity}</span>
+                            </div>
                             
                             {/* Precio unitario y subtotal */}
                             <div className="space-y-0.5">
@@ -313,101 +375,50 @@ export function UserMenu() {
               </div>
             </div>
             
-            <div className="space-y-2.5">
-          {/* Si es admin, solo mostrar panel admin. Si no, mostrar opciones de cliente */}
-          {isAdmin ? (
+            {/* Solo opciones de cliente - SIN cerrar sesión (está en navbar) */}
+            <div className="space-y-2">
               <DropdownMenuItem 
-                onClick={() => router.push('/admin')}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer hover:bg-gradient-to-r hover:from-purple-50 hover:to-indigo-50 transition-all duration-200 group active:bg-purple-100"
+                onClick={() => router.push('/mi-perfil')}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer hover:bg-gradient-to-r hover:from-blue-50 hover:to-cyan-50 transition-all duration-200 group active:bg-blue-100"
               >
-                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center group-hover:shadow-lg transition-shadow flex-shrink-0">
-                  <Shield className="w-5 h-5 text-white" />
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center group-hover:shadow-lg transition-shadow flex-shrink-0">
+                  <Settings className="w-5 h-5 text-white" />
                 </div>
-                <span className="font-semibold text-gray-900 text-base">Panel Administrativo</span>
-            </DropdownMenuItem>
-          ) : (
-            <>
-                {/* Mi Perfil */}
-                <DropdownMenuItem 
-                  onClick={() => router.push('/mi-perfil')}
-                  className="flex items-center gap-3 px-4 py-3.5 rounded-xl cursor-pointer hover:bg-gradient-to-r hover:from-blue-50 hover:to-cyan-50 transition-all duration-200 group active:bg-blue-100"
-                >
-                  <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center group-hover:shadow-lg transition-shadow flex-shrink-0">
-                    <Settings className="w-5 h-5 text-white" />
-                  </div>
-                  <span className="font-semibold text-gray-900 text-base">Mi Perfil</span>
+                <span className="font-semibold text-gray-900 text-base">Mi Perfil</span>
               </DropdownMenuItem>
-                
-                <DropdownMenuItem 
-                  onClick={() => router.push('/mis-pedidos')}
-                  className="flex items-center gap-3 px-4 py-3.5 rounded-xl cursor-pointer hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 transition-all duration-200 group active:bg-green-100"
-                >
-                  <div className="w-11 h-11 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center group-hover:shadow-lg transition-shadow flex-shrink-0">
-                    <ShoppingBag className="w-5 h-5 text-white" />
-                  </div>
-                  <span className="font-semibold text-gray-900 text-base">Mis Pedidos</span>
+              
+              <DropdownMenuItem 
+                onClick={() => router.push('/mis-pedidos')}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 transition-all duration-200 group active:bg-green-100"
+              >
+                <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center group-hover:shadow-lg transition-shadow flex-shrink-0">
+                  <ShoppingBag className="w-5 h-5 text-white" />
+                </div>
+                <span className="font-semibold text-gray-900 text-base">Mis Pedidos</span>
               </DropdownMenuItem>
-                
-                <DropdownMenuItem 
-                  onClick={() => router.push('/favoritos')}
-                  className="flex items-center gap-3 px-4 py-3.5 rounded-xl cursor-pointer hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 transition-all duration-200 group active:bg-red-100"
-                >
-                  <div className="w-11 h-11 bg-gradient-to-br from-red-500 to-pink-600 rounded-xl flex items-center justify-center group-hover:shadow-lg transition-shadow relative flex-shrink-0">
-                    <Heart className="w-5 h-5 text-white" />
-                    {favorites.length > 0 && (
-                      <span className="absolute -top-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center border-2 border-white shadow-md">
-                        <span className="text-xs font-bold text-red-600">{favorites.length}</span>
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between flex-1 min-w-0">
-                    <span className="font-semibold text-gray-900 text-base truncate">Mis Favoritos</span>
-                {favorites.length > 0 && (
-                      <Badge className="bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs px-3 py-1 rounded-full font-bold shadow-md ml-2 flex-shrink-0">
-                    {favorites.length}
-                  </Badge>
-                )}
-                  </div>
-                </DropdownMenuItem>
-
-                {/* Mi Carrito - IMPORTANTE: Siempre visible para clientes */}
-                <DropdownMenuItem 
-                  onClick={handleCartClick}
-                  className="flex items-center gap-3 px-4 py-3.5 rounded-xl cursor-pointer hover:bg-gradient-to-r hover:from-orange-50 hover:to-amber-50 transition-all duration-200 group active:bg-orange-100"
-                  data-testid="carrito-menu-item"
-                >
-                  <div className="w-11 h-11 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center group-hover:shadow-lg transition-shadow relative flex-shrink-0">
-                    <ShoppingCart className="w-5 h-5 text-white" />
-                    {totalCartItems > 0 && (
-                      <span className="absolute -top-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center border-2 border-white shadow-md">
-                        <span className="text-xs font-bold text-orange-600">{totalCartItems}</span>
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between flex-1 min-w-0">
-                    <span className="font-semibold text-gray-900 text-base truncate">Mi Carrito</span>
-                    {totalCartItems > 0 && (
-                      <Badge className="bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs px-3 py-1 rounded-full font-bold shadow-md ml-2 flex-shrink-0">
-                        {totalCartItems}
-                      </Badge>
-                    )}
-                  </div>
+              
+              <DropdownMenuItem 
+                onClick={() => router.push('/favoritos')}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 transition-all duration-200 group active:bg-red-100"
+              >
+                <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-pink-600 rounded-xl flex items-center justify-center group-hover:shadow-lg transition-shadow relative flex-shrink-0">
+                  <Heart className="w-5 h-5 text-white" />
+                  {favorites.length > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center border-2 border-white shadow-md">
+                      <span className="text-xs font-bold text-red-600">{favorites.length}</span>
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center justify-between flex-1 min-w-0">
+                  <span className="font-semibold text-gray-900 text-base">Favoritos</span>
+                  {favorites.length > 0 && (
+                    <Badge className="bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">
+                      {favorites.length}
+                    </Badge>
+                  )}
+                </div>
               </DropdownMenuItem>
-            </>
-          )}
             </div>
-            
-            <div className="my-3 border-t border-gray-200"></div>
-            
-            <DropdownMenuItem 
-              onClick={handleSignOut}
-              className="flex items-center gap-3 px-4 py-3.5 rounded-xl cursor-pointer hover:bg-gradient-to-r hover:from-red-50 hover:to-orange-50 transition-all duration-200 group text-red-600 hover:text-red-700 active:bg-red-100"
-            >
-              <div className="w-11 h-11 bg-gradient-to-br from-red-500 to-orange-600 rounded-xl flex items-center justify-center group-hover:shadow-lg transition-shadow flex-shrink-0">
-                <LogOut className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-semibold text-base">Cerrar Sesión</span>
-            </DropdownMenuItem>
           </div>
         </DropdownMenuContent>
       </DropdownMenu>

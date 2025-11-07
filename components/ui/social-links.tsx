@@ -27,7 +27,7 @@ export function SocialLinks({
   }
 
   const abrirWhatsApp = () => {
-    const numero = '543407498045'
+    const numero = '543407440243'
     const mensaje = encodeURIComponent('Hola! Me gustaría obtener más información sobre Zingarito Kids Mayorista.')
     window.open(`https://wa.me/${numero}?text=${mensaje}`, '_blank')
   }

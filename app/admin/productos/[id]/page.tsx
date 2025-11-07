@@ -8,23 +8,24 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { supabase } from '@/lib/supabase/client-fixed'
+import { Badge } from '@/components/ui/badge'
+import { supabase } from '@/lib/supabase/client'
 import { 
   Save,
   ArrowLeft,
   Loader2,
-  Upload,
-  X,
-  Image as ImageIcon,
-  Trash2
+  X
 } from 'lucide-react'
 import { Spotlight } from '@/components/ui/spotlight'
 import { TextGenerateEffect } from '@/components/ui/text-generate-effect'
 import { BackgroundBeams } from '@/components/ui/background-beams'
 import { CardHoverEffect } from '@/components/ui/card-hover-effect'
 import { motion } from 'framer-motion'
-import { OptimizedImage } from '@/components/ui/optimized-image'
 import { ImageUploader } from '@/components/admin/ImageUploader'
+import { PRODUCT_SIZES } from '@/lib/config/product-sizes'
+import { PRODUCT_COLORS } from '@/lib/config/product-colors'
+import { AddCustomColor } from '@/components/admin/AddCustomColor'
+import { AddCustomSize } from '@/components/admin/AddCustomSize'
 
 interface Category {
   id: string
@@ -58,6 +59,8 @@ export default function EditarProductoPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingImages, setUploadingImages] = useState(false)
+  const [customColors, setCustomColors] = useState<string[]>([])
+  const [customSizes, setCustomSizes] = useState<string[]>([])
   
   // Nuevo formato para imágenes
   interface ImageFile {
@@ -69,6 +72,76 @@ export default function EditarProductoPage() {
   }
   const [imageFiles, setImageFiles] = useState<ImageFile[]>([])
   
+  type VariantFormEntry = {
+    key: string
+    size: string | null
+    color: string | null
+    stock: number
+  }
+
+  const [variantMatrix, setVariantMatrix] = useState<Record<string, VariantFormEntry>>({})
+
+  const getVariantKey = (size: string | null, color: string | null) => `${size ?? 'null'}__${color ?? 'null'}`
+
+  const generateVariantCombos = (sizes: string[], colors: string[]) => {
+    if (sizes.length > 0 && colors.length > 0) {
+      return sizes.flatMap((size) => colors.map((color) => ({ size, color })))
+    }
+
+    if (sizes.length > 0) {
+      return sizes.map((size) => ({ size, color: null as string | null }))
+    }
+
+    if (colors.length > 0) {
+      return colors.map((color) => ({ size: null as string | null, color }))
+    }
+
+    return []
+  }
+
+  const updateVariantMatrix = (sizes: string[], colors: string[]) => {
+    setVariantMatrix((prev) => {
+      const combos = generateVariantCombos(sizes, colors)
+
+      if (combos.length === 0) {
+        return {}
+      }
+
+      const next: Record<string, VariantFormEntry> = {}
+
+      combos.forEach(({ size, color }) => {
+        const key = getVariantKey(size, color)
+        const previousEntry = prev[key]
+
+        next[key] = {
+          key,
+          size,
+          color,
+          stock: previousEntry ? previousEntry.stock : 0,
+        }
+      })
+
+      return next
+    })
+  }
+
+  const handleVariantStockInput = (key: string, value: string) => {
+    const parsedValue = Math.max(0, parseInt(value, 10) || 0)
+
+    setVariantMatrix((prev) => {
+      const entry = prev[key]
+      if (!entry) return prev
+
+      return {
+        ...prev,
+        [key]: {
+          ...entry,
+          stock: parsedValue,
+        },
+      }
+    })
+  }
+
   const [product, setProduct] = useState<Product | null>(null)
   const [formData, setFormData] = useState({
     name: '',
@@ -89,8 +162,21 @@ export default function EditarProductoPage() {
     if (productId) {
       loadProduct()
       loadCategories()
+      loadCustomColors()
+      loadCustomSizes()
     }
   }, [productId])
+
+  const variantEntries = Object.values(variantMatrix)
+  const sortedVariantEntries = [...variantEntries].sort((a, b) => {
+    const sizeComparison = (a.size ?? '').localeCompare(b.size ?? '')
+    if (sizeComparison !== 0) return sizeComparison
+    return (a.color ?? '').localeCompare(b.color ?? '')
+  })
+  const usingVariants = variantEntries.length > 0
+  const totalVariantStock = variantEntries.reduce((sum, entry) => sum + entry.stock, 0)
+  const hasSizesSelected = formData.sizes.length > 0
+  const hasColorsSelected = formData.colors.length > 0
 
   const loadProduct = async () => {
     try {
@@ -125,11 +211,48 @@ export default function EditarProductoPage() {
         })
         // Las imágenes existentes se manejan a través de formData.images
         // No necesitamos setImagePreviews ya que el nuevo sistema usa ImageUploader
+        await loadVariants(data.id)
       }
     } catch (error) {
       console.error('Error cargando producto:', error)
       alert('Error al cargar el producto')
       router.push('/admin/productos')
+    }
+  }
+
+  const loadVariants = async (productIdToLoad: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('product_variants')
+        .select('id, size, color, stock, active')
+        .eq('product_id', productIdToLoad)
+
+      if (error) {
+        console.debug('Variantes no disponibles para producto', productIdToLoad, error)
+        setVariantMatrix({})
+        return
+      }
+
+      if (!data || data.length === 0) {
+        setVariantMatrix({})
+        return
+      }
+
+      const variantsMap: Record<string, VariantFormEntry> = {}
+
+      data.forEach((variant) => {
+        const key = getVariantKey(variant.size, variant.color)
+        variantsMap[key] = {
+          key,
+          size: variant.size,
+          color: variant.color,
+          stock: variant.stock ?? 0,
+        }
+      })
+
+      setVariantMatrix(variantsMap)
+    } catch (err) {
+      console.error('Error general cargando variantes:', err)
     }
   }
 
@@ -153,6 +276,66 @@ export default function EditarProductoPage() {
     }
   }
 
+  const loadCustomColors = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('custom_colors')
+        .select('name')
+        .order('name')
+
+      if (error) {
+        console.error('Error cargando colores personalizados:', error)
+        return
+      }
+
+      setCustomColors((data || []).map(c => c.name))
+    } catch (error) {
+      console.error('Error cargando colores personalizados:', error)
+    }
+  }
+
+  const loadCustomSizes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('custom_sizes')
+        .select('name')
+        .order('name')
+
+      if (error) {
+        console.error('Error cargando tallas personalizadas:', error)
+        return
+      }
+
+      setCustomSizes((data || []).map(s => s.name))
+    } catch (error) {
+      console.error('Error cargando tallas personalizadas:', error)
+    }
+  }
+
+  const handleColorAdded = (colorName: string) => {
+    setCustomColors(prev => [...prev, colorName])
+    setFormData(prev => {
+      const updatedColors = Array.from(new Set([...prev.colors, colorName]))
+      updateVariantMatrix(prev.sizes, updatedColors)
+      return {
+        ...prev,
+        colors: updatedColors
+      }
+    })
+  }
+
+  const handleSizeAdded = (sizeName: string) => {
+    setCustomSizes(prev => [...prev, sizeName])
+    setFormData(prev => {
+      const updatedSizes = Array.from(new Set([...prev.sizes, sizeName]))
+      updateVariantMatrix(updatedSizes, prev.colors)
+      return {
+        ...prev,
+        sizes: updatedSizes
+      }
+    })
+  }
+
   const handleSaveProduct = async () => {
     // Validaciones básicas
     if (!formData.name.trim()) {
@@ -160,13 +343,22 @@ export default function EditarProductoPage() {
       return
     }
 
-    if (formData.price <= 0) {
-      alert('El precio minorista debe ser mayor a 0')
+    if (formData.wholesale_price <= 0) {
+      alert('El precio mayorista debe ser mayor a 0')
       return
     }
 
-    if (formData.wholesale_price <= 0) {
-      alert('El precio mayorista debe ser mayor a 0')
+    const variantEntriesForSubmit = Object.values(variantMatrix)
+    const useVariants = variantEntriesForSubmit.length > 0
+    const totalVariantStockForSubmit = variantEntriesForSubmit.reduce((sum, entry) => sum + entry.stock, 0)
+
+    if (useVariants && totalVariantStockForSubmit === 0) {
+      alert('Asigná stock a al menos una variante antes de guardar')
+      return
+    }
+
+    if (!useVariants && formData.stock <= 0) {
+      alert('El stock debe ser mayor a 0')
       return
     }
 
@@ -177,20 +369,38 @@ export default function EditarProductoPage() {
       
       // Combinar imágenes existentes con las nuevas
       const allImages = [...formData.images, ...newImageUrls]
+
+      const uniqueSizes = useVariants
+        ? Array.from(new Set(
+            variantEntriesForSubmit
+              .map((entry) => entry.size)
+              .filter((size): size is string => Boolean(size))
+          ))
+        : formData.sizes
+
+      const uniqueColors = useVariants
+        ? Array.from(new Set(
+            variantEntriesForSubmit
+              .map((entry) => entry.color)
+              .filter((color): color is string => Boolean(color))
+          ))
+        : formData.colors
+
+      const totalStockToSave = useVariants ? totalVariantStockForSubmit : formData.stock
       
       const { error } = await supabase
         .from('products')
         .update({
           name: formData.name.trim(),
           description: formData.description.trim() || null,
-          price: formData.price,
+          price: formData.wholesale_price, // Usar el precio mayorista como precio de referencia
           wholesale_price: formData.wholesale_price,
           cost_price: formData.cost_price || null,
-          stock: formData.stock,
+          stock: totalStockToSave,
           low_stock_threshold: formData.low_stock_threshold,
           category_id: formData.category_id || null,
-          sizes: formData.sizes,
-          colors: formData.colors,
+          sizes: uniqueSizes,
+          colors: uniqueColors,
           images: allImages,
           active: formData.active
         })
@@ -200,6 +410,36 @@ export default function EditarProductoPage() {
         console.error('Error actualizando producto:', error)
         alert('Error al actualizar el producto: ' + error.message)
         return
+      }
+
+      // Actualizar variantes en la base de datos
+      const { error: deleteError } = await supabase
+        .from('product_variants')
+        .delete()
+        .eq('product_id', productId)
+
+      if (deleteError) {
+        console.debug('No se pudieron limpiar variantes previas, se continuará con el guardado.', deleteError)
+      }
+
+      if (useVariants && variantEntriesForSubmit.length > 0) {
+        const variantPayload = variantEntriesForSubmit.map((entry) => ({
+          product_id: productId,
+          size: entry.size,
+          color: entry.color,
+          stock: entry.stock,
+          active: entry.stock > 0,
+        }))
+
+        const { error: insertError } = await supabase
+          .from('product_variants')
+          .insert(variantPayload)
+
+        if (insertError) {
+          console.error('Error insertando variantes:', insertError)
+          alert('El producto se actualizó, pero ocurrió un error guardando las variantes: ' + insertError.message)
+          return
+        }
       }
 
       alert('Producto actualizado exitosamente!')
@@ -213,31 +453,33 @@ export default function EditarProductoPage() {
   }
 
   const handleSizeChange = (size: string, checked: boolean) => {
-    if (checked) {
-      setFormData(prev => ({
+    setFormData(prev => {
+      const updatedSizes = checked
+        ? Array.from(new Set([...prev.sizes, size]))
+        : prev.sizes.filter(s => s !== size)
+
+      updateVariantMatrix(updatedSizes, prev.colors)
+
+      return {
         ...prev,
-        sizes: [...prev.sizes, size]
-      }))
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        sizes: prev.sizes.filter(s => s !== size)
-      }))
-    }
+        sizes: updatedSizes
+      }
+    })
   }
 
   const handleColorChange = (color: string, checked: boolean) => {
-    if (checked) {
-      setFormData(prev => ({
+    setFormData(prev => {
+      const updatedColors = checked
+        ? Array.from(new Set([...prev.colors, color]))
+        : prev.colors.filter(c => c !== color)
+
+      updateVariantMatrix(prev.sizes, updatedColors)
+
+      return {
         ...prev,
-        colors: [...prev.colors, color]
-      }))
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        colors: prev.colors.filter(c => c !== color)
-      }))
-    }
+        colors: updatedColors
+      }
+    })
   }
 
   // Las funciones handleImageUpload y removeImage ahora se manejan en ImageUploader
@@ -405,28 +647,18 @@ export default function EditarProductoPage() {
 
                   {/* Precios y Stock */}
                   <div className="space-y-3 sm:space-y-4">
-                    <h3 className="text-base sm:text-lg font-semibold text-gray-800 border-b pb-2">Precios Mayoristas y Stock</h3>
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-800 border-b pb-2">Precio Mayorista y Stock</h3>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Precio de Referencia (Retail) *</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Precio Mayorista *</label>
                       <Input
                         type="number"
-                        value={formData.price}
-                        onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
-                        placeholder="0"
-                        className="w-full text-sm sm:text-base"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">Precio de referencia para comparación</p>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Precio Mayorista (Principal) *</label>
-                      <Input
-                        type="number"
+                        step="0.01"
                         value={formData.wholesale_price}
                         onChange={(e) => setFormData(prev => ({ ...prev, wholesale_price: parseFloat(e.target.value) || 0 }))}
-                        placeholder="0"
+                        placeholder="0.00"
                         className="w-full text-sm sm:text-base"
+                        required
                       />
                       <p className="text-xs text-gray-500 mt-1">Precio que verán los clientes - Compra mínima 5 unidades</p>
                     </div>
@@ -446,11 +678,21 @@ export default function EditarProductoPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">Stock Actual</label>
                       <Input
                         type="number"
-                        value={formData.stock}
-                        onChange={(e) => setFormData(prev => ({ ...prev, stock: parseInt(e.target.value) || 0 }))}
+                        value={usingVariants ? totalVariantStock : formData.stock}
+                        onChange={(e) => {
+                          if (usingVariants) return
+                          const parsed = Math.max(0, parseInt(e.target.value, 10) || 0)
+                          setFormData(prev => ({ ...prev, stock: parsed }))
+                        }}
                         placeholder="0"
                         className="w-full text-sm sm:text-base"
+                        disabled={usingVariants}
                       />
+                      {usingVariants && (
+                        <p className="text-xs text-purple-600 mt-1">
+                          El stock total se calcula automáticamente a partir de las variantes ({totalVariantStock} unidades).
+                        </p>
+                      )}
                     </div>
                     
                     <div>
@@ -471,41 +713,205 @@ export default function EditarProductoPage() {
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Tallas Disponibles</label>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map(size => (
-                          <div key={size} className="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                            <Checkbox
-                              id={`size-${size}`}
-                              checked={formData.sizes.includes(size)}
-                              onCheckedChange={(checked) => handleSizeChange(size, checked as boolean)}
-                              className="border-2 border-gray-400 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 data-[state=checked]:text-white"
-                            />
-                            <label htmlFor={`size-${size}`} className="text-sm font-semibold text-gray-800 cursor-pointer">
-                              {size}
-                            </label>
+                      <div className="space-y-4">
+                        {/* Tallas Bebés */}
+                        <div>
+                          <p className="text-xs font-semibold text-gray-600 mb-2">BEBÉS</p>
+                          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                            {PRODUCT_SIZES.BEBES.map(size => (
+                              <div key={size} className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                <Checkbox
+                                  id={`size-${size}`}
+                                  checked={formData.sizes.includes(size)}
+                                  onCheckedChange={(checked) => handleSizeChange(size, checked as boolean)}
+                                  className="border-2 border-gray-400 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 data-[state=checked]:text-white"
+                                />
+                                <label htmlFor={`size-${size}`} className="text-xs font-semibold text-gray-800 cursor-pointer">
+                                  {size}
+                                </label>
+                              </div>
+                            ))}
                           </div>
-                        ))}
+                        </div>
+                        
+                        {/* Tallas Niños */}
+                        <div>
+                          <p className="text-xs font-semibold text-gray-600 mb-2">NIÑOS</p>
+                          <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                            {PRODUCT_SIZES.NINOS.map(size => (
+                              <div key={size} className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                <Checkbox
+                                  id={`size-${size}`}
+                                  checked={formData.sizes.includes(size)}
+                                  onCheckedChange={(checked) => handleSizeChange(size, checked as boolean)}
+                                  className="border-2 border-gray-400 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 data-[state=checked]:text-white"
+                                />
+                                <label htmlFor={`size-${size}`} className="text-xs font-semibold text-gray-800 cursor-pointer">
+                                  {size}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        {/* Tallas Adultos */}
+                        <div>
+                          <p className="text-xs font-semibold text-gray-600 mb-2">ADULTOS</p>
+                          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                            {PRODUCT_SIZES.ADULTOS.map(size => (
+                              <div key={size} className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                <Checkbox
+                                  id={`size-${size}`}
+                                  checked={formData.sizes.includes(size)}
+                                  onCheckedChange={(checked) => handleSizeChange(size, checked as boolean)}
+                                  className="border-2 border-gray-400 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 data-[state=checked]:text-white"
+                                />
+                                <label htmlFor={`size-${size}`} className="text-xs font-semibold text-gray-800 cursor-pointer">
+                                  {size}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        {/* Tallas Zapatos */}
+                        <div>
+                          <p className="text-xs font-semibold text-gray-600 mb-2">ZAPATOS (17-44)</p>
+                          <div className="grid grid-cols-4 sm:grid-cols-7 md:grid-cols-10 gap-2 max-h-48 overflow-y-auto">
+                            {PRODUCT_SIZES.ZAPATOS.map(size => (
+                              <div key={size} className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                <Checkbox
+                                  id={`size-${size}`}
+                                  checked={formData.sizes.includes(size)}
+                                  onCheckedChange={(checked) => handleSizeChange(size, checked as boolean)}
+                                  className="border-2 border-gray-400 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 data-[state=checked]:text-white"
+                                />
+                                <label htmlFor={`size-${size}`} className="text-xs font-semibold text-gray-800 cursor-pointer">
+                                  {size}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        {/* Tallas Personalizadas */}
+                        {customSizes.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold text-gray-600 mb-2">TALLAS PERSONALIZADAS ⭐</p>
+                            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                              {customSizes.map(size => (
+                                <div key={`custom-${size}`} className="flex items-center space-x-2 p-2 bg-green-50 rounded-lg hover:bg-green-100 transition-colors border border-green-200">
+                                  <Checkbox
+                                    id={`size-custom-${size}`}
+                                    checked={formData.sizes.includes(size)}
+                                    onCheckedChange={(checked) => handleSizeChange(size, checked as boolean)}
+                                    className="border-2 border-green-400 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 data-[state=checked]:text-white"
+                                  />
+                                  <label htmlFor={`size-custom-${size}`} className="text-xs font-semibold text-green-800 cursor-pointer">
+                                    {size} ⭐
+                                  </label>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
+                      <AddCustomSize 
+                        onSizeAdded={handleSizeAdded}
+                        existingSizes={[...PRODUCT_SIZES.ALL, ...customSizes]}
+                      />
                     </div>
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Colores Disponibles</label>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {['Blanco', 'Negro', 'Azul', 'Rojo', 'Verde', 'Amarillo', 'Rosa', 'Gris'].map(color => (
-                          <div key={color} className="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-96 overflow-y-auto">
+                        {/* Colores estándar */}
+                        {PRODUCT_COLORS.map(color => (
+                          <div key={color} className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                             <Checkbox
                               id={`color-${color}`}
                               checked={formData.colors.includes(color)}
                               onCheckedChange={(checked) => handleColorChange(color, checked as boolean)}
                               className="border-2 border-gray-400 data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600 data-[state=checked]:text-white"
                             />
-                            <label htmlFor={`color-${color}`} className="text-sm font-semibold text-gray-800 cursor-pointer">
+                            <label htmlFor={`color-${color}`} className="text-xs font-semibold text-gray-800 cursor-pointer">
                               {color}
                             </label>
                           </div>
                         ))}
+                        {/* Colores personalizados */}
+                        {customColors.map(color => (
+                          <div key={`custom-${color}`} className="flex items-center space-x-2 p-2 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors border border-purple-200">
+                            <Checkbox
+                              id={`color-custom-${color}`}
+                              checked={formData.colors.includes(color)}
+                              onCheckedChange={(checked) => handleColorChange(color, checked as boolean)}
+                              className="border-2 border-purple-400 data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600 data-[state=checked]:text-white"
+                            />
+                            <label htmlFor={`color-custom-${color}`} className="text-xs font-semibold text-purple-800 cursor-pointer">
+                              {color} ⭐
+                            </label>
+                          </div>
+                        ))}
                       </div>
+                      <AddCustomColor 
+                        onColorAdded={handleColorAdded}
+                        existingColors={[...PRODUCT_COLORS, ...customColors]}
+                      />
                     </div>
+
+                    {usingVariants && (
+                      <div className="space-y-3">
+                        <h4 className="text-sm sm:text-base font-semibold text-gray-800 border-b pb-2">Stock por combinación</h4>
+                        <div className="rounded-xl border border-purple-100 bg-white/80 p-3 sm:p-4 shadow-sm">
+                          <p className="text-xs text-gray-500 mb-3">
+                            Actualizá el stock por talle y color para mantener la disponibilidad real del producto.
+                          </p>
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full text-xs sm:text-sm">
+                              <thead className="bg-purple-50">
+                                <tr>
+                                  {hasSizesSelected && <th className="px-3 py-2 text-left font-semibold text-purple-700">Talle</th>}
+                                  {hasColorsSelected && <th className="px-3 py-2 text-left font-semibold text-purple-700">Color</th>}
+                                  <th className="px-3 py-2 text-left font-semibold text-purple-700">Stock</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {sortedVariantEntries.map((entry) => (
+                                  <tr key={entry.key} className="border-b last:border-0">
+                                    {hasSizesSelected && (
+                                      <td className="px-3 py-2 font-medium text-gray-700">
+                                        {entry.size || '—'}
+                                      </td>
+                                    )}
+                                    {hasColorsSelected && (
+                                      <td className="px-3 py-2 capitalize text-gray-700">
+                                        {entry.color || '—'}
+                                      </td>
+                                    )}
+                                    <td className="px-3 py-2">
+                                      <Input
+                                        type="number"
+                                        min={0}
+                                        value={entry.stock}
+                                        onChange={(e) => handleVariantStockInput(entry.key, e.target.value)}
+                                        className="w-24 text-sm"
+                                      />
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          <div className="mt-3 flex flex-wrap items-center gap-3">
+                            <Badge className="bg-purple-100 text-purple-700 border border-purple-200 font-semibold">
+                              Total disponible: {totalVariantStock} unidades
+                            </Badge>
+                            <span className="text-xs text-gray-500">El stock general del producto se sincroniza con este total.</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     
                     <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                       <Checkbox

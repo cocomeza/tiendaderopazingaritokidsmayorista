@@ -12,13 +12,15 @@ import { useAdmin } from '@/lib/hooks/useAdmin'
 import { Database } from '@/lib/types/database'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { QuickViewModal } from './QuickViewModal'
 
-type Product = Database['public']['Tables']['products']['Row']
+type ProductRow = Database['public']['Tables']['products']['Row']
+type ProductVariantRow = Database['public']['Tables']['product_variants']['Row']
+type ProductWithVariants = ProductRow & { product_variants?: ProductVariantRow[] }
 
 interface ProductCardProps {
-  product: Product
+  product: ProductWithVariants
 }
 
 export function ProductCard({ product }: ProductCardProps) {
@@ -31,24 +33,216 @@ export function ProductCard({ product }: ProductCardProps) {
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false)
   
   // Estados para selección de color y talle
-  const [selectedColor, setSelectedColor] = useState<string | null>(null)
-  const [selectedSize, setSelectedSize] = useState<string | null>(null)
+  const [selectedColorKey, setSelectedColorKey] = useState<string | null>(null)
+  const [selectedSizeKey, setSelectedSizeKey] = useState<string | null>(null)
   
-  // Obtener opciones disponibles
-  const colors = product.colors || []
-  const sizes = product.sizes || []
-  
-  // Calcular stock disponible basado en selección
-  const getAvailableStock = () => {
-    // Si no hay selección, mostrar stock general
-    if (!selectedColor && !selectedSize) {
-      return product.stock || 0
-    }
-    
-    // Por ahora, retornamos el stock general ya que no tenemos variantes cargadas
-    // Esto se puede mejorar cuando se carguen las variantes desde product_variants
-    return product.stock || 0
+  const normalize = (value: string | null | undefined) =>
+    (value ?? '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+
+  const variants = useMemo(
+    () => (product.product_variants ?? []).filter((variant) => variant && variant.active !== false),
+    [product.product_variants]
+  )
+
+  const hasVariants = variants.length > 0
+
+  type VariantColorOption = {
+    key: string
+    label: string
+    stock: number
+    variant?: ProductVariantRow
   }
+
+  type VariantSizeOption = {
+    key: string
+    label: string
+    totalStock: number
+    colors: VariantColorOption[]
+  }
+
+  const DEFAULT_SIZE_KEY = '__default_size__'
+  const DEFAULT_COLOR_KEY = '__default_color__'
+
+  const baseColorOptions: VariantColorOption[] = useMemo(() => {
+    if (!product.colors || product.colors.length === 0) {
+      return []
+    }
+    return product.colors.map((color) => ({
+      key: normalize(color),
+      label: color,
+      stock: product.stock || 0,
+    }))
+  }, [product.colors, product.stock])
+
+  const baseSizeOptions: VariantSizeOption[] = useMemo(() => {
+    if (!product.sizes || product.sizes.length === 0) {
+      return []
+    }
+
+    return product.sizes.map((size) => ({
+      key: normalize(size) || DEFAULT_SIZE_KEY,
+      label: size?.trim() || 'Único',
+      totalStock: product.stock || 0,
+      colors: [],
+    }))
+  }, [product.sizes, product.stock])
+
+  const { sizeOptions, aggregateColors, variantLookup, hasRealSizes, totalVariantStock } = useMemo(() => {
+    if (!hasVariants) {
+      const fallbackSizes = baseSizeOptions.length > 0
+        ? baseSizeOptions
+        : [{
+            key: DEFAULT_SIZE_KEY,
+            label: 'Único',
+            totalStock: product.stock || 0,
+            colors: [],
+          }]
+
+      return {
+        sizeOptions: fallbackSizes,
+        aggregateColors: baseColorOptions,
+        variantLookup: new Map<string, ProductVariantRow>(),
+        hasRealSizes: baseSizeOptions.length > 0,
+        totalVariantStock: product.stock || 0,
+      }
+    }
+
+    const sizeMap = new Map<string, {
+      key: string
+      label: string
+      totalStock: number
+      colors: Map<string, VariantColorOption>
+    }>()
+
+    const aggregateColorMap = new Map<string, VariantColorOption>()
+    const lookup = new Map<string, ProductVariantRow>()
+
+    variants.forEach((variant) => {
+      const stock = variant.stock ?? 0
+      const sizeKey = normalize(variant.size) || DEFAULT_SIZE_KEY
+      const sizeLabel = variant.size?.trim() || 'Único'
+      const colorKey = normalize(variant.color) || DEFAULT_COLOR_KEY
+      const colorLabel = variant.color?.trim() || 'Color único'
+
+      let sizeEntry = sizeMap.get(sizeKey)
+      if (!sizeEntry) {
+        sizeEntry = {
+          key: sizeKey,
+          label: sizeLabel,
+          totalStock: 0,
+          colors: new Map(),
+        }
+        sizeMap.set(sizeKey, sizeEntry)
+      }
+
+      sizeEntry.totalStock += stock
+
+      let colorEntry = sizeEntry.colors.get(colorKey)
+      if (!colorEntry) {
+        colorEntry = {
+          key: colorKey,
+          label: colorLabel,
+          stock: 0,
+          variant,
+        }
+        sizeEntry.colors.set(colorKey, colorEntry)
+      }
+      colorEntry.stock += stock
+      colorEntry.variant = variant
+
+      const aggregateEntry = aggregateColorMap.get(colorKey)
+      if (!aggregateEntry) {
+        aggregateColorMap.set(colorKey, {
+          key: colorKey,
+          label: colorLabel,
+          stock,
+          variant,
+        })
+      } else {
+        aggregateEntry.stock += stock
+        if (!aggregateEntry.variant) {
+          aggregateEntry.variant = variant
+        }
+      }
+
+      lookup.set(`${sizeKey}::${colorKey}`, variant)
+    })
+
+    const normalizedSizeOptions: VariantSizeOption[] = Array.from(sizeMap.values()).map((entry) => ({
+      key: entry.key,
+      label: entry.label,
+      totalStock: entry.totalStock,
+      colors: Array.from(entry.colors.values()).sort((a, b) =>
+        a.label.localeCompare(b.label, 'es', { sensitivity: 'base', numeric: true })
+      ),
+    })).sort((a, b) =>
+      a.label.localeCompare(b.label, 'es', { sensitivity: 'base', numeric: true })
+    )
+
+    const normalizedColors: VariantColorOption[] = Array.from(aggregateColorMap.values()).sort((a, b) =>
+      a.label.localeCompare(b.label, 'es', { sensitivity: 'base', numeric: true })
+    )
+
+    const totalVariantStock = normalizedSizeOptions.reduce((sum, option) => sum + option.totalStock, 0)
+    const hasRealSizes = normalizedSizeOptions.length > 1 || (normalizedSizeOptions[0] && normalizedSizeOptions[0].key !== DEFAULT_SIZE_KEY)
+
+    return {
+      sizeOptions: normalizedSizeOptions,
+      aggregateColors: normalizedColors,
+      variantLookup: lookup,
+      hasRealSizes,
+      totalVariantStock,
+    }
+  }, [hasVariants, variants, baseSizeOptions, baseColorOptions, product.stock])
+
+  const showSizeOptions = hasVariants ? hasRealSizes : baseSizeOptions.length > 0
+
+  const currentSizeKey = showSizeOptions
+    ? (selectedSizeKey && sizeOptions.some((option) => option.key === selectedSizeKey)
+        ? selectedSizeKey
+        : sizeOptions[0]?.key ?? DEFAULT_SIZE_KEY)
+    : (hasVariants ? DEFAULT_SIZE_KEY : baseSizeOptions[0]?.key ?? DEFAULT_SIZE_KEY)
+
+  const currentSizeOption = showSizeOptions
+    ? sizeOptions.find((option) => option.key === currentSizeKey)
+    : baseSizeOptions.find((option) => option.key === currentSizeKey)
+
+  const colorOptions: VariantColorOption[] = hasVariants
+    ? showSizeOptions
+      ? currentSizeOption?.colors ?? []
+      : aggregateColors
+    : baseColorOptions
+
+  const showColorOptions = colorOptions.length > 0
+  const disableColorSelection = hasVariants && showSizeOptions && currentSizeKey === null
+
+  const selectedColorOption = showColorOptions
+    ? colorOptions.find((option) => option.key === (selectedColorKey && colorOptions.some((opt) => opt.key === selectedColorKey)
+        ? selectedColorKey
+        : colorOptions[0]?.key ?? null))
+    : undefined
+
+  const selectedSizeLabel = showSizeOptions
+    ? currentSizeOption?.label ?? 'Único'
+    : hasVariants
+      ? (sizeOptions[0]?.label ?? 'Único')
+      : null
+
+  const selectedColorLabel = showColorOptions
+    ? selectedColorOption?.label ?? 'Elegí'
+    : null
+
+  const availableStock = hasVariants
+    ? showColorOptions
+      ? selectedColorOption?.stock ?? 0
+      : currentSizeOption?.totalStock ?? totalVariantStock
+    : product.stock || 0
+
+  const overallStock = hasVariants ? totalVariantStock : product.stock || 0
   
   // Obtener imágenes del producto
   const images = product.images || []
@@ -107,26 +301,108 @@ export function ProductCard({ product }: ProductCardProps) {
       return
     }
 
-    try {
+    if (hasVariants) {
+      if (showSizeOptions && !currentSizeKey) {
+        toast.error('Elegí un talle disponible antes de agregar al carrito')
+        return
+      }
+
+      if (showColorOptions && !selectedColorKey) {
+        toast.error(
+          disableColorSelection
+            ? 'Elegí un talle para ver los colores disponibles'
+            : 'Elegí un color disponible antes de agregar al carrito'
+        )
+        return
+      }
+
+      const sizeKeyForVariant = showSizeOptions ? currentSizeKey ?? DEFAULT_SIZE_KEY : DEFAULT_SIZE_KEY
+      const colorKeyForVariant = showColorOptions
+        ? (selectedColorKey && colorOptions.some((option) => option.key === selectedColorKey)
+            ? selectedColorKey
+            : colorOptions[0]?.key ?? DEFAULT_COLOR_KEY)
+        : DEFAULT_COLOR_KEY
+
+      let targetVariant = variantLookup.get(`${sizeKeyForVariant}::${colorKeyForVariant}`)
+
+      if (!targetVariant && showSizeOptions && !showColorOptions) {
+        targetVariant = variantLookup.get(`${sizeKeyForVariant}::${DEFAULT_COLOR_KEY}`)
+      }
+
+      if (!targetVariant && !showSizeOptions && showColorOptions) {
+        targetVariant = variantLookup.get(`${DEFAULT_SIZE_KEY}::${colorKeyForVariant}`)
+      }
+
+      if (!targetVariant) {
+        targetVariant = variants.find(
+          (variant) => normalize(variant.size) === sizeKeyForVariant && normalize(variant.color) === colorKeyForVariant
+        )
+      }
+
+      if (!targetVariant) {
+        toast.error('No encontramos stock para esa combinación. Probá con otra.')
+        return
+      }
+
+      const variantStock = targetVariant.stock ?? 0
+
+      if (variantStock <= 0) {
+        toast.error('Sin stock para la combinación seleccionada.')
+        return
+      }
+
+      const variantSize = showSizeOptions
+        ? sizeOptions.find((option) => option.key === sizeKeyForVariant)?.label ?? targetVariant.size ?? undefined
+        : targetVariant.size ?? undefined
+
+      const variantColor = showColorOptions
+        ? colorOptions.find((option) => option.key === colorKeyForVariant)?.label ?? targetVariant.color ?? undefined
+        : targetVariant.color ?? undefined
+
       addItem({
-        id: product.id,
+        id: `${product.id}::${targetVariant.id}`,
+        productId: product.id,
+        variantId: targetVariant.id,
         name: product.name,
         price: product.price,
         wholesale_price: product.wholesale_price || product.price,
         image: product.images?.[0] || '/placeholder.jpg',
-        stock: product.stock || 0,
+        stock: variantStock,
+        size: variantSize,
+        color: variantColor,
       })
+
       toast.success('Producto agregado al carrito')
-    } catch (error) {
-      console.error('Error adding to cart:', error)
-      toast.error('Error al agregar al carrito')
+      return
     }
+
+    if (availableStock <= 0) {
+      toast.error('Este producto no tiene stock disponible en este momento.')
+      return
+    }
+
+    addItem({
+      id: product.id,
+      productId: product.id,
+      name: product.name,
+      price: product.price,
+      wholesale_price: product.wholesale_price || product.price,
+      image: product.images?.[0] || '/placeholder.jpg',
+      stock: availableStock,
+      size: selectedSizeLabel ?? undefined,
+      color: selectedColorLabel ?? undefined,
+    })
+    toast.success('Producto agregado al carrito')
   }
 
   const handleAddToFavorites = async (e: React.MouseEvent) => {
     e.stopPropagation()
     
+    console.log('💗 handleAddToFavorites llamado para producto:', product.id, product.name)
+    console.log('Usuario autenticado:', isAuthenticated)
+    
     if (!isAuthenticated) {
+      console.log('⚠️ Usuario no autenticado')
       toast.error('Debes iniciar sesión para agregar productos a favoritos', {
         description: 'Serás redirigido al inicio de sesión',
         duration: 3000,
@@ -140,22 +416,38 @@ export function ProductCard({ product }: ProductCardProps) {
     }
 
     const wasFavorite = isFavorite(product.id)
+    console.log('Es favorito actualmente:', wasFavorite)
     
     try {
+      console.log('🔄 Llamando a toggleFavorite...')
       const success = await toggleFavorite(product.id)
+      console.log('Resultado toggleFavorite:', success)
       
       if (success) {
         toast.success(
           wasFavorite 
-            ? 'Eliminado de favoritos' 
-            : 'Agregado a favoritos'
+            ? '❤️ Eliminado de favoritos' 
+            : '💚 Agregado a favoritos',
+          {
+            description: wasFavorite 
+              ? 'El producto fue eliminado de tu lista' 
+              : 'El producto fue agregado a tu lista',
+            duration: 2000
+          }
         )
       } else {
-        toast.error('Error al actualizar favoritos')
+        console.error('❌ toggleFavorite retornó false')
+        toast.error('Error al actualizar favoritos', {
+          description: 'Por favor intenta nuevamente o verifica la consola',
+          duration: 4000
+        })
       }
-    } catch (error) {
-      console.error('Error in handleAddToFavorites:', error)
-      toast.error('Error al actualizar favoritos')
+    } catch (error: unknown) {
+      console.error('❌ ERROR CRÍTICO en handleAddToFavorites:', error)
+      toast.error('Error al actualizar favoritos', {
+        description: error instanceof Error ? error.message : 'Error desconocido. Revisa la consola del navegador.',
+        duration: 4000
+      })
     }
   }
 
@@ -180,9 +472,12 @@ export function ProductCard({ product }: ProductCardProps) {
       <Card className="overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 border-0 bg-gradient-to-br from-white to-gray-50 rounded-2xl relative shadow-lg hover:shadow-purple-500/30 animate-in fade-in">
         {/* Botón de favoritos - Solo para clientes, no para admins */}
         {!isAdmin && (
-          <div className="absolute top-4 right-4 z-20">
+          <div
+            className="absolute top-4 right-4 z-40"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
-              className={`w-10 h-10 p-0 bg-white hover:bg-gray-50 rounded-full shadow-lg border-2 transition-all duration-200 flex items-center justify-center ${
+              className={`w-10 h-10 p-0 bg-white hover:bg-gray-50 rounded-full shadow-lg border-2 transition-all duration-200 flex items-center justify-center pointer-events-auto ${
                 isFavorite(product.id) 
                   ? 'text-red-500 border-red-200 bg-red-50 hover:bg-red-100' 
                   : 'text-gray-400 border-gray-200 hover:text-red-400 hover:border-red-200'
@@ -266,13 +561,13 @@ export function ProductCard({ product }: ProductCardProps) {
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20"></div>
           
           {/* Botón de Vista Rápida - Aparece en hover */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-30">
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-30 pointer-events-none">
             <Button
               onClick={(e) => {
                 e.stopPropagation()
                 setIsQuickViewOpen(true)
               }}
-              className="bg-white text-purple-600 hover:bg-purple-50 font-semibold px-6 py-3 rounded-full shadow-lg transform hover:scale-105 transition-all"
+              className="bg-white text-purple-600 hover:bg-purple-50 font-semibold px-6 py-3 rounded-full shadow-lg transform hover:scale-105 transition-all pointer-events-auto"
             >
               <Eye className="w-5 h-5 mr-2" />
               Vista Rápida
@@ -280,7 +575,7 @@ export function ProductCard({ product }: ProductCardProps) {
           </div>
           
           {/* Badge de descuento */}
-          {hasDiscount && (
+        {hasDiscount && (
             <div className="absolute bottom-4 left-4 z-20">
               <Badge className="bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold px-3 py-1 text-sm rounded-full shadow-lg">
                 -{discountPercentage}%
@@ -289,7 +584,7 @@ export function ProductCard({ product }: ProductCardProps) {
           )}
 
           {/* Overlay de sin stock */}
-          {product.stock === 0 && (
+        {overallStock === 0 && (
             <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-20">
               <Badge className="bg-gray-800 text-white font-bold px-4 py-2 text-sm rounded-full">
                 Sin Stock
@@ -357,67 +652,88 @@ export function ProductCard({ product }: ProductCardProps) {
             </div>
           </div>
 
-          {/* Selección de Color */}
-          {product.colors && product.colors.length > 0 && (
+          {/* Selección de Talle */}
+          {showSizeOptions && (
             <div className="space-y-2">
               <label className="text-sm font-semibold text-gray-900">
-                Color: <span className="text-purple-600 capitalize">{selectedColor || 'Elegí'}</span>
-                {selectedColor && (
-                  <span className="text-xs text-gray-500 ml-2">({getAvailableStock()} disponibles)</span>
+                Talle: {selectedSizeLabel || 'Elegí'}
+                {selectedSizeLabel && (
+                  <span className="text-xs text-gray-500 ml-2">({availableStock} disponibles)</span>
                 )}
               </label>
               <div className="flex flex-wrap gap-2">
-                {product.colors.map((color, index) => (
-                  <button
-                    key={color}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setSelectedColor(color)
-                      setSelectedSize(null) // Limpiar talle al cambiar color
-                    }}
-                    className={`w-10 h-10 rounded-full border-2 transition-all ${
-                      selectedColor === color
-                        ? 'border-purple-600 scale-110 shadow-md'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                    title={color}
-                  >
-                    <div
-                      className="w-full h-full rounded-full"
-                      style={{ backgroundColor: getColorHex(color) }}
-                    />
-                  </button>
-                ))}
+                {sizeOptions.map((size) => {
+                  const sizeDisabled = size.totalStock <= 0
+                  return (
+                    <button
+                      key={size.key}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (sizeDisabled) return
+                        setSelectedSizeKey(size.key)
+                      }}
+                      disabled={sizeDisabled}
+                      className={`px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                        currentSizeKey === size.key
+                          ? 'border-purple-600 bg-purple-50 text-purple-600'
+                          : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                      } ${sizeDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                      title={`Stock disponible: ${size.totalStock}`}
+                    >
+                      <span className="block leading-none">{size.label}</span>
+                      <span className="block text-[10px] text-gray-500">{size.totalStock}</span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )}
 
-          {/* Selección de Talle */}
-          {product.sizes && product.sizes.length > 0 && (
+          {/* Selección de Color */}
+          {showColorOptions && (
             <div className="space-y-2">
               <label className="text-sm font-semibold text-gray-900">
-                Talle: {selectedSize || 'Elegí'}
-                {selectedSize && (
-                  <span className="text-xs text-gray-500 ml-2">({getAvailableStock()} disponibles)</span>
+                Color:{' '}
+                <span className="text-purple-600 capitalize">{selectedColorLabel || 'Elegí'}</span>
+                {selectedColorLabel && (
+                  <span className="text-xs text-gray-500 ml-2">({availableStock} disponibles)</span>
                 )}
               </label>
+              {disableColorSelection && (
+                <p className="text-xs text-gray-500">Primero elegí un talle para ver los colores disponibles.</p>
+              )}
               <div className="flex flex-wrap gap-2">
-                {product.sizes.map((size) => (
-                  <button
-                    key={size}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setSelectedSize(size)
-                      setSelectedColor(null) // Limpiar color al cambiar talle
-                    }}
-                    className={`w-12 h-12 text-sm font-medium rounded-lg border-2 transition-all ${
-                      selectedSize === size
-                        ? 'border-purple-600 bg-purple-50 text-purple-600'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                    }`}
-                  >
-                    {size}
-                  </button>
+                {colorOptions.map((color) => {
+                  const colorDisabled = disableColorSelection || (hasVariants ? color.stock <= 0 : false)
+                  return (
+                    <button
+                      key={color.key}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (colorDisabled) return
+                        setSelectedColorKey(color.key)
+                      }}
+                      disabled={colorDisabled}
+                      className={`w-10 h-10 rounded-full border-2 transition-all ${
+                        selectedColorKey === color.key
+                          ? 'border-purple-600 scale-110 shadow-md'
+                          : 'border-gray-200 hover:border-gray-300'
+                      } ${colorDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                      title={`Stock disponible: ${color.stock}`}
+                    >
+                      <div
+                        className="w-full h-full rounded-full"
+                        style={{ backgroundColor: getColorHex(color.label) }}
+                      />
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="flex flex-wrap gap-2 text-[10px] text-gray-500">
+                {colorOptions.map((color) => (
+                  <span key={`${color.key}-stock`} className="px-2 py-0.5 bg-gray-100 rounded-full">
+                    {color.label}: {color.stock}
+                  </span>
                 ))}
               </div>
             </div>
@@ -427,11 +743,11 @@ export function ProductCard({ product }: ProductCardProps) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${
-                getAvailableStock() > 10 ? 'bg-green-500' : 
-                getAvailableStock() > 0 ? 'bg-yellow-500' : 'bg-red-500'
+                availableStock > 10 ? 'bg-green-500' :
+                availableStock > 0 ? 'bg-yellow-500' : 'bg-red-500'
               }`} />
               <span className="text-sm text-gray-600">
-                {getAvailableStock() > 0 ? `${getAvailableStock()} disponibles` : 'Sin stock'}
+                {availableStock > 0 ? `${availableStock} disponibles` : 'Sin stock'}
               </span>
             </div>
             <span className="text-xs text-gray-500">Compra mín: 5</span>
@@ -441,11 +757,11 @@ export function ProductCard({ product }: ProductCardProps) {
           {!isAdmin ? (
             <Button
               onClick={handleAddToCart}
-              disabled={product.stock === 0}
+              disabled={availableStock === 0}
               className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white font-bold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-purple-500/30 transform hover:scale-105"
             >
               <ShoppingCart className="w-4 h-4 mr-2" />
-              {product.stock === 0 ? 'Sin Stock' : 'Agregar al Carrito'}
+              {availableStock === 0 ? 'Sin Stock' : 'Agregar al Carrito'}
             </Button>
           ) : (
             <Button

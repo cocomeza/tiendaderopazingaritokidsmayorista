@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { supabase } from '@/lib/supabase/client-fixed'
+import { supabase } from '@/lib/supabase/client'
 import { 
   Edit, 
   Trash2, 
@@ -21,7 +21,8 @@ import {
   X,
   ArrowLeft,
   Home,
-  LogOut
+  LogOut,
+  AlertTriangle
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -280,6 +281,14 @@ export default function AdminProductos() {
               >
                 {showInactive ? <EyeOff className="w-4 h-4 sm:w-5 sm:h-5 mr-2" /> : <Eye className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />}
                 {showInactive ? 'Ocultar Inactivos' : 'Mostrar Inactivos'}
+              </Button>
+              <Button 
+                variant="destructive"
+                className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 sm:px-8 py-3 sm:py-4 rounded-xl transition-all duration-300 w-full sm:w-auto"
+                onClick={() => router.push('/admin/productos/eliminar-masivo')}
+              >
+                <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                Eliminación Masiva
               </Button>
             </div>
           </div>

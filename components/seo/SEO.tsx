@@ -92,7 +92,7 @@ export function SEO({
             logo: 'https://zingaritokids.com/logo.png',
             contactPoint: {
               '@type': 'ContactPoint',
-              telephone: '+54-3407-498045',
+              telephone: '+54-3407-440243',
               contactType: 'customer service',
               availableLanguage: 'Spanish'
             },

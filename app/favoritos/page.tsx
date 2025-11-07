@@ -65,6 +65,8 @@ export default function FavoritosPage() {
   const handleAddToCart = (product: Product) => {
     addItem({
       id: product.id,
+      productId: product.id,
+      variantId: undefined,
       name: product.name,
       price: product.price,
       wholesale_price: product.wholesale_price || product.price,

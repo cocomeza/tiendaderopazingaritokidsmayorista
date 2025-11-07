@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { supabase } from '@/lib/supabase/client-fixed'
+import { supabase } from '@/lib/supabase/client'
 import { ArrowUp, ArrowDown, Percent, Package, AlertCircle, CheckCircle } from 'lucide-react'
 import { Spotlight } from '@/components/ui/spotlight'
 import { TextGenerateEffect } from '@/components/ui/text-generate-effect'
@@ -135,37 +135,157 @@ export default function PreciosPage() {
   }
 
   const applyPriceChanges = async () => {
-    if (!percentage || preview.length === 0) return
+    // Logging inmediato - DEBE aparecer SIEMPRE
+    console.log('🔴🔴🔴 FUNCIÓN applyPriceChanges LLAMADA 🔴🔴🔴')
+    console.log('=== INICIO applyPriceChanges ===')
+    console.log('Percentage:', percentage)
+    console.log('Preview length:', preview.length)
+    console.log('Loading state:', loading)
+    
+    if (!percentage || preview.length === 0) {
+      console.log('⚠️ Abortando: no hay percentage o preview vacío')
+      alert('No hay porcentaje o productos para actualizar')
+      return
+    }
 
     setLoading(true)
     setMessage(null)
 
     try {
-      const updates = preview.map(product => ({
-        id: product.id,
-        ...(priceType === 'all' || priceType === 'retail' ? { price: product.new_retail_price } : {}),
-        ...(priceType === 'all' || priceType === 'wholesale' ? { wholesale_price: product.new_wholesale_price } : {})
-      }))
+      console.log('Preparando updates...')
+      const updates = preview.map(product => {
+        const update: any = { id: product.id }
+        
+        // Redondear precios a 2 decimales y asegurarse de que sean números válidos
+        if (priceType === 'all' || priceType === 'retail') {
+          const newPrice = Math.round((product.new_retail_price || 0) * 100) / 100
+          if (!isNaN(newPrice) && newPrice > 0) {
+            update.price = newPrice
+          }
+        }
+        
+        if (priceType === 'all' || priceType === 'wholesale') {
+          const newWholesalePrice = Math.round((product.new_wholesale_price || 0) * 100) / 100
+          if (!isNaN(newWholesalePrice) && newWholesalePrice > 0) {
+            update.wholesale_price = newWholesalePrice
+          }
+        }
+        
+        return update
+      })
 
-      const { error } = await supabase
-        .from('products')
-        .upsert(updates)
+      console.log('✅ Updates preparados:', updates.length)
+      console.log('Primer update:', updates[0])
 
-      if (error) throw error
+      // Verificar que tenemos updates válidos
+      if (updates.length === 0) {
+        throw new Error('No hay productos para actualizar')
+      }
 
+      console.log('🚀 Iniciando actualización masiva...')
+      
+      // Extraer solo los IDs para actualizar
+      const productIds = updates.map(u => u.id)
+      console.log('IDs a actualizar:', productIds.length)
+      
+      // Preparar el objeto de actualización (solo los campos de precio)
+      const updateFields: any = {}
+      
+      if (priceType === 'all' || priceType === 'retail') {
+        // Para retail, necesitamos actualizar cada producto individualmente
+        // porque cada uno tiene un precio diferente
+      }
+      
+      if (priceType === 'all' || priceType === 'wholesale') {
+        // Para mayorista, igual necesitamos actualización individual
+      }
+      
+      // Actualizar en lotes de 50 productos para evitar timeout
+      const BATCH_SIZE = 50
+      let successCount = 0
+      let failedCount = 0
+      const errors: any[] = []
+      
+      for (let i = 0; i < updates.length; i += BATCH_SIZE) {
+        const batch = updates.slice(i, i + BATCH_SIZE)
+        console.log(`📦 Procesando lote ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(updates.length / BATCH_SIZE)} (${batch.length} productos)`)
+        
+        // Actualizar cada producto del lote
+        for (const update of batch) {
+          try {
+            const updateData: any = {}
+            if (update.price !== undefined) updateData.price = update.price
+            if (update.wholesale_price !== undefined) updateData.wholesale_price = update.wholesale_price
+            
+            const { error } = await supabase
+              .from('products')
+              .update(updateData)
+              .eq('id', update.id)
+            
+            if (error) {
+              console.error(`❌ Error en producto ${update.id}:`, error)
+              errors.push({ id: update.id, error })
+              failedCount++
+            } else {
+              successCount++
+            }
+          } catch (err) {
+            console.error(`❌ Excepción en producto ${update.id}:`, err)
+            errors.push({ id: update.id, error: err })
+            failedCount++
+          }
+        }
+        
+        // Pequeña pausa entre lotes para no saturar
+        if (i + BATCH_SIZE < updates.length) {
+          await new Promise(resolve => setTimeout(resolve, 100))
+        }
+      }
+
+      console.log('Respuesta de actualización:')
+      console.log('- Exitosos:', successCount)
+      console.log('- Fallidos:', failedCount)
+      console.log('- Total:', updates.length)
+
+      if (errors.length > 0) {
+        console.error('❌ Errores encontrados:', errors)
+        throw new Error(`${failedCount} productos fallaron al actualizar. ${successCount} actualizados correctamente.`)
+      }
+
+      console.log('✅ Actualización exitosa!')
+
+      // Mostrar mensaje de éxito ANTES de recargar
       setMessage({ 
         type: 'success', 
-        text: `Precios actualizados exitosamente para ${updates.length} productos` 
+        text: `¡Precios actualizados exitosamente para ${successCount} productos!` 
       })
       
+      // Hacer scroll hacia arriba para ver el mensaje
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      
+      // Esperar un momento para que el usuario vea el mensaje antes de recargar
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      
       // Recargar datos
+      console.log('Recargando datos...')
       await loadData()
       setPreview([])
       setPercentage('')
-    } catch (error) {
-      console.error('Error updating prices:', error)
-      setMessage({ type: 'error', text: 'Error al actualizar los precios' })
+      
+      console.log('=== FIN applyPriceChanges (exitoso) ===')
+    } catch (error: any) {
+      console.error('❌ ERROR CRÍTICO:', error)
+      console.error('Error name:', error?.name)
+      console.error('Error message:', error?.message)
+      console.error('Error stack:', error?.stack)
+      
+      setMessage({ 
+        type: 'error', 
+        text: `Error al actualizar los precios: ${error?.message || 'Error desconocido'}` 
+      })
+      console.log('=== FIN applyPriceChanges (con error) ===')
     } finally {
+      console.log('Limpiando loading state...')
       setLoading(false)
     }
   }
@@ -235,13 +355,16 @@ export default function PreciosPage() {
                     <div>
                       <Label htmlFor="category" className="text-gray-700 font-semibold mb-2 block">Categoría</Label>
                       <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                        <SelectTrigger className="bg-white border-gray-300 rounded-lg h-12 text-base shadow-sm hover:shadow-md transition-all duration-200">
+                        <SelectTrigger 
+                          size="lg"
+                          className="bg-white border-gray-300 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 font-medium"
+                        >
                           <SelectValue placeholder="Seleccionar categoría" />
                         </SelectTrigger>
                         <SelectContent className="max-h-[300px]">
-                          <SelectItem value="all" className="py-3 text-base">Todas las categorías</SelectItem>
+                          <SelectItem value="all">Todas las categorías</SelectItem>
                           {categories.map(category => (
-                            <SelectItem key={category.id} value={category.id} className="py-3 text-base">
+                            <SelectItem key={category.id} value={category.id}>
                               {category.name}
                             </SelectItem>
                           ))}
@@ -300,13 +423,24 @@ export default function PreciosPage() {
                     <div>
                       <Label htmlFor="priceType" className="text-gray-700 font-semibold mb-2 block">Tipo de Precio</Label>
                       <Select value={priceType} onValueChange={(value: any) => setPriceType(value)}>
-                        <SelectTrigger className="bg-white border-gray-300 rounded-lg h-12 text-base shadow-sm hover:shadow-md transition-all duration-200">
-                          <SelectValue />
+                        <SelectTrigger className="bg-white border-gray-300 rounded-lg h-12 text-base shadow-sm hover:shadow-md transition-all duration-200 w-full">
+                          <SelectValue placeholder="Selecciona el tipo de precio" />
                         </SelectTrigger>
-                        <SelectContent className="max-h-[200px]">
-                          <SelectItem value="wholesale" className="py-3 text-base">Mayorista</SelectItem>
+                        <SelectContent className="max-h-[300px] w-full">
+                          <SelectItem value="wholesale" className="py-3 text-base cursor-pointer hover:bg-purple-50">
+                            Mayorista
+                          </SelectItem>
+                          <SelectItem value="retail" className="py-3 text-base cursor-pointer hover:bg-purple-50">
+                            Minorista / Retail
+                          </SelectItem>
+                          <SelectItem value="all" className="py-3 text-base cursor-pointer hover:bg-purple-50">
+                            Ambos (Mayorista y Retail)
+                          </SelectItem>
                         </SelectContent>
                       </Select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Selecciona qué precios deseas ajustar
+                      </p>
                     </div>
 
                     <div className="pt-4">
@@ -327,7 +461,13 @@ export default function PreciosPage() {
                             <Badge variant="secondary" className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white">{preview.length}</Badge>
                           </div>
                           <Button 
-                            onClick={applyPriceChanges} 
+                            onClick={() => {
+                              console.log('🟢🟢🟢 BOTÓN APLICAR CAMBIOS CLICKEADO 🟢🟢🟢')
+                              console.log('Preview length al hacer click:', preview.length)
+                              console.log('Percentage al hacer click:', percentage)
+                              console.log('Loading al hacer click:', loading)
+                              applyPriceChanges()
+                            }} 
                             disabled={loading}
                             className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl"
                           >

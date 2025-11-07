@@ -17,7 +17,7 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 # INFORMACIÓN DEL NEGOCIO
 # =====================================================
 # Datos específicos de Zingarito Kids
-NEXT_PUBLIC_WHATSAPP_NUMBER=543407498045
+NEXT_PUBLIC_WHATSAPP_NUMBER=543407440243
 NEXT_PUBLIC_BUSINESS_EMAIL=zingaritokids@gmail.com
 NEXT_PUBLIC_BUSINESS_NAME=Zingarito Kids
 NEXT_PUBLIC_BUSINESS_PHONE=+54 340 749 8045

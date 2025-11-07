@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { supabase } from '@/lib/supabase/client-fixed'
+import { supabase } from '@/lib/supabase/client'
 
 export default function ProductosDebugPage() {
   const [products, setProducts] = useState<any[]>([])

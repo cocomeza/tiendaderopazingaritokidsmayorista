@@ -21,6 +21,8 @@ export function TestButton() {
     try {
       addItem({
         id: 'test-1',
+        productId: 'test-1',
+        variantId: undefined,
         name: 'Producto de Prueba',
         price: 1000,
         wholesale_price: 800,

@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { ShoppingCart, X, Plus, Minus, Trash2, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { useCartStore } from '@/lib/stores/cart'
 import { toast } from 'sonner'
 
@@ -42,9 +41,12 @@ export function CartDrawer() {
       return
     }
 
-    const numero = '543407498045'
+    const numero = '543407440243'
     const mensaje = `Hola! Quiero hacer un pedido MAYORISTA:\n\n${items.map(item => 
-      `• ${item.name} - Cantidad: ${item.quantity} - $${(item.wholesale_price * item.quantity).toLocaleString('es-AR')}`
+      `• ${item.name}${item.size || item.color ? ` (${[
+        item.size ? `Talle: ${item.size}` : null,
+        item.color ? `Color: ${item.color}` : null,
+      ].filter(Boolean).join(' | ')})` : ''} - Cantidad: ${item.quantity} - $${(item.wholesale_price * item.quantity).toLocaleString('es-AR')}`
     ).join('\n')}\n\nTotal: $${total.toLocaleString('es-AR')}\n\n(Compra mínima: 5 unidades en total)`
     
     window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank')
@@ -112,6 +114,13 @@ export function CartDrawer() {
                       />
                       <div className="flex-1">
                         <h4 className="font-semibold text-sm">{item.name}</h4>
+                        {(item.size || item.color) && (
+                          <p className="text-xs text-gray-500">
+                            {item.size && <span>Talle: {item.size}</span>}
+                            {item.size && item.color && <span className="mx-1">|</span>}
+                            {item.color && <span>Color: {item.color}</span>}
+                          </p>
+                        )}
                         <p className="text-sm font-semibold text-purple-600">
                           ${(item.wholesale_price * item.quantity).toLocaleString('es-AR')}
                         </p>

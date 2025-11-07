@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/lib/supabase/client-fixed'
+import { supabase } from '@/lib/supabase/client'
 import { useAuth } from './useAuth'
 
 export function useFavorites() {
@@ -74,31 +74,59 @@ export function useFavorites() {
 
   // Agregar a favoritos
   const addToFavorites = useCallback(async (productId: string): Promise<boolean> => {
+    console.log('🔵 addToFavorites llamado para producto:', productId)
+    console.log('Usuario autenticado:', isAuthenticated)
+    console.log('Usuario ID:', user?.id)
+    
     if (!isAuthenticated || !user) {
-      console.warn('Usuario no autenticado, no se puede agregar a favoritos')
+      console.warn('⚠️ Usuario no autenticado, no se puede agregar a favoritos')
       return false
     }
 
     try {
       // Verificar si ya es favorito
       if (favorites.includes(productId)) {
+        console.log('✅ Producto ya está en favoritos')
         return true
       }
 
+      console.log('📝 Intentando insertar en favorites...')
+      
       // Insertar en la base de datos
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('favorites')
         .insert({ 
           user_id: user.id, 
           product_id: productId 
         })
+        .select()
 
-      if (error && error.code !== '23505') {
+      console.log('Respuesta de Supabase:')
+      console.log('- Data:', data)
+      console.log('- Error:', error)
+
+      if (error) {
+        console.error('❌ Error de Supabase al agregar favorito:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        })
+        
         // Si es error de duplicado (23505), no es problema
+        if (error.code === '23505') {
+          console.log('ℹ️ Producto ya existe en favoritos (duplicado)')
+        }
         // Si la tabla no existe, continuar con localStorage
-        if (error.code === '42P01' || error.code === 'PGRST116') {
-          // Tabla no existe, solo usar localStorage
-        } else {
+        else if (error.code === '42P01' || error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+          console.warn('⚠️ Tabla favorites no existe, usando solo localStorage')
+        }
+        // Si es error de permisos RLS
+        else if (error.code === '42501' || error.message?.includes('policy')) {
+          console.error('❌ Error de permisos RLS en tabla favorites')
+          throw new Error('No tienes permisos para agregar favoritos. Contacta al administrador.')
+        }
+        else {
           throw error
         }
       }
@@ -110,12 +138,18 @@ export function useFavorites() {
         if (typeof window !== 'undefined') {
           localStorage.setItem('favorites', JSON.stringify(newFavorites))
         }
+        console.log('✅ Favoritos actualizados:', newFavorites.length)
         return newFavorites
       })
 
       return true
-    } catch (error) {
-      console.error('Error in addToFavorites:', error)
+    } catch (error: any) {
+      console.error('❌ ERROR CRÍTICO en addToFavorites:', error)
+      console.error('Error completo:', {
+        name: error?.name,
+        message: error?.message,
+        stack: error?.stack
+      })
       return false
     }
   }, [user, isAuthenticated, favorites])

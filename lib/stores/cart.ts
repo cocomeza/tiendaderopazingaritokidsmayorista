@@ -3,12 +3,16 @@ import { persist } from 'zustand/middleware'
 
 interface CartItem {
   id: string
+  productId: string
+  variantId?: string | null
   name: string
   price: number
   wholesale_price: number
   quantity: number
   image?: string
   stock: number
+  size?: string | null
+  color?: string | null
 }
 
 interface CartStore {

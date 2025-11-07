@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, ShoppingCart, Heart, Minus, Plus, Package, Tag, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -13,10 +13,12 @@ import { Database } from '@/lib/types/database'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 
-type Product = Database['public']['Tables']['products']['Row']
+type ProductRow = Database['public']['Tables']['products']['Row']
+type ProductVariantRow = Database['public']['Tables']['product_variants']['Row']
+type ProductWithVariants = ProductRow & { product_variants?: ProductVariantRow[] }
 
 interface QuickViewModalProps {
-  product: Product | null
+  product: ProductWithVariants | null
   isOpen: boolean
   onClose: () => void
 }
@@ -28,14 +30,303 @@ export function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps
   const router = useRouter()
   const [quantity, setQuantity] = useState(1)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [selectedSizeKey, setSelectedSizeKey] = useState<string | null>(null)
+  const [selectedColorKey, setSelectedColorKey] = useState<string | null>(null)
 
   // Resetear cantidad cuando cambia el producto
   useEffect(() => {
     setQuantity(1)
     setCurrentImageIndex(0)
+    setSelectedSizeKey(null)
+    setSelectedColorKey(null)
   }, [product])
 
   if (!product) return null
+
+  const normalize = (value: string | null | undefined) =>
+    (value ?? '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+
+  const variants = useMemo(
+    () => (product.product_variants ?? []).filter((variant) => variant && variant.active !== false),
+    [product.product_variants]
+  )
+  const hasVariants = variants.length > 0
+
+  type VariantColorOption = {
+    key: string
+    label: string
+    stock: number
+    variant?: ProductVariantRow
+  }
+
+  type VariantSizeOption = {
+    key: string
+    label: string
+    totalStock: number
+    colors: VariantColorOption[]
+  }
+
+  const DEFAULT_SIZE_KEY = '__default_size__'
+  const DEFAULT_COLOR_KEY = '__default_color__'
+
+  const baseColorOptions: VariantColorOption[] = useMemo(() => {
+    if (!product.colors || product.colors.length === 0) {
+      return []
+    }
+    return product.colors.map((color) => ({
+      key: normalize(color),
+      label: color,
+      stock: product.stock || 0,
+    }))
+  }, [product.colors, product.stock])
+
+  const baseSizeOptions: VariantSizeOption[] = useMemo(() => {
+    if (!product.sizes || product.sizes.length === 0) {
+      return []
+    }
+
+    return product.sizes.map((size) => ({
+      key: normalize(size) || DEFAULT_SIZE_KEY,
+      label: size?.trim() || 'Único',
+      totalStock: product.stock || 0,
+      colors: [],
+    }))
+  }, [product.sizes, product.stock])
+
+  const { sizeOptions, aggregateColors, variantLookup, hasRealSizes, totalVariantStock } = useMemo(() => {
+    if (!hasVariants) {
+      const fallbackSizes = baseSizeOptions.length > 0
+        ? baseSizeOptions
+        : [{
+            key: DEFAULT_SIZE_KEY,
+            label: 'Único',
+            totalStock: product.stock || 0,
+            colors: [],
+          }]
+
+      return {
+        sizeOptions: fallbackSizes,
+        aggregateColors: baseColorOptions,
+        variantLookup: new Map<string, ProductVariantRow>(),
+        hasRealSizes: baseSizeOptions.length > 0,
+        totalVariantStock: product.stock || 0,
+      }
+    }
+
+    const sizeMap = new Map<string, {
+      key: string
+      label: string
+      totalStock: number
+      colors: Map<string, VariantColorOption>
+    }>()
+
+    const aggregateColorMap = new Map<string, VariantColorOption>()
+    const lookup = new Map<string, ProductVariantRow>()
+
+    variants.forEach((variant) => {
+      const stock = variant.stock ?? 0
+      const sizeKey = normalize(variant.size) || DEFAULT_SIZE_KEY
+      const sizeLabel = variant.size?.trim() || 'Único'
+      const colorKey = normalize(variant.color) || DEFAULT_COLOR_KEY
+      const colorLabel = variant.color?.trim() || 'Color único'
+
+      let sizeEntry = sizeMap.get(sizeKey)
+      if (!sizeEntry) {
+        sizeEntry = {
+          key: sizeKey,
+          label: sizeLabel,
+          totalStock: 0,
+          colors: new Map(),
+        }
+        sizeMap.set(sizeKey, sizeEntry)
+      }
+
+      sizeEntry.totalStock += stock
+
+      let colorEntry = sizeEntry.colors.get(colorKey)
+      if (!colorEntry) {
+        colorEntry = {
+          key: colorKey,
+          label: colorLabel,
+          stock: 0,
+          variant,
+        }
+        sizeEntry.colors.set(colorKey, colorEntry)
+      }
+      colorEntry.stock += stock
+      colorEntry.variant = variant
+
+      const aggregateEntry = aggregateColorMap.get(colorKey)
+      if (!aggregateEntry) {
+        aggregateColorMap.set(colorKey, {
+          key: colorKey,
+          label: colorLabel,
+          stock,
+          variant,
+        })
+      } else {
+        aggregateEntry.stock += stock
+        if (!aggregateEntry.variant) {
+          aggregateEntry.variant = variant
+        }
+      }
+
+      lookup.set(`${sizeKey}::${colorKey}`, variant)
+    })
+
+    const normalizedSizeOptions: VariantSizeOption[] = Array.from(sizeMap.values()).map((entry) => ({
+      key: entry.key,
+      label: entry.label,
+      totalStock: entry.totalStock,
+      colors: Array.from(entry.colors.values()).sort((a, b) =>
+        a.label.localeCompare(b.label, 'es', { sensitivity: 'base', numeric: true })
+      ),
+    })).sort((a, b) =>
+      a.label.localeCompare(b.label, 'es', { sensitivity: 'base', numeric: true })
+    )
+
+    const normalizedColors: VariantColorOption[] = Array.from(aggregateColorMap.values()).sort((a, b) =>
+      a.label.localeCompare(b.label, 'es', { sensitivity: 'base', numeric: true })
+    )
+
+    const totalVariantStock = normalizedSizeOptions.reduce((sum, option) => sum + option.totalStock, 0)
+    const hasRealSizes = normalizedSizeOptions.length > 1 || (normalizedSizeOptions[0] && normalizedSizeOptions[0].key !== DEFAULT_SIZE_KEY)
+
+    return {
+      sizeOptions: normalizedSizeOptions,
+      aggregateColors: normalizedColors,
+      variantLookup: lookup,
+      hasRealSizes,
+      totalVariantStock,
+    }
+  }, [hasVariants, variants, baseSizeOptions, baseColorOptions, product.stock])
+
+  const showSizeOptions = hasVariants ? hasRealSizes : baseSizeOptions.length > 0
+
+  useEffect(() => {
+    if (!hasVariants) {
+      if (showSizeOptions) {
+        const defaultSizeKey = baseSizeOptions[0]?.key ?? DEFAULT_SIZE_KEY
+        setSelectedSizeKey((prev) => {
+          if (prev && baseSizeOptions.some((option) => option.key === prev)) {
+            return prev
+          }
+          return defaultSizeKey
+        })
+      } else {
+        setSelectedSizeKey(DEFAULT_SIZE_KEY)
+      }
+
+      if (baseColorOptions.length === 0) {
+        setSelectedColorKey(null)
+      } else {
+        setSelectedColorKey((prev) => {
+          if (prev && baseColorOptions.some((option) => option.key === prev)) {
+            return prev
+          }
+          return baseColorOptions[0]?.key ?? null
+        })
+      }
+      return
+    }
+
+    if (showSizeOptions) {
+      const defaultSizeKey = sizeOptions[0]?.key ?? DEFAULT_SIZE_KEY
+      setSelectedSizeKey((prev) => {
+        if (prev && sizeOptions.some((option) => option.key === prev)) {
+          return prev
+        }
+        return defaultSizeKey
+      })
+    } else {
+      setSelectedSizeKey(DEFAULT_SIZE_KEY)
+    }
+  }, [product.id, hasVariants, showSizeOptions, sizeOptions, baseSizeOptions, baseColorOptions])
+
+  const currentSizeKey = showSizeOptions
+    ? (selectedSizeKey && sizeOptions.some((option) => option.key === selectedSizeKey)
+        ? selectedSizeKey
+        : sizeOptions[0]?.key ?? DEFAULT_SIZE_KEY)
+    : (hasVariants ? DEFAULT_SIZE_KEY : baseSizeOptions[0]?.key ?? DEFAULT_SIZE_KEY)
+
+  const currentSizeOption = showSizeOptions
+    ? sizeOptions.find((option) => option.key === currentSizeKey)
+    : undefined
+
+  const colorOptions: VariantColorOption[] = hasVariants
+    ? showSizeOptions
+      ? currentSizeOption?.colors ?? []
+      : aggregateColors
+    : baseColorOptions
+
+  const showColorOptions = colorOptions.length > 0
+
+  useEffect(() => {
+    if (!hasVariants) {
+      if (baseColorOptions.length === 0) {
+        setSelectedColorKey(null)
+      } else {
+        setSelectedColorKey((prev) => {
+          if (prev && baseColorOptions.some((option) => option.key === prev)) {
+            return prev
+          }
+          return baseColorOptions[0]?.key ?? null
+        })
+      }
+      return
+    }
+
+    if (!showColorOptions) {
+      setSelectedColorKey(null)
+      return
+    }
+
+    setSelectedColorKey((prev) => {
+      if (prev && colorOptions.some((option) => option.key === prev)) {
+        return prev
+      }
+      return colorOptions[0]?.key ?? null
+    })
+  }, [product.id, hasVariants, showColorOptions, colorOptions, baseColorOptions])
+
+  const disableColorSelection = hasVariants && showSizeOptions && !currentSizeKey
+
+  const selectedColorOption = showColorOptions
+    ? colorOptions.find((option) => option.key === (selectedColorKey && colorOptions.some((opt) => opt.key === selectedColorKey)
+        ? selectedColorKey
+        : colorOptions[0]?.key ?? null))
+    : undefined
+
+  const selectedSizeLabel = showSizeOptions
+    ? currentSizeOption?.label ?? 'Único'
+    : hasVariants
+      ? (sizeOptions[0]?.label ?? 'Único')
+      : null
+
+  const selectedColorLabel = showColorOptions
+    ? selectedColorOption?.label ?? 'Elegí'
+    : null
+
+  const availableStock = hasVariants
+    ? showColorOptions
+      ? selectedColorOption?.stock ?? 0
+      : currentSizeOption?.totalStock ?? totalVariantStock
+    : product.stock || 0
+
+  useEffect(() => {
+    if (availableStock <= 0) {
+      setQuantity(1)
+      return
+    }
+
+    if (quantity > availableStock) {
+      setQuantity(availableStock)
+    }
+  }, [availableStock, quantity])
 
   const images = product.images || []
   const hasMultipleImages = images.length > 1
@@ -62,18 +353,116 @@ export function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps
       return
     }
 
-    for (let i = 0; i < quantity; i++) {
-      addItem({
-        id: product.id,
-        name: product.name,
-        wholesale_price: product.wholesale_price || product.price,
-        images: product.images,
-        stock: product.stock
-      })
+    if (hasVariants) {
+      if (showSizeOptions && !currentSizeKey) {
+        toast.error('Elegí un talle disponible antes de agregar al carrito')
+        return
+      }
+
+      if (showColorOptions && !selectedColorKey) {
+        toast.error(
+          disableColorSelection
+            ? 'Elegí un talle para ver los colores disponibles'
+            : 'Elegí un color disponible antes de agregar al carrito'
+        )
+        return
+      }
+
+      const sizeKeyForVariant = showSizeOptions ? currentSizeKey ?? DEFAULT_SIZE_KEY : DEFAULT_SIZE_KEY
+      const colorKeyForVariant = showColorOptions
+        ? (selectedColorKey && colorOptions.some((option) => option.key === selectedColorKey)
+            ? selectedColorKey
+            : colorOptions[0]?.key ?? DEFAULT_COLOR_KEY)
+        : DEFAULT_COLOR_KEY
+
+      let targetVariant = variantLookup.get(`${sizeKeyForVariant}::${colorKeyForVariant}`)
+
+      if (!targetVariant && showSizeOptions && !showColorOptions) {
+        targetVariant = variantLookup.get(`${sizeKeyForVariant}::${DEFAULT_COLOR_KEY}`)
+      }
+
+      if (!targetVariant && !showSizeOptions && showColorOptions) {
+        targetVariant = variantLookup.get(`${DEFAULT_SIZE_KEY}::${colorKeyForVariant}`)
+      }
+
+      if (!targetVariant) {
+        targetVariant = variants.find(
+          (variant) => normalize(variant.size) === sizeKeyForVariant && normalize(variant.color) === colorKeyForVariant
+        )
+      }
+
+      if (!targetVariant) {
+        toast.error('No encontramos stock para esa combinación. Probá con otra.')
+        return
+      }
+
+      const variantStock = targetVariant.stock ?? 0
+
+      if (variantStock <= 0) {
+        toast.error('Sin stock para la combinación seleccionada.')
+        return
+      }
+
+      const sizeLabelForCart = showSizeOptions
+        ? sizeOptions.find((option) => option.key === sizeKeyForVariant)?.label ?? targetVariant.size ?? null
+        : targetVariant.size ?? null
+
+      const colorLabelForCart = showColorOptions
+        ? colorOptions.find((option) => option.key === colorKeyForVariant)?.label ?? targetVariant.color ?? null
+        : targetVariant.color ?? null
+
+      for (let i = 0; i < quantity; i++) {
+        addItem({
+          id: `${product.id}::${targetVariant.id}`,
+          productId: product.id,
+          variantId: targetVariant.id,
+          name: product.name,
+          price: product.price,
+          wholesale_price: product.wholesale_price || product.price,
+          image: product.images?.[0],
+          stock: variantStock,
+          size: sizeLabelForCart,
+          color: colorLabelForCart,
+        })
+      }
+    } else {
+      for (let i = 0; i < quantity; i++) {
+        addItem({
+          id: product.id,
+          productId: product.id,
+          variantId: undefined,
+          name: product.name,
+          price: product.price,
+          wholesale_price: product.wholesale_price || product.price,
+          image: product.images?.[0],
+          stock: product.stock || 0,
+          size: selectedSizeLabel ?? undefined,
+          color: selectedColorLabel ?? undefined,
+        })
+      }
     }
 
     toast.success(`${quantity} ${quantity === 1 ? 'producto' : 'productos'} agregado${quantity === 1 ? '' : 's'} al carrito`)
     onClose()
+  }
+
+  const handleColorHex = (colorName: string) => {
+    const colorMap: { [key: string]: string } = {
+      negro: '#000000',
+      blanco: '#FFFFFF',
+      rojo: '#FF0000',
+      azul: '#0000FF',
+      verde: '#008000',
+      amarillo: '#FFFF00',
+      rosa: '#FFC0CB',
+      gris: '#808080',
+      celeste: '#87CEEB',
+      naranja: '#FFA500',
+      morado: '#800080',
+      bordó: '#800020',
+      'azul claro': '#ADD8E6',
+    }
+    return colorMap[colorName.toLowerCase()] || '#CCCCCC'
   }
 
   const handleToggleFavorite = () => {
@@ -246,14 +635,79 @@ export function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps
                           <span className="font-medium">{product.age_range}</span>
                         </div>
                       )}
-                      {product.sizes && product.sizes.length > 0 && (
-                        <div className="col-span-2">
-                          <p className="text-sm text-gray-600 mb-1">Tallas disponibles:</p>
-                          <div className="flex gap-1">
-                            {product.sizes.map((size) => (
-                              <Badge key={size} variant="outline" className="text-xs">
-                                {size}
-                              </Badge>
+                      {showSizeOptions && (
+                        <div className="col-span-2 space-y-2">
+                          <p className="text-sm font-semibold text-gray-700">
+                            Talle:{' '}
+                            <span className="text-purple-600">{selectedSizeLabel || 'Elegí'}</span>
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {sizeOptions.map((size) => {
+                              const disabled = size.totalStock <= 0
+                              return (
+                                <button
+                                  key={size.key}
+                                  onClick={() => {
+                                    if (disabled) return
+                                    setSelectedSizeKey(size.key)
+                                  }}
+                                  disabled={disabled}
+                                  className={`px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                                    currentSizeKey === size.key
+                                      ? 'border-purple-600 bg-purple-50 text-purple-600'
+                                      : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                                  } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                                  title={`Stock disponible: ${size.totalStock}`}
+                                >
+                                  <span className="block leading-none">{size.label}</span>
+                                  <span className="block text-[10px] text-gray-500">{size.totalStock}</span>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {showColorOptions && (
+                        <div className="col-span-2 space-y-2">
+                          <p className="text-sm font-semibold text-gray-700">
+                            Color:{' '}
+                            <span className="text-purple-600 capitalize">{selectedColorLabel || 'Elegí'}</span>
+                          </p>
+                          {disableColorSelection && (
+                            <p className="text-xs text-gray-500">Primero seleccioná un talle para ver los colores disponibles.</p>
+                          )}
+                          <div className="flex flex-wrap gap-2">
+                            {colorOptions.map((color) => {
+                              const disabled = disableColorSelection || (hasVariants ? color.stock <= 0 : false)
+                              return (
+                                <button
+                                  key={color.key}
+                                  onClick={() => {
+                                    if (disabled) return
+                                    setSelectedColorKey(color.key)
+                                  }}
+                                  disabled={disabled}
+                                  className={`w-10 h-10 rounded-full border-2 transition-all ${
+                                    selectedColorKey === color.key
+                                      ? 'border-purple-600 scale-110 shadow-md'
+                                      : 'border-gray-200 hover-border-gray-300'
+                                  } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                                  title={`Stock disponible: ${color.stock}`}
+                                >
+                                  <span
+                                    className="block w-full h-full rounded-full"
+                                    style={{ backgroundColor: handleColorHex(color.label) }}
+                                  ></span>
+                                </button>
+                              )
+                            })}
+                          </div>
+                          <div className="flex flex-wrap gap-2 text-[10px] text-gray-500">
+                            {colorOptions.map((color) => (
+                              <span key={`${color.key}-stock`} className="px-2 py-0.5 bg-gray-100 rounded-full">
+                                {color.label}: {color.stock}
+                              </span>
                             ))}
                           </div>
                         </div>
@@ -291,9 +745,9 @@ export function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps
                         </button>
                         <span className="text-xl font-bold w-12 text-center">{quantity}</span>
                         <button
-                          onClick={() => setQuantity(Math.min(product.stock || 99, quantity + 1))}
+                          onClick={() => setQuantity(Math.min(availableStock, quantity + 1))}
                           className="w-10 h-10 rounded-lg border-2 border-gray-300 flex items-center justify-center hover:bg-gray-100 transition-colors"
-                          disabled={quantity >= (product.stock || 99)}
+                          disabled={quantity >= availableStock}
                         >
                           <Plus className="w-4 h-4" />
                         </button>
@@ -305,12 +759,15 @@ export function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps
                       <Button
                         onClick={handleAddToCart}
                         className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 text-lg"
+                        disabled={availableStock === 0}
                       >
                         <ShoppingCart className="w-5 h-5 mr-2" />
                         Agregar al Carrito
                       </Button>
                       <p className="text-xs text-center text-gray-500">
-                        Stock disponible: {product.stock} unidades
+                        {availableStock > 0
+                          ? `Stock disponible: ${availableStock} unidades`
+                          : 'Sin stock para la combinación seleccionada'}
                       </p>
                     </div>
                   </div>

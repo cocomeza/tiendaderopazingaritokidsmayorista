@@ -307,7 +307,7 @@ create table if not exists business_config (
   id uuid default gen_random_uuid() primary key,
   business_name text default 'Zingarito Kids',
   logo_url text,
-  whatsapp_number text not null default '543407498045',
+  whatsapp_number text not null default '543407440243',
   email text not null default 'zingaritokids@gmail.com',
   cbu text,
   alias_cbu text,
@@ -323,7 +323,7 @@ create table if not exists business_config (
 
 -- Insertar configuración inicial
 insert into business_config (whatsapp_number, email, address, min_wholesale_quantity)
-values ('543407498045', 'zingaritokids@gmail.com', 'San Martín 17 - Villa Ramallo, Buenos Aires, Argentina', 5)
+values ('543407440243', 'zingaritokids@gmail.com', 'San Martín 17 - Villa Ramallo, Buenos Aires, Argentina', 5)
 on conflict do nothing;
 
 -- RLS policies para business_config

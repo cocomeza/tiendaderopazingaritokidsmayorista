@@ -56,11 +56,6 @@ function RegisterPageContent() {
       return
     }
 
-    if (!formData.cuit.trim()) {
-      toast.error('Por favor ingresa el CUIT de tu empresa')
-      return
-    }
-
     if (!formData.billingAddress.trim()) {
       toast.error('Por favor ingresa la dirección de facturación')
       return
@@ -83,11 +78,13 @@ function RegisterPageContent() {
       return
     }
 
-    // Validar formato de CUIT (XX-XXXXXXXX-X)
-    const cuitRegex = /^\d{2}-?\d{8}-?\d{1}$/
-    if (!cuitRegex.test(formData.cuit.replace(/-/g, ''))) {
-      toast.error('El formato del CUIT no es válido. Debe tener 11 dígitos.')
-      return
+    // Validar formato de CUIT solo si se ingresó (es opcional)
+    if (formData.cuit.trim()) {
+      const cuitRegex = /^\d{2}-?\d{8}-?\d{1}$/
+      if (!cuitRegex.test(formData.cuit.replace(/-/g, ''))) {
+        toast.error('El formato del CUIT no es válido. Debe tener 11 dígitos.')
+        return
+      }
     }
 
     if (!formData.locality.trim()) {
@@ -142,38 +139,33 @@ function RegisterPageContent() {
       if (data.user) {
         console.log('Creando perfil para usuario:', data.user.id)
         
-        // Preparar los datos del perfil - solo campos que existen en DB
+        // Preparar los datos del perfil - solo campos básicos obligatorios
         const profileData: any = {
           id: data.user.id,
           email: formData.email,
           full_name: formData.fullName,
           phone: formData.phone,
           company_name: formData.companyName,
-          cuit: formData.cuit.replace(/-/g, ''),
           billing_address: formData.billingAddress
         }
 
-        // Agregar los nuevos campos solo si están presentes
-        if (formData.locality) {
-          profileData.locality = formData.locality
-        }
-        if (formData.salesType) {
-          profileData.sales_type = formData.salesType
-        }
-        if (formData.ages) {
-          profileData.ages = formData.ages
+        // Agregar CUIT solo si está presente (es opcional)
+        if (formData.cuit.trim()) {
+          profileData.cuit = formData.cuit.replace(/-/g, '')
         }
 
-        console.log('Datos del perfil a insertar:', profileData)
+        console.log('📝 Datos del perfil básicos:', profileData)
 
+        // Intentar insertar el perfil básico primero
         const { data: profileInsertData, error: profileError } = await supabase
           .from('profiles')
           .upsert(profileData, { onConflict: 'id' })
+          .select()
 
-        console.log('Resultado insert perfil:', profileInsertData)
+        console.log('✅ Resultado insert perfil básico:', profileInsertData)
         
         if (profileError) {
-          console.error('Error completo del perfil:', JSON.stringify(profileError, null, 2))
+          console.error('❌ Error completo del perfil:', JSON.stringify(profileError, null, 2))
           console.error('Código de error:', profileError.code)
           console.error('Mensaje:', profileError.message)
           console.error('Detalles:', profileError.details)
@@ -181,8 +173,33 @@ function RegisterPageContent() {
           
           toast.error('Error al crear el perfil: ' + (profileError.message || 'Error desconocido. Verifica la consola para más detalles.'))
           setLoading(false)
-      return
-    }
+          return
+        }
+
+        // Si el perfil básico se creó correctamente, intentar agregar los campos opcionales
+        console.log('📝 Intentando agregar campos opcionales...')
+        
+        const optionalFields: any = {}
+        
+        if (formData.locality) optionalFields.locality = formData.locality
+        if (formData.salesType) optionalFields.sales_type = formData.salesType
+        if (formData.ages) optionalFields.ages = formData.ages
+        
+        // Solo actualizar si hay campos opcionales
+        if (Object.keys(optionalFields).length > 0) {
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update(optionalFields)
+            .eq('id', data.user.id)
+          
+          if (updateError) {
+            console.warn('⚠️ No se pudieron agregar campos opcionales:', updateError.message)
+            console.warn('Esto no es crítico, el perfil básico ya fue creado')
+            // No bloqueamos el registro por esto
+          } else {
+            console.log('✅ Campos opcionales agregados correctamente')
+          }
+        }
 
         console.log('Perfil creado exitosamente')
       }
@@ -285,19 +302,18 @@ function RegisterPageContent() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">CUIT *</label>
+                  <label className="text-sm font-medium text-gray-700">CUIT</label>
                   <div className="relative">
                     <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <Input
                       type="text"
-                      placeholder="20-12345678-9"
+                      placeholder="20-12345678-9 (opcional)"
                       value={formData.cuit}
                       onChange={(e) => handleInputChange('cuit', e.target.value)}
                       className="pl-10"
-                      required
                     />
                   </div>
-                  <p className="text-xs text-gray-500">Formato: XX-XXXXXXXX-X</p>
+                  <p className="text-xs text-gray-500">Formato: XX-XXXXXXXX-X (opcional)</p>
                 </div>
 
                 <div className="space-y-2">
@@ -333,16 +349,30 @@ function RegisterPageContent() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">Tipo de Venta *</label>
                   <Select value={formData.salesType} onValueChange={(value) => handleInputChange('salesType', value)}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger 
+                      size="lg"
+                      className="w-full border-gray-300 focus:border-purple-500 focus:ring-purple-500 font-medium"
+                    >
                       <SelectValue placeholder="Selecciona el tipo de venta" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="local">Local Físico</SelectItem>
-                      <SelectItem value="showroom">Showroom</SelectItem>
-                      <SelectItem value="online">Venta Online</SelectItem>
-                      <SelectItem value="empezando">Por Iniciar</SelectItem>
+                    <SelectContent className="max-h-[300px]">
+                      <SelectItem value="local">
+                        🏪 Local Físico
+                      </SelectItem>
+                      <SelectItem value="showroom">
+                        🏢 Showroom
+                      </SelectItem>
+                      <SelectItem value="online">
+                        💻 Venta Online
+                      </SelectItem>
+                      <SelectItem value="empezando">
+                        🚀 Por Iniciar
+                      </SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-gray-500">
+                    Cómo realizas tus ventas actualmente
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -384,7 +414,7 @@ function RegisterPageContent() {
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="Ingresa tu contraseña"
                     value={formData.password}
                     onChange={(e) => handleInputChange('password', e.target.value)}
                     className="pl-10 pr-10"
@@ -399,6 +429,18 @@ function RegisterPageContent() {
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </Button>
+                </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mt-2">
+                  <p className="text-xs font-semibold text-blue-900 mb-2">📋 Requisitos de la contraseña:</p>
+                  <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                    <li>Mínimo <strong>6 caracteres</strong></li>
+                    <li>Debe contener al menos <strong>una letra</strong> (a-z, A-Z)</li>
+                    <li>Debe contener al menos <strong>un número</strong> (0-9)</li>
+                    <li>Es <strong>alfanumérica</strong> (letras y números combinados)</li>
+                  </ul>
+                  <p className="text-xs text-blue-700 mt-2 italic">
+                    💡 Ejemplos válidos: <span className="font-mono font-semibold">MiPass123</span> o <span className="font-mono font-semibold">cliente2024</span>
+                  </p>
                 </div>
               </div>
 

@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Mail, Phone, MapPin, Clock, Star, Truck, Shield, Heart } from 'lucide-react'
+import { Mail, Phone, MapPin, Clock, Star, Truck, Shield, Heart, MessageCircle } from 'lucide-react'
 import { Spotlight } from '@/components/ui/spotlight'
 import { TextGenerateEffect } from '@/components/ui/text-generate-effect'
 import { BackgroundBeams } from '@/components/ui/background-beams'
@@ -160,13 +160,32 @@ export default function ContactoClient() {
         >
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 sm:mb-6">Contáctanos Ahora</h2>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center px-4">
-            <Button className="w-full sm:w-auto bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold px-6 sm:px-8 py-3 sm:py-4 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl text-base sm:text-lg">
-              <Phone className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-              Llamar Ahora
+            <Button
+              asChild
+              className="w-full sm:w-auto bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold px-6 sm:px-8 py-3 sm:py-4 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl text-base sm:text-lg"
+            >
+              <a href="tel:+543407498045" aria-label="Llamar por teléfono al +54 340 749-8045">
+                <span className="flex items-center justify-center">
+                  <Phone className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                  Llamar Ahora
+                </span>
+              </a>
             </Button>
-            <Button className="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold px-6 sm:px-8 py-3 sm:py-4 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl text-base sm:text-lg">
-              <Mail className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-              WhatsApp
+            <Button
+              asChild
+              className="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold px-6 sm:px-8 py-3 sm:py-4 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl text-base sm:text-lg"
+            >
+              <a
+                href="https://wa.me/543407498045?text=Hola%20Zing%20Arito%20Kids%2C%20quiero%20más%20información%20sobre%20los%20productos."
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Contactar por WhatsApp al +54 340 749-8045"
+              >
+                <span className="flex items-center justify-center">
+                  <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                  WhatsApp
+                </span>
+              </a>
             </Button>
           </div>
         </motion.div>

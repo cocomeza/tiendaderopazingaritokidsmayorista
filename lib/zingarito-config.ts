@@ -304,8 +304,8 @@ export const zingaritoBrand = {
   description: 'Tienda mayorista especializada en ropa infantil',
   website: 'https://zingaritokids.com',
   email: 'zingaritokids@gmail.com',
-  phone: '+54 340 749 8045',
-  whatsapp: '543407498045',
+  phone: '+54 340 744 0243',
+  whatsapp: '543407440243',
   address: 'San Martín 17, Villa Ramallo, Buenos Aires, Argentina',
   
   // Configuración de redes sociales

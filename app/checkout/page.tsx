@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { useCartStore } from '@/lib/stores/cart'
-import { supabase } from '@/lib/supabase/client-fixed'
+import { supabase } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { 
   ShoppingCart, 
@@ -52,7 +52,7 @@ export default function CheckoutPage() {
     name: "Zingarito Kids",
     cbu: "0170123456789012345678",
     alias: "ZINGARITO.KIDS",
-    phone: "+54 340 749-8045",
+    phone: "+54 340 744-0243",
     email: "zingaritokids@gmail.com",
     address: "Argentina"
   }
@@ -168,7 +168,7 @@ export default function CheckoutPage() {
 
       // Generar mensaje de WhatsApp con el número de pedido
       const message = generateWhatsAppMessage(orderNumber)
-      const whatsappUrl = `https://wa.me/543407498045?text=${message}`
+      const whatsappUrl = `https://wa.me/543407440243?text=${message}`
       
       // Abrir WhatsApp en nueva ventana
       window.open(whatsappUrl, '_blank')
@@ -355,82 +355,174 @@ export default function CheckoutPage() {
           </Card>
 
           {/* Información de Pago */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="w-5 h-5" />
-                Datos para el Pago
+          <Card className="border-2 border-purple-200">
+            <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <CreditCard className="w-6 h-6 text-purple-600" />
+                Finalizar Compra
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                <h3 className="font-semibold text-purple-800 mb-3">Información Bancaria</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-purple-700">Banco:</span>
-                    <span className="font-medium">{businessInfo.name}</span>
+            <CardContent className="space-y-6 p-6">
+              {/* Condiciones de Pago */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-5 shadow-sm">
+                <h3 className="font-bold text-blue-900 mb-3 text-lg flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5" />
+                  Condiciones de Pago
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-blue-800">
+                    <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                    <span className="font-medium">Transferencia bancaria</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-purple-700">CBU:</span>
-                    <span className="font-mono bg-white px-2 py-1 rounded">{businessInfo.cbu}</span>
+                  <div className="flex items-center gap-2 text-blue-800">
+                    <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                    <span className="font-medium">Efectivo</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-purple-700">Alias:</span>
-                    <span className="font-mono bg-white px-2 py-1 rounded">{businessInfo.alias}</span>
+                  <div className="flex items-center gap-2 text-blue-800">
+                    <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                    <span className="font-medium">Cheque</span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <h3 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4" />
-                  Proceso de Compra
+              {/* Datos Bancarios */}
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-300 rounded-xl p-5 shadow-md">
+                <h3 className="font-bold text-purple-900 mb-4 text-lg flex items-center gap-2">
+                  <CreditCard className="w-5 h-5" />
+                  Datos Bancarios
                 </h3>
-                <div className="space-y-2 text-sm text-green-700">
-                  <p>1. Completa el pago por transferencia</p>
-                  <p>2. Envía el comprobante por WhatsApp</p>
-                  <p>3. Te confirmaremos tu pedido</p>
-                  <p>4. Despacharemos en 24-48hs</p>
+                <div className="space-y-4">
+                  <div className="bg-white rounded-lg p-4 shadow-sm border border-purple-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-purple-700 font-semibold">CBU:</span>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(businessInfo.cbu)
+                          toast.success('CBU copiado al portapapeles')
+                        }}
+                        className="text-xs text-purple-600 hover:text-purple-800 underline"
+                      >
+                        Copiar
+                      </button>
+                    </div>
+                    <p className="font-mono text-lg font-bold text-gray-900 tracking-wider">
+                      {businessInfo.cbu}
+                    </p>
+                  </div>
+                  
+                  <div className="bg-white rounded-lg p-4 shadow-sm border border-purple-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-purple-700 font-semibold">Alias:</span>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(businessInfo.alias)
+                          toast.success('Alias copiado al portapapeles')
+                        }}
+                        className="text-xs text-purple-600 hover:text-purple-800 underline"
+                      >
+                        Copiar
+                      </button>
+                    </div>
+                    <p className="font-mono text-lg font-bold text-gray-900">
+                      {businessInfo.alias}
+                    </p>
+                  </div>
+
+                  <div className="bg-white rounded-lg p-3 shadow-sm border border-purple-200">
+                    <span className="text-sm text-purple-700 font-semibold">Titular:</span>
+                    <p className="font-medium text-gray-900">{businessInfo.name}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Proceso de Compra con Pasos */}
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl p-5 shadow-sm">
+                <h3 className="font-bold text-green-900 mb-4 text-lg flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5" />
+                  Cómo Completar tu Compra
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex gap-3">
+                    <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold">
+                      1
+                    </div>
+                    <div>
+                      <p className="font-semibold text-green-900">Realiza la transferencia</p>
+                      <p className="text-sm text-green-700">Usa los datos bancarios de arriba</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold">
+                      2
+                    </div>
+                    <div>
+                      <p className="font-semibold text-green-900">Haz clic en "Confirmar Pedido"</p>
+                      <p className="text-sm text-green-700">Te redirigiremos a WhatsApp</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold">
+                      3
+                    </div>
+                    <div>
+                      <p className="font-semibold text-green-900">Envía el comprobante</p>
+                      <p className="text-sm text-green-700">Por WhatsApp para confirmar</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold">
+                      4
+                    </div>
+                    <div>
+                      <p className="font-semibold text-green-900">¡Listo!</p>
+                      <p className="text-sm text-green-700">Despacharemos en 24-48hs hábiles</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {/* Campo de Notas */}
               <div className="space-y-2">
-                <Label htmlFor="notes" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="notes" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <MessageCircle className="w-4 h-4" />
                   Notas del Pedido (Opcional)
                 </Label>
                 <Textarea
                   id="notes"
-                  placeholder="Especificaciones especiales, instrucciones de envío, etc..."
+                  placeholder="Ej: Necesito el pedido para el viernes, por favor incluir talles grandes..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={3}
-                  className="resize-none"
+                  className="resize-none border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                 />
               </div>
 
-              <div className="space-y-3">
+              {/* Botón Principal */}
+              <div className="space-y-3 pt-2">
                 <Button 
                   onClick={handleCompleteOrder}
                   disabled={saving}
-                  className="w-full bg-green-600 hover:bg-green-700 text-lg py-6"
+                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-lg py-7 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 font-bold"
                 >
                   {saving ? (
                     <>
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin mr-2" />
                       Guardando Pedido...
                     </>
                   ) : (
                     <>
-                      <Save className="w-5 h-5 mr-2" />
-                      Guardar Pedido y Enviar por WhatsApp
+                      <MessageCircle className="w-6 h-6 mr-2" />
+                      Confirmar Pedido por WhatsApp
                     </>
                   )}
                 </Button>
                 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-xs text-blue-800 text-center">
-                    💾 Tu pedido se guardará en la base de datos y luego se abrirá WhatsApp para confirmar el pago
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-300 rounded-lg p-4">
+                  <p className="text-sm text-blue-900 text-center font-medium">
+                    💾 <span className="font-bold">Tu pedido se guardará</span> y luego abriremos WhatsApp para que envíes el comprobante de pago
                   </p>
                 </div>
               </div>

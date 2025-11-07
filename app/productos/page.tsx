@@ -16,12 +16,14 @@ const TextGenerateEffect = dynamic(() => import('@/components/ui/text-generate-e
 const BackgroundBeams = dynamic(() => import('@/components/ui/background-beams').then(mod => ({ default: mod.BackgroundBeams })), { ssr: false })
 import { Database } from '@/lib/types/database'
 
-type Product = Database['public']['Tables']['products']['Row']
+type ProductRow = Database['public']['Tables']['products']['Row']
+type ProductVariantRow = Database['public']['Tables']['product_variants']['Row']
+type ProductWithVariants = ProductRow & { product_variants?: ProductVariantRow[] }
 type CategorySimple = { id: string; name: string }
 
 export default function ProductosPage() {
-  const [allProducts, setAllProducts] = useState<Product[]>([])
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
+  const [allProducts, setAllProducts] = useState<ProductWithVariants[]>([])
+  const [filteredProducts, setFilteredProducts] = useState<ProductWithVariants[]>([])
   const [categories, setCategories] = useState<CategorySimple[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -48,22 +50,44 @@ export default function ProductosPage() {
     try {
       console.log('🔍 Cargando datos...')
       
-      // Cargar productos (solo campos necesarios, limitado para performance)
+      // Cargar todos los productos activos (solo campos necesarios)
       const { data: productsData, error: productsError } = await supabase
         .from('products')
         .select(`
-          id, name, price, wholesale_price, 
+          id, name, description, price, wholesale_price, 
           stock, category_id, sizes, colors, 
           active, images
         `)
         .eq('active', true)
         .order('created_at', { ascending: false })
-        .limit(50) // Reducir a 50 productos inicialmente para mejor performance
 
       if (productsError) {
         console.error('Error productos:', productsError)
         setError('Error: ' + productsError.message)
         return
+      }
+
+      let variantsByProduct = new Map<string, ProductVariantRow[]>()
+
+      if (productsData && productsData.length > 0) {
+        const productIds = productsData.map((product) => product.id)
+
+        const { data: variantsData, error: variantsError } = await supabase
+          .from('product_variants')
+          .select('id, product_id, size, color, stock, active')
+          .in('product_id', productIds)
+
+        if (variantsError) {
+          console.debug('Variantes no disponibles, se continúa con stock general.', variantsError)
+        }
+
+        variantsByProduct = (variantsData || []).reduce((map, variant) => {
+          const key = variant.product_id
+          const existing = map.get(key) || []
+          existing.push(variant)
+          map.set(key, existing)
+          return map
+        }, new Map<string, ProductVariantRow[]>())
       }
 
       // Cargar categorías
@@ -78,8 +102,12 @@ export default function ProductosPage() {
       }
 
       console.log('✅ Productos cargados:', productsData?.length || 0)
-      setAllProducts(productsData || [])
-      setFilteredProducts(productsData || [])
+      const productsWithVariants = (productsData || []).map((product) => ({
+        ...product,
+        product_variants: variantsByProduct.get(product.id) || [],
+      })) as ProductWithVariants[]
+      setAllProducts(productsWithVariants)
+      setFilteredProducts(productsWithVariants)
       setCategories(categoriesData || [])
       
     } catch (err) {
