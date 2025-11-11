@@ -76,7 +76,7 @@ export default function EditarProductoPage() {
     key: string
     size: string | null
     color: string | null
-    stock: number
+    stockInput: string
   }
 
   const [variantMatrix, setVariantMatrix] = useState<Record<string, VariantFormEntry>>({})
@@ -117,7 +117,7 @@ export default function EditarProductoPage() {
           key,
           size,
           color,
-          stock: previousEntry ? previousEntry.stock : 0,
+          stockInput: previousEntry ? previousEntry.stockInput : '',
         }
       })
 
@@ -126,7 +126,7 @@ export default function EditarProductoPage() {
   }
 
   const handleVariantStockInput = (key: string, value: string) => {
-    const parsedValue = Math.max(0, parseInt(value, 10) || 0)
+    const sanitizedValue = value === '' ? '' : String(Math.max(0, parseInt(value, 10) || 0))
 
     setVariantMatrix((prev) => {
       const entry = prev[key]
@@ -136,7 +136,7 @@ export default function EditarProductoPage() {
         ...prev,
         [key]: {
           ...entry,
-          stock: parsedValue,
+          stockInput: sanitizedValue,
         },
       }
     })
@@ -174,7 +174,7 @@ export default function EditarProductoPage() {
     return (a.color ?? '').localeCompare(b.color ?? '')
   })
   const usingVariants = variantEntries.length > 0
-  const totalVariantStock = variantEntries.reduce((sum, entry) => sum + entry.stock, 0)
+  const totalVariantStock = variantEntries.reduce((sum, entry) => sum + (parseInt(entry.stockInput, 10) || 0), 0)
   const hasSizesSelected = formData.sizes.length > 0
   const hasColorsSelected = formData.colors.length > 0
 
@@ -246,7 +246,7 @@ export default function EditarProductoPage() {
           key,
           size: variant.size,
           color: variant.color,
-          stock: variant.stock ?? 0,
+          stockInput: variant.stock != null ? String(variant.stock) : '',
         }
       })
 
@@ -350,7 +350,7 @@ export default function EditarProductoPage() {
 
     const variantEntriesForSubmit = Object.values(variantMatrix)
     const useVariants = variantEntriesForSubmit.length > 0
-    const totalVariantStockForSubmit = variantEntriesForSubmit.reduce((sum, entry) => sum + entry.stock, 0)
+    const totalVariantStockForSubmit = variantEntriesForSubmit.reduce((sum, entry) => sum + (parseInt(entry.stockInput, 10) || 0), 0)
 
     if (useVariants && totalVariantStockForSubmit === 0) {
       alert('Asigná stock a al menos una variante antes de guardar')
@@ -427,8 +427,8 @@ export default function EditarProductoPage() {
           product_id: productId,
           size: entry.size,
           color: entry.color,
-          stock: entry.stock,
-          active: entry.stock > 0,
+          stock: parseInt(entry.stockInput, 10) || 0,
+          active: (parseInt(entry.stockInput, 10) || 0) > 0,
         }))
 
         const { error: insertError } = await supabase
@@ -893,7 +893,8 @@ export default function EditarProductoPage() {
                                       <Input
                                         type="number"
                                         min={0}
-                                        value={entry.stock}
+                                        value={entry.stockInput}
+                                        placeholder=""
                                         onChange={(e) => handleVariantStockInput(entry.key, e.target.value)}
                                         className="w-24 text-sm"
                                       />

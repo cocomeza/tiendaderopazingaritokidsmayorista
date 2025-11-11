@@ -29,7 +29,8 @@ import {
   Home,
   LogOut,
   Mail,
-  Phone
+  Phone,
+  Loader2
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -81,6 +82,8 @@ export default function AdminPedidosPage() {
 
   // Detalle del pedido seleccionado
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null)
+  const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
 
   useEffect(() => {
     loadOrders()
@@ -144,8 +147,9 @@ export default function AdminPedidosPage() {
     setSelectedOrder(order)
   }
 
-  const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: string, options?: { keepModalOpen?: boolean }) => {
     try {
+      setUpdatingStatusId(orderId)
       const { error } = await supabase
         .from('orders')
         .update({ status: newStatus })
@@ -157,16 +161,22 @@ export default function AdminPedidosPage() {
       }
 
       toast.success('Estado del pedido actualizado')
-      loadOrders() // Recargar lista
-      setSelectedOrder(null)
+      await loadOrders()
+
+      if (!options?.keepModalOpen) {
+        setSelectedOrder(null)
+      }
     } catch (error) {
       console.error('Error general:', error)
       toast.error('Error al actualizar pedido')
+    } finally {
+      setUpdatingStatusId((prev) => (prev === orderId ? null : prev))
     }
   }
 
-  const handleUpdatePaymentStatus = async (orderId: string, newStatus: string) => {
+  const handleUpdatePaymentStatus = async (orderId: string, newStatus: string, options?: { keepModalOpen?: boolean }) => {
     try {
+      setUpdatingPaymentId(orderId)
       const { error } = await supabase
         .from('orders')
         .update({ payment_status: newStatus })
@@ -178,11 +188,16 @@ export default function AdminPedidosPage() {
       }
 
       toast.success('Estado de pago actualizado')
-      loadOrders() // Recargar lista
-      setSelectedOrder(null)
+      await loadOrders()
+
+      if (!options?.keepModalOpen) {
+        setSelectedOrder(null)
+      }
     } catch (error) {
       console.error('Error general:', error)
       toast.error('Error al actualizar pago')
+    } finally {
+      setUpdatingPaymentId((prev) => (prev === orderId ? null : prev))
     }
   }
 
@@ -487,19 +502,61 @@ export default function AdminPedidosPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        {getStatusBadge(order.status)}
-                        {getPaymentBadge(order.payment_status)}
-                      </div>
+                      <div className="flex flex-col lg:flex-row lg:items-center gap-3 mt-4">
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs uppercase tracking-wide text-gray-500">Estado del pedido</Label>
+                      <Select
+                        value={order.status}
+                        onValueChange={(value) => handleUpdateOrderStatus(order.id, value, { keepModalOpen: true })}
+                        disabled={updatingStatusId === order.id}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pendiente">Pendiente</SelectItem>
+                          <SelectItem value="confirmado">Confirmado</SelectItem>
+                          <SelectItem value="preparando">Preparando</SelectItem>
+                          <SelectItem value="enviado">Enviado</SelectItem>
+                          <SelectItem value="entregado">Entregado</SelectItem>
+                          <SelectItem value="cancelado">Cancelado</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-
-                    <Button onClick={() => handleViewOrderDetails(order)} variant="outline">
-                      <Eye className="w-4 h-4 mr-2" />
-                      Ver Detalle
-                    </Button>
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs uppercase tracking-wide text-gray-500">Estado de pago</Label>
+                      <Select
+                        value={order.payment_status}
+                        onValueChange={(value) => handleUpdatePaymentStatus(order.id, value, { keepModalOpen: true })}
+                        disabled={updatingPaymentId === order.id}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pendiente">Pendiente</SelectItem>
+                          <SelectItem value="pagado">Pagado</SelectItem>
+                          <SelectItem value="rechazado">Rechazado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
+
+                  <div className="flex items-center gap-3 mt-4">
+                    {getStatusBadge(order.status)}
+                    {getPaymentBadge(order.payment_status)}
+                  </div>
+                </div>
+
+                <Button onClick={() => handleViewOrderDetails(order)} variant="outline" className="h-10 mt-4 lg:mt-0">
+                  {updatingStatusId === order.id || updatingPaymentId === order.id ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Eye className="w-4 h-4 mr-2" />
+                  )}
+                  Ver Detalle
+                </Button>
+              </div>
             ))
           )}
         </div>
@@ -622,6 +679,7 @@ export default function AdminPedidosPage() {
                     <Textarea value={selectedOrder.notes} readOnly rows={3} />
                   </div>
                 )}
+
               </div>
             </div>
           </div>

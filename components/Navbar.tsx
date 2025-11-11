@@ -149,6 +149,12 @@ export default function Navbar() {
                   >
                     Precios
                   </Link>
+                  <Link
+                    href="/admin/inventario"
+                    className="px-4 py-2 text-gray-700 hover:text-purple-600 font-semibold transition-all hover:bg-purple-50 rounded-lg"
+                  >
+                    Inventario
+                  </Link>
                 </>
               )}
             </div>
@@ -364,6 +370,13 @@ export default function Navbar() {
                       className="block py-3 px-4 text-center text-gray-700 hover:text-purple-600 hover:bg-purple-50 font-medium transition-all rounded-lg text-base"
                     >
                       💰 Precios
+                    </Link>
+                    <Link
+                      href="/admin/inventario"
+                      onClick={cerrarMenu}
+                      className="block py-3 px-4 text-center text-gray-700 hover:text-purple-600 hover:bg-purple-50 font-medium transition-all rounded-lg text-base"
+                    >
+                      📦 Inventario
                     </Link>
                   </>
                 )}

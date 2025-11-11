@@ -70,7 +70,7 @@ export default function NuevoProductoPage() {
     key: string
     size: string | null
     color: string | null
-    stock: number
+    stockInput: string
   }
 
   const [variantMatrix, setVariantMatrix] = useState<Record<string, VariantFormEntry>>({})
@@ -127,7 +127,7 @@ export default function NuevoProductoPage() {
           key,
           size,
           color,
-          stock: previousEntry ? previousEntry.stock : 0,
+          stockInput: previousEntry ? previousEntry.stockInput : '',
         }
       })
 
@@ -136,7 +136,7 @@ export default function NuevoProductoPage() {
   }
 
   const handleVariantStockInput = (key: string, value: string) => {
-    const parsedValue = Math.max(0, parseInt(value, 10) || 0)
+    const sanitized = value === '' ? '' : String(Math.max(0, parseInt(value, 10) || 0))
 
     setVariantMatrix((prev) => {
       const entry = prev[key]
@@ -146,7 +146,7 @@ export default function NuevoProductoPage() {
         ...prev,
         [key]: {
           ...entry,
-          stock: parsedValue,
+          stockInput: sanitized,
         },
       }
     })
@@ -160,12 +160,13 @@ export default function NuevoProductoPage() {
 
   const variantEntries = Object.values(variantMatrix)
   const sortedVariantEntries = [...variantEntries].sort((a, b) => {
-    const sizeComparison = (a.size ?? '').localeCompare(b.size ?? '')
-    if (sizeComparison !== 0) return sizeComparison
-    return (a.color ?? '').localeCompare(b.color ?? '')
+    if (a.size === b.size) {
+      return (a.color || '').localeCompare(b.color || '')
+    }
+    return (a.size || '').localeCompare(b.size || '')
   })
   const usingVariants = variantEntries.length > 0
-  const totalVariantStock = variantEntries.reduce((sum, entry) => sum + entry.stock, 0)
+  const totalVariantStock = variantEntries.reduce((sum, entry) => sum + (parseInt(entry.stockInput, 10) || 0), 0)
   const hasSizesSelected = newProduct.sizes.length > 0
   const hasColorsSelected = newProduct.colors.length > 0
 
@@ -263,7 +264,7 @@ export default function NuevoProductoPage() {
 
     const variantEntriesForSubmit = Object.values(variantMatrix)
     const useVariants = variantEntriesForSubmit.length > 0
-    const totalVariantStockForSubmit = variantEntriesForSubmit.reduce((sum, entry) => sum + entry.stock, 0)
+    const totalVariantStockForSubmit = variantEntriesForSubmit.reduce((sum, entry) => sum + (parseInt(entry.stockInput, 10) || 0), 0)
 
     if (useVariants && totalVariantStockForSubmit === 0) {
       alert('Asigná stock a al menos una combinación de talle y color')
@@ -328,8 +329,8 @@ export default function NuevoProductoPage() {
             product_id: data[0].id,
             size: entry.size,
             color: entry.color,
-            stock: entry.stock,
-            active: entry.stock > 0,
+            stock: parseInt(entry.stockInput, 10) || 0,
+            active: (parseInt(entry.stockInput, 10) || 0) > 0,
           }))
 
           if (variantPayload.length > 0) {
@@ -802,7 +803,8 @@ export default function NuevoProductoPage() {
                                       <Input
                                         type="number"
                                         min={0}
-                                        value={entry.stock}
+                                        value={entry.stockInput}
+                                        placeholder=""
                                         onChange={(e) => handleVariantStockInput(entry.key, e.target.value)}
                                         className="w-24 text-sm"
                                       />

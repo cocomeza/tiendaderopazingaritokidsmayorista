@@ -25,9 +25,12 @@ import {
   Building2,
   ShoppingBag,
   DollarSign,
-  FileText
+  FileText,
+  Loader2
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface Customer {
   id: string
@@ -46,6 +49,16 @@ interface Customer {
   last_login: string
 }
 
+interface OrderSummary {
+  id: string
+  order_number: string
+  status: string
+  payment_status: string
+  total: number
+  created_at: string
+  items: { id: string; product_name: string; quantity: number }[]
+}
+
 export default function AdminClientes() {
   const router = useRouter()
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -55,6 +68,10 @@ export default function AdminClientes() {
   const [deleteConfirm, setDeleteConfirm] = useState<Customer | null>(null)
   const [permanentDeleteMode, setPermanentDeleteMode] = useState(false)
   const [showActiveOnly, setShowActiveOnly] = useState(false)
+const [customerOrders, setCustomerOrders] = useState<OrderSummary[] | null>(null)
+const [loadingOrders, setLoadingOrders] = useState(false)
+const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null)
+const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
 
 
   useEffect(() => {
@@ -104,12 +121,125 @@ export default function AdminClientes() {
     }
   }
 
-  const filteredCustomers = customers.filter(customer => {
+  const handleOpenCustomerOrders = async (
+    customer: Customer,
+    setSelectedCustomer: (customer: Customer | null) => void,
+    setCustomerOrders: (orders: OrderSummary[] | null) => void,
+    setLoadingOrders: (value: boolean) => void,
+    setUpdatingStatusId: (value: string | null) => void,
+    setUpdatingPaymentId: (value: string | null) => void
+  ) => {
+    setSelectedCustomer(customer)
+    setCustomerOrders(null)
+    setLoadingOrders(true)
+    setUpdatingStatusId(null)
+    setUpdatingPaymentId(null)
+
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('id, order_number, status, payment_status, total, created_at')
+        .eq('user_id', customer.id)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error cargando pedidos:', error)
+        toast.error('No se pudieron cargar los pedidos del cliente.')
+        return
+      }
+
+      const ordersWithItems = await Promise.all(
+        (data || []).map(async (order) => {
+          const { data: items } = await supabase
+            .from('order_items')
+            .select('id, product_name, quantity')
+            .eq('order_id', order.id)
+
+          return {
+            ...order,
+            items: items || []
+          } as OrderSummary
+        })
+      )
+
+      setCustomerOrders(ordersWithItems)
+    } catch (error) {
+      console.error('Error general cargando pedidos:', error)
+      toast.error('Error inesperado al cargar pedidos del cliente.')
+    } finally {
+      setLoadingOrders(false)
+    }
+  }
+
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: string, options?: { keepModalOpen?: boolean }) => {
+    try {
+      setUpdatingStatusId(orderId)
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: newStatus })
+        .eq('id', orderId)
+
+      if (error) {
+        toast.error('No se pudo actualizar el estado del pedido')
+        return
+      }
+
+      toast.success('Estado del pedido actualizado')
+      setCustomerOrders((prev) =>
+        prev
+          ? prev.map((order) => (order.id === orderId ? { ...order, status: newStatus } : order))
+          : prev
+      )
+
+      if (!options?.keepModalOpen) {
+        setSelectedCustomer(null)
+      }
+    } catch (error) {
+      console.error('Error actualizando estado del pedido:', error)
+      toast.error('Error inesperado al actualizar el estado del pedido')
+    } finally {
+      setUpdatingStatusId((prev) => (prev === orderId ? null : prev))
+    }
+  }
+
+  const handleUpdatePaymentStatus = async (orderId: string, newStatus: string, options?: { keepModalOpen?: boolean }) => {
+    try {
+      setUpdatingPaymentId(orderId)
+      const { error } = await supabase
+        .from('orders')
+        .update({ payment_status: newStatus })
+        .eq('id', orderId)
+
+      if (error) {
+        toast.error('No se pudo actualizar el estado de pago')
+        return
+      }
+
+      toast.success('Estado de pago actualizado')
+      setCustomerOrders((prev) =>
+        prev
+          ? prev.map((order) => (order.id === orderId ? { ...order, payment_status: newStatus } : order))
+          : prev
+      )
+
+      if (!options?.keepModalOpen) {
+        setSelectedCustomer(null)
+      }
+    } catch (error) {
+      console.error('Error actualizando estado de pago:', error)
+      toast.error('Error inesperado al actualizar el estado de pago')
+    } finally {
+      setUpdatingPaymentId((prev) => (prev === orderId ? null : prev))
+    }
+  }
+
+  const filteredCustomers = customers.filter((customer) => {
     // Filtrar por estado activo/inactivo (si is_active es null, considerar como activo)
     const isActive = customer.is_active !== false // null o true = activo
     const matchesActiveStatus = showActiveOnly ? isActive : true
     
-    const matchesSearch = searchTerm.trim() === '' || 
+    const matchesSearch =
+      searchTerm.trim() === '' ||
       customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (customer.full_name && customer.full_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (customer.phone && customer.phone.includes(searchTerm))
@@ -119,6 +249,14 @@ export default function AdminClientes() {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('es-AR')
+  }
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+      minimumFractionDigits: 0
+    }).format(price)
   }
 
   const exportCustomers = () => {
@@ -430,9 +568,7 @@ export default function AdminClientes() {
                     size="sm" 
                     variant="outline" 
                     className="w-full sm:w-auto hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300"
-                    onClick={() => {
-                      router.push(`/admin/pedidos?cliente=${customer.id}`)
-                    }}
+                    onClick={() => handleOpenCustomerOrders(customer, setSelectedCustomer, setCustomerOrders, setLoadingOrders, setUpdatingStatusId, setUpdatingPaymentId)}
                   >
                     Ver Pedidos
                   </Button>
@@ -563,175 +699,132 @@ export default function AdminClientes() {
         </div>
       )}
 
-      {/* Modal de Detalle del Cliente */}
       {selectedCustomer && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto my-4">
-            <CardHeader className="sticky top-0 bg-white z-10 border-b">
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                    <Users className="w-5 h-5 text-purple-600" />
-                  </div>
-                  <span className="text-lg sm:text-xl">Detalle del Cliente</span>
-                </div>
-                <Button 
-                  size="sm" 
-                  variant="ghost"
-                  onClick={() => setSelectedCustomer(null)}
-                  className="h-8 w-8 p-0"
-                >
-                  ✕
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6 px-4 sm:px-6 py-6">
-              {/* Información de Contacto */}
-              <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-4 border border-purple-100">
-                <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
-                  Información de Contacto
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email</label>
-                    <p className="text-gray-900 font-medium break-all mt-1">
-                      {selectedCustomer.email || <span className="text-gray-400 italic">No proporcionado</span>}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Teléfono</label>
-                    <p className="text-gray-900 font-medium mt-1">
-                      {selectedCustomer.phone || <span className="text-gray-400 italic">No proporcionado</span>}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Información Personal */}
-              <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-4 border border-blue-100">
-                <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  Información Personal
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nombre Completo</label>
-                    <p className="text-gray-900 font-medium mt-1">
-                      {selectedCustomer.full_name || <span className="text-gray-400 italic">No proporcionado</span>}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Datos de la Empresa */}
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-100">
-                <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <Building2 className="w-4 h-4" />
-                  Datos de la Empresa
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nombre de la Empresa</label>
-                    <p className="text-gray-900 font-medium mt-1">
-                      {selectedCustomer.company_name || <span className="text-gray-400 italic">No proporcionado</span>}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">CUIT</label>
-                    <p className="text-gray-900 font-medium mt-1">
-                      {selectedCustomer.cuit ? (
-                        selectedCustomer.cuit.length === 11 
-                          ? `${selectedCustomer.cuit.slice(0, 2)}-${selectedCustomer.cuit.slice(2, 10)}-${selectedCustomer.cuit.slice(10)}`
-                          : selectedCustomer.cuit
-                      ) : <span className="text-gray-400 italic">No proporcionado</span>}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Dirección de Facturación</label>
-                    <p className="text-gray-900 font-medium mt-1">
-                      {selectedCustomer.billing_address || <span className="text-gray-400 italic">No proporcionado</span>}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Dirección de Envío */}
-              <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-4 border border-amber-100">
-                <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  Dirección de Envío
-                </h3>
-                <div>
-                  <p className="text-gray-900 font-medium">
-                    {selectedCustomer.address || <span className="text-gray-400 italic">No proporcionado</span>}
-                  </p>
-                </div>
-              </div>
-
-              {/* Información del Negocio */}
-              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-100">
-                <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <Building2 className="w-4 h-4" />
-                  Información del Negocio
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Localidad</label>
-                    <p className="text-gray-900 font-medium mt-1">
-                      {selectedCustomer.locality || <span className="text-gray-400 italic">No proporcionado</span>}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Tipo de Venta</label>
-                    <p className="text-gray-900 font-medium mt-1">
-                      {selectedCustomer.sales_type ? (
-                        selectedCustomer.sales_type === 'local' ? 'Local Físico' :
-                        selectedCustomer.sales_type === 'showroom' ? 'Showroom' :
-                        selectedCustomer.sales_type === 'online' ? 'Venta Online' :
-                        selectedCustomer.sales_type === 'empezando' ? 'Por Iniciar' :
-                        selectedCustomer.sales_type
-                      ) : <span className="text-gray-400 italic">No proporcionado</span>}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Edades con las que trabaja</label>
-                    <p className="text-gray-900 font-medium mt-1">
-                      {selectedCustomer.ages || <span className="text-gray-400 italic">No proporcionado</span>}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Metadatos */}
-              <div className="flex items-center justify-between pt-4 border-t">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div className="px-6 py-4 border-b flex items-center justify-between">
               <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Registrado el</label>
-                  <p className="text-gray-900 font-medium">{formatDate(selectedCustomer.created_at)}</p>
-                </div>
-                <Badge 
-                  variant="outline" 
-                  className={selectedCustomer.is_active !== false
-                    ? "bg-green-50 text-green-700 border-green-200" 
-                    : "bg-red-50 text-red-700 border-red-200"
-                  }
-                >
-                  {selectedCustomer.is_active !== false ? '✓ Cliente Activo' : '✗ Cliente Inactivo'}
-                </Badge>
+                <h2 className="text-2xl font-bold text-gray-900">{selectedCustomer.full_name || selectedCustomer.email}</h2>
+                <p className="text-sm text-gray-500">{selectedCustomer.email}</p>
+              </div>
+              <Button variant="ghost" onClick={() => setSelectedCustomer(null)} className="h-8 w-8 p-0 rounded-full">
+                ✕
+              </Button>
+            </div>
+
+            <div className="px-6 py-4 border-b grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+              <div>
+                <p className="font-semibold text-gray-800">Teléfono</p>
+                <p>{selectedCustomer.phone || 'Sin teléfono'}</p>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-800">Dirección</p>
+                <p>{selectedCustomer.address || 'Sin dirección'}</p>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-800">Pedidos recientes</h3>
+                {loadingOrders && (
+                  <span className="text-xs text-gray-500 flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Cargando pedidos...
+                  </span>
+                )}
               </div>
 
-              {/* Acciones */}
-              <div className="flex flex-col sm:flex-row gap-2 pt-4">
-                <Button 
-                  className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-                  onClick={handleSendEmail}
-                >
-                  <Mail className="w-4 h-4 mr-2" />
-                  Enviar Email
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+              {!loadingOrders && customerOrders && customerOrders.length === 0 && (
+                <Card className="bg-gray-50 border border-gray-200">
+                  <CardContent className="py-10 text-center text-gray-500">
+                    Este cliente todavía no tiene pedidos registrados.
+                  </CardContent>
+                </Card>
+              )}
+
+              {!loadingOrders && customerOrders && customerOrders.length > 0 && (
+                <div className="space-y-3">
+                  {customerOrders.map((order) => (
+                    <Card key={order.id} className="border border-gray-200 hover:border-purple-300 transition">
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                          <div>
+                            <p className="text-sm text-gray-500">Número de pedido</p>
+                            <p className="font-semibold text-gray-900">{order.order_number}</p>
+                            <p className="text-xs text-gray-500">{new Date(order.created_at).toLocaleString('es-AR')}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-gray-500 uppercase">Total</p>
+                            <p className="text-lg font-bold text-purple-600">{formatPrice(order.total)}</p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <Label className="text-xs uppercase tracking-wide text-gray-500">Estado</Label>
+                            <Select
+                              value={order.status}
+                              onValueChange={(value) => handleUpdateOrderStatus(order.id, value, { keepModalOpen: true })}
+                              disabled={updatingStatusId === order.id}
+                            >
+                              <SelectTrigger className="h-9">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="pendiente">Pendiente</SelectItem>
+                                <SelectItem value="confirmado">Confirmado</SelectItem>
+                                <SelectItem value="preparando">Preparando</SelectItem>
+                                <SelectItem value="enviado">Enviado</SelectItem>
+                                <SelectItem value="entregado">Entregado</SelectItem>
+                                <SelectItem value="cancelado">Cancelado</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label className="text-xs uppercase tracking-wide text-gray-500">Pago</Label>
+                            <Select
+                              value={order.payment_status}
+                              onValueChange={(value) => handleUpdatePaymentStatus(order.id, value, { keepModalOpen: true })}
+                              disabled={updatingPaymentId === order.id}
+                            >
+                              <SelectTrigger className="h-9">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="pendiente">Pendiente</SelectItem>
+                                <SelectItem value="pagado">Pagado</SelectItem>
+                                <SelectItem value="rechazado">Rechazado</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        {order.items.length > 0 && (
+                          <div className="bg-gray-50 rounded-lg p-3 space-y-1">
+                            <p className="text-xs font-semibold text-gray-600">Productos</p>
+                            {order.items.map((item) => (
+                              <div key={item.id} className="flex justify-between text-xs text-gray-600">
+                                <span>{item.product_name}</span>
+                                <span className="font-medium">x{item.quantity}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-4 border-t flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setSelectedCustomer(null)}>
+                Cerrar
+              </Button>
+              <Button variant="default" onClick={() => router.push(`/admin/pedidos?cliente=${selectedCustomer.id}`)}>
+                Ver todos los pedidos
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 

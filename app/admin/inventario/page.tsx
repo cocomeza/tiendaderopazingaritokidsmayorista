@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -24,7 +24,9 @@ import {
   LogOut,
   RefreshCw,
   History,
-  FileText
+  FileText,
+  MinusCircle,
+  Search
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -121,7 +123,7 @@ export default function AdminInventarioPage() {
         .limit(100)
 
       if (error) {
-        console.error('Error cargando historial:', error)
+        console.error('Error cargando historial:', error?.message || error)
         return
       }
 
@@ -143,7 +145,7 @@ export default function AdminInventarioPage() {
 
       setStockHistory(enrichedHistory)
     } catch (error) {
-      console.error('Error general:', error)
+      console.error('Error general:', error instanceof Error ? error.message : error)
     }
   }
 
@@ -351,6 +353,16 @@ export default function AdminInventarioPage() {
     return true
   })
 
+  const quickCategories = useMemo(() => {
+    const categories = products
+      .map((product) => product.category?.trim())
+      .filter((category): category is string => Boolean(category))
+
+    const unique = Array.from(new Set(categories))
+
+    return unique.sort((a, b) => a.localeCompare(b)).slice(0, 6)
+  }, [products])
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -376,6 +388,12 @@ export default function AdminInventarioPage() {
                   Volver al Admin
                 </Button>
               </Link>
+              <Link href="/admin/inventario/descontar">
+                <Button variant="outline" className="border-red-200 text-red-600 hover:text-red-700 hover:bg-red-50">
+                  <MinusCircle className="w-4 h-4 mr-2" />
+                  Registrar salida manual
+                </Button>
+              </Link>
               <Link href="/">
                 <Button variant="outline">
                   <Home className="w-4 h-4 mr-2" />
@@ -392,6 +410,33 @@ export default function AdminInventarioPage() {
       </div>
 
       <div className="container mx-auto px-4 py-8 space-y-6">
+        {quickCategories.length > 0 && (
+          <Card className="border border-gray-200 shadow-sm">
+            <CardContent className="py-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-semibold text-gray-700 mr-2">Filtros rápidos:</span>
+                <Button
+                  variant={categoryFilter === 'todos' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setCategoryFilter('todos')}
+                >
+                  Todos
+                </Button>
+                {quickCategories.map((category) => (
+                  <Button
+                    key={category}
+                    variant={categoryFilter === category ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setCategoryFilter(category === categoryFilter ? 'todos' : category)}
+                  >
+                    {category}
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Alertas de Stock Bajo */}
         {lowStockProducts.length > 0 && (
           <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200">
@@ -434,15 +479,7 @@ export default function AdminInventarioPage() {
             <CardTitle>Filtros de Búsqueda</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <Label>Buscar producto</Label>
-                <Input
-                  placeholder="Nombre o SKU"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label>Categoría</Label>
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
@@ -451,8 +488,8 @@ export default function AdminInventarioPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todos">Todas</SelectItem>
-                    {[...new Set(products.map(p => p.category).filter(Boolean))].map(cat => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    {quickCategories.map((category) => (
+                      <SelectItem key={category} value={category}>{category}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

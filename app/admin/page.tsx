@@ -9,7 +9,7 @@ import { TextGenerateEffect } from '@/components/ui/text-generate-effect'
 import { BackgroundBeams } from '@/components/ui/background-beams'
 import { CardHoverEffect } from '@/components/ui/card-hover-effect'
 import { motion } from 'framer-motion'
-import { Package, Users, TrendingUp, DollarSign, Plus, Settings, Edit, Trash2, Percent, ArrowLeft, LogOut, Home, ShoppingBag, AlertTriangle } from 'lucide-react'
+import { Package, Users, TrendingUp, DollarSign, Plus, Settings, Edit, Trash2, Percent, ArrowLeft, LogOut, Home, ShoppingBag, AlertTriangle, MinusCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
@@ -30,6 +30,7 @@ export default function AdminDashboard() {
   })
   const [loading, setLoading] = useState(true)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+  
 
   useEffect(() => {
     checkAdminAccess()
@@ -290,117 +291,90 @@ export default function AdminDashboard() {
           <p className="text-lg text-gray-600">Gestiona tu negocio con herramientas profesionales</p>
         </motion.div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Gestión de Productos */}
-          <CardHoverEffect>
-            <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.7, duration: 0.5 }}
-            >
-              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl">
-                <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-t-2xl">
-                  <CardTitle className="flex items-center gap-3 text-xl font-bold">
-                    <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                      <Package className="w-5 h-5" />
-                    </div>
-                    Gestión de Productos
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6 space-y-4">
-                  <Button className="w-full justify-start bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl" asChild>
-                    <a href="/admin/productos">
-                      <Edit className="w-5 h-5 mr-3" />
-                      Ver Todos los Productos
-                    </a>
-                  </Button>
-                  <Button className="w-full justify-start bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl">
-                    <Plus className="w-5 h-5 mr-3" />
-                    Agregar Nuevo Producto
-                  </Button>
-                  <Button className="w-full justify-start bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl">
-                    <TrendingUp className="w-5 h-5 mr-3" />
-                    Productos con Stock Bajo
-                  </Button>
-                  <Button className="w-full justify-start bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl">
-                    <Trash2 className="w-5 h-5 mr-3" />
-                    Productos Inactivos
-                  </Button>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </CardHoverEffect>
-
-          {/* Gestión de Precios */}
-          <CardHoverEffect>
-            <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.8, duration: 0.5 }}
-            >
-              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl">
-                <CardHeader className="bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-t-2xl">
-                  <CardTitle className="flex items-center gap-3 text-xl font-bold">
-                    <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                      <DollarSign className="w-5 h-5" />
-                    </div>
-                    Gestión de Precios
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6 space-y-4">
-                  <Button className="w-full justify-start bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl" asChild>
-                    <a href="/admin/precios">
-                      <DollarSign className="w-5 h-5 mr-3" />
-                      Gestión de Precios
-                    </a>
-                  </Button>
-                  <Button className="w-full justify-start bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl" asChild>
-                    <a href="/admin/descuentos">
-                      <Percent className="w-5 h-5 mr-3" />
-                      Escala de Descuentos
-                    </a>
-                  </Button>
-                  <Button className="w-full justify-start bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl">
-                    <DollarSign className="w-5 h-5 mr-3" />
-                    Historial de Cambios de Precio
-                  </Button>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </CardHoverEffect>
-        </div>
-
-          {/* Gestión de Inventario */}
-        <CardHoverEffect>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-12">
           <motion.div
-            initial={{ opacity: 0, y: 50 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6, duration: 0.5 }}
+            className="rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-600 text-white shadow-xl p-6 space-y-4"
+          >
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-2xl bg-white/20 flex items-center justify-center">
+                <Package className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">Gestión de Productos</h3>
+                <p className="text-sm text-white/80">Administra catálogo, precios y stock.</p>
+              </div>
+            </div>
+            <Button asChild variant="secondary" className="bg-white text-gray-900 hover:bg-white/90 font-semibold">
+              <a href="/admin/productos">Ver productos</a>
+            </Button>
+            <Button asChild variant="ghost" className="bg-white/10 text-white hover:bg-white/20 border border-white/30 font-semibold">
+              <a href="/admin/inventario/descontar">Registrar salida manual</a>
+            </Button>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7, duration: 0.5 }}
+            className="rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-500 to-emerald-600 text-white shadow-xl p-6 space-y-4"
+          >
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-2xl bg-white/20 flex items-center justify-center">
+                <Users className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">Gestión de Clientes</h3>
+                <p className="text-sm text-white/80">Visualiza clientes registrados y pedidos.</p>
+              </div>
+            </div>
+            <Button asChild variant="secondary" className="bg-white text-gray-900 hover:bg-white/90 font-semibold">
+              <a href="/admin/clientes">Ver clientes</a>
+            </Button>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8, duration: 0.5 }}
+            className="rounded-2xl bg-gradient-to-br from-pink-500 via-rose-500 to-pink-600 text-white shadow-xl p-6 space-y-4"
+          >
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-2xl bg-white/20 flex items-center justify-center">
+                <DollarSign className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">Configuración de Precios</h3>
+                <p className="text-sm text-white/80">Actualiza precios mayoristas y descuentos.</p>
+              </div>
+            </div>
+            <Button asChild variant="secondary" className="bg-white text-gray-900 hover:bg-white/90 font-semibold">
+              <a href="/admin/precios">Ajustar precios</a>
+            </Button>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.9, duration: 0.5 }}
+            className="rounded-2xl bg-gradient-to-br from-orange-500 via-red-500 to-rose-600 text-white shadow-xl p-6 space-y-4"
           >
-            <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-              <CardHeader className="bg-gradient-to-r from-blue-500 to-cyan-600 text-white rounded-t-2xl">
-                <CardTitle className="flex items-center gap-3 text-xl font-bold">
-                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                    <Package className="w-5 h-5" />
-                  </div>
-                  Gestión de Inventario
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6 space-y-4">
-                <Button className="w-full justify-start bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl" asChild>
-                  <a href="/admin/inventario">
-                    <Package className="w-5 h-5 mr-3" />
-                    Ver Inventario Completo
-                  </a>
-                </Button>
-                <Button className="w-full justify-start bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl">
-                  <AlertTriangle className="w-5 h-5 mr-3" />
-                  Productos con Stock Bajo
-                </Button>
-              </CardContent>
-            </Card>
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-2xl bg-white/20 flex items-center justify-center">
+                <MinusCircle className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">Inventario Rápido</h3>
+                <p className="text-sm text-white/80">Controla stock y registra salidas manuales.</p>
+              </div>
+            </div>
+            <Button asChild variant="secondary" className="bg-white text-gray-900 hover:bg-white/90 font-semibold">
+              <a href="/admin/inventario/descontar">Gestionar inventario</a>
+            </Button>
           </motion.div>
-        </CardHoverEffect>
+        </div>
 
           {/* Gestión de Pedidos */}
         <Card className="mt-12 bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
