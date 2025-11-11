@@ -466,7 +466,7 @@ export default function AdminPedidosPage() {
             filteredOrders.map((order) => (
               <Card key={order.id} className="hover:shadow-lg transition-all">
                 <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
+                  <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-3">
                         <div className="w-12 h-12 bg-purple-50 rounded-full flex items-center justify-center">
@@ -503,60 +503,62 @@ export default function AdminPedidosPage() {
                       </div>
 
                       <div className="flex flex-col lg:flex-row lg:items-center gap-3 mt-4">
-                    <div className="flex-1 space-y-1">
-                      <Label className="text-xs uppercase tracking-wide text-gray-500">Estado del pedido</Label>
-                      <Select
-                        value={order.status}
-                        onValueChange={(value) => handleUpdateOrderStatus(order.id, value, { keepModalOpen: true })}
-                        disabled={updatingStatusId === order.id}
-                      >
-                        <SelectTrigger className="h-9">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pendiente">Pendiente</SelectItem>
-                          <SelectItem value="confirmado">Confirmado</SelectItem>
-                          <SelectItem value="preparando">Preparando</SelectItem>
-                          <SelectItem value="enviado">Enviado</SelectItem>
-                          <SelectItem value="entregado">Entregado</SelectItem>
-                          <SelectItem value="cancelado">Cancelado</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <Label className="text-xs uppercase tracking-wide text-gray-500">Estado de pago</Label>
-                      <Select
-                        value={order.payment_status}
-                        onValueChange={(value) => handleUpdatePaymentStatus(order.id, value, { keepModalOpen: true })}
-                        disabled={updatingPaymentId === order.id}
-                      >
-                        <SelectTrigger className="h-9">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pendiente">Pendiente</SelectItem>
-                          <SelectItem value="pagado">Pagado</SelectItem>
-                          <SelectItem value="rechazado">Rechazado</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
+                        <div className="flex-1 space-y-1">
+                          <Label className="text-xs uppercase tracking-wide text-gray-500">Estado del pedido</Label>
+                          <Select
+                            value={order.status}
+                            onValueChange={(value) => handleUpdateOrderStatus(order.id, value, { keepModalOpen: true })}
+                            disabled={updatingStatusId === order.id}
+                          >
+                            <SelectTrigger className="h-9">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pendiente">Pendiente</SelectItem>
+                              <SelectItem value="confirmado">Confirmado</SelectItem>
+                              <SelectItem value="preparando">Preparando</SelectItem>
+                              <SelectItem value="enviado">Enviado</SelectItem>
+                              <SelectItem value="entregado">Entregado</SelectItem>
+                              <SelectItem value="cancelado">Cancelado</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <Label className="text-xs uppercase tracking-wide text-gray-500">Estado de pago</Label>
+                          <Select
+                            value={order.payment_status}
+                            onValueChange={(value) => handleUpdatePaymentStatus(order.id, value, { keepModalOpen: true })}
+                            disabled={updatingPaymentId === order.id}
+                          >
+                            <SelectTrigger className="h-9">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pendiente">Pendiente</SelectItem>
+                              <SelectItem value="pagado">Pagado</SelectItem>
+                              <SelectItem value="rechazado">Rechazado</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
 
-                  <div className="flex items-center gap-3 mt-4">
-                    {getStatusBadge(order.status)}
-                    {getPaymentBadge(order.payment_status)}
-                  </div>
-                </div>
+                      <div className="flex items-center gap-3 mt-4">
+                        {getStatusBadge(order.status)}
+                        {getPaymentBadge(order.payment_status)}
+                      </div>
+                    </div>
 
-                <Button onClick={() => handleViewOrderDetails(order)} variant="outline" className="h-10 mt-4 lg:mt-0">
-                  {updatingStatusId === order.id || updatingPaymentId === order.id ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Eye className="w-4 h-4 mr-2" />
-                  )}
-                  Ver Detalle
-                </Button>
-              </div>
+                    <Button onClick={() => handleViewOrderDetails(order)} variant="outline" className="h-10 self-start">
+                      {updatingStatusId === order.id || updatingPaymentId === order.id ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Eye className="w-4 h-4 mr-2" />
+                      )}
+                      Ver Detalle
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             ))
           )}
         </div>
