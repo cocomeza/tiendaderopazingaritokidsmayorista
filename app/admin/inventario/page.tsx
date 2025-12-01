@@ -662,13 +662,58 @@ export default function AdminInventarioPage() {
           </Card>
         )}
 
+        {/* Exportar/Importar CSV - Sección Separada */}
+        <Card className="border-2 border-blue-300 bg-blue-50/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-blue-600" />
+              Exportar e Importar Productos (CSV)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row gap-4 mb-4">
+              <Button 
+                onClick={handleExportProducts} 
+                size="lg"
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white text-base py-6"
+              >
+                <Download className="w-5 h-5 mr-2" />
+                Exportar CSV
+              </Button>
+              <Button 
+                variant="default" 
+                size="lg"
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-base py-6" 
+                asChild
+              >
+                <label className="cursor-pointer flex items-center justify-center">
+                  <Upload className="w-5 h-5 mr-2" />
+                  Importar CSV
+                  <input type="file" accept=".csv" className="hidden" onChange={handleImportProducts} />
+                </label>
+              </Button>
+            </div>
+            <div className="p-4 bg-white border border-blue-200 rounded-lg">
+              <p className="text-sm text-gray-700 mb-2">
+                <strong className="text-blue-600">💡 Cómo usar:</strong> Exporta los productos a CSV, edita precios, nombres, stock, etc. en Excel, 
+                y vuelve a importar el archivo. Los productos existentes se actualizarán por SKU, y los nuevos se crearán automáticamente.
+              </p>
+              <div className="mt-2 text-xs text-gray-600">
+                <strong>Columnas requeridas:</strong> SKU, Nombre. 
+                <br />
+                <strong>Opcionales:</strong> Categoría, Stock Actual, Umbral Bajo, Precio, Precio Mayorista.
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Filtros */}
         <Card>
           <CardHeader>
             <CardTitle>Filtros de Búsqueda</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label>Categoría</Label>
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
@@ -696,27 +741,6 @@ export default function AdminInventarioPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-end gap-2">
-                <Button onClick={handleExportProducts} className="flex-1 bg-green-600 hover:bg-green-700">
-                  <Download className="w-4 h-4 mr-2" />
-                  Exportar CSV
-                </Button>
-                <Button variant="outline" asChild>
-                  <label>
-                    <Upload className="w-4 h-4 mr-2" />
-                    Importar CSV
-                    <input type="file" accept=".csv" className="hidden" onChange={handleImportProducts} />
-                  </label>
-                </Button>
-              </div>
-            </div>
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-800">
-                <strong>💡 Cómo usar:</strong> Exporta los productos a CSV, edita precios, nombres, stock, etc. en Excel, 
-                y vuelve a importar el archivo. Los productos existentes se actualizarán por SKU, y los nuevos se crearán automáticamente.
-                <br />
-                <strong>Columnas requeridas:</strong> SKU, Nombre. <strong>Opcionales:</strong> Categoría, Stock Actual, Umbral Bajo, Precio, Precio Mayorista.
-              </p>
             </div>
           </CardContent>
         </Card>
