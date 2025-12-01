@@ -60,19 +60,17 @@ test.describe('Exportación e Importación de Productos', () => {
     
     // Verificar que los botones existen con selectores más específicos
     const exportButton = page.locator('button:has-text("Exportar CSV")')
-    const importLabel = page.locator('label:has-text("Importar CSV")')
+    const importButton = page.locator('button:has-text("Importar CSV")')
     const importInput = page.locator('input[type="file"][accept=".csv"]')
     
     // Verificar botón de exportar
     await expect(exportButton.first()).toBeVisible({ timeout: 10000 })
     
-    // Verificar botón/label de importar (puede ser label o input)
-    const importVisible = await Promise.race([
-      importLabel.first().isVisible().then(() => true),
-      importInput.first().isVisible().then(() => true)
-    ]).catch(() => false)
+    // Verificar botón de importar (ahora es un Button normal, no un label)
+    await expect(importButton.first()).toBeVisible({ timeout: 10000 })
     
-    expect(importVisible).toBe(true)
+    // Verificar que el input file existe (aunque esté oculto)
+    await expect(importInput.first()).toBeAttached({ timeout: 10000 })
   })
 
   test('debe exportar productos a CSV', async ({ page }) => {
@@ -442,6 +440,54 @@ test.describe('Exportación e Importación de Productos', () => {
       // Verificar que aparece indicador de carga (puede ser toast o spinner)
       // Esto depende de tu implementación de toast.loading
       await page.waitForTimeout(1000)
+      
+    } finally {
+      if (fs.existsSync(tempPath)) {
+        fs.unlinkSync(tempPath)
+      }
+    }
+  })
+
+  test('debe activar el input file al hacer click en el botón Importar CSV', async ({ page }) => {
+    // Verificar que estamos en la página correcta
+    await expect(page).toHaveURL(/\/admin\/inventario/, { timeout: 5000 })
+    
+    // Buscar el botón de importar
+    const importButton = page.locator('button:has-text("Importar CSV")').first()
+    await expect(importButton).toBeVisible({ timeout: 10000 })
+    await expect(importButton).toBeEnabled({ timeout: 5000 })
+    
+    // Verificar que el input file existe pero está oculto
+    const fileInput = page.locator('input[type="file"][accept=".csv"]')
+    await expect(fileInput).toBeAttached({ timeout: 10000 })
+    
+    // Crear un CSV de prueba
+    const testCSV = `SKU,Nombre,Stock Actual,Precio
+"TEST-BUTTON-CLICK","Producto Test Botón","15","2000"`
+    
+    const fs = require('fs')
+    const path = require('path')
+    const tempPath = path.join(__dirname, '../../temp-button-test.csv')
+    
+    try {
+      fs.writeFileSync(tempPath, testCSV)
+      
+      // Hacer click en el botón de importar (esto debería activar el input file)
+      await importButton.click()
+      
+      // Esperar un momento para que se active el diálogo de archivo
+      await page.waitForTimeout(500)
+      
+      // Establecer el archivo directamente en el input (simulando selección)
+      await fileInput.setInputFiles(tempPath)
+      
+      // Esperar a que aparezca algún toast
+      await page.waitForSelector('[data-sonner-toast]', { timeout: 10000 }).catch(() => {})
+      await page.waitForTimeout(2000)
+      
+      // Verificar que no hubo error crítico
+      const errorCount = await page.locator('text=/error crítico|falló completamente/i').count()
+      expect(errorCount).toBe(0)
       
     } finally {
       if (fs.existsSync(tempPath)) {

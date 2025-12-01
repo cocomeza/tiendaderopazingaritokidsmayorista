@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -70,6 +70,9 @@ export default function AdminInventarioPage() {
   const [adjustmentType, setAdjustmentType] = useState<'add' | 'subtract' | 'set'>('add')
   const [adjustmentQuantity, setAdjustmentQuantity] = useState('')
   const [adjustmentNotes, setAdjustmentNotes] = useState('')
+  
+  // Ref para el input de archivo
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     loadProducts()
@@ -281,6 +284,10 @@ export default function AdminInventarioPage() {
     
     result.push(current.trim())
     return result.map(v => v.replace(/^"|"$/g, ''))
+  }
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click()
   }
 
   const handleImportProducts = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -681,17 +688,21 @@ export default function AdminInventarioPage() {
                 Exportar CSV
               </Button>
               <Button 
+                onClick={handleImportClick}
                 variant="default" 
                 size="lg"
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-base py-6" 
-                asChild
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-base py-6"
               >
-                <label className="cursor-pointer flex items-center justify-center">
-                  <Upload className="w-5 h-5 mr-2" />
-                  Importar CSV
-                  <input type="file" accept=".csv" className="hidden" onChange={handleImportProducts} />
-                </label>
+                <Upload className="w-5 h-5 mr-2" />
+                Importar CSV
               </Button>
+              <input 
+                ref={fileInputRef}
+                type="file" 
+                accept=".csv" 
+                className="hidden" 
+                onChange={handleImportProducts} 
+              />
             </div>
             <div className="p-4 bg-white border border-blue-200 rounded-lg">
               <p className="text-sm text-gray-700 mb-2">
