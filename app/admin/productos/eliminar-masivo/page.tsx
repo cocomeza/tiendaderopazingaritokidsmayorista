@@ -366,25 +366,15 @@ export default function EliminarMasivoPage() {
       
       let deletedCount = count
       
-      // Intentar eliminación directa primero
-      let { error } = await query
-
-      // Si falla, intentar eliminar en lotes de 100
-      if (error && (error.code === 'PGRST116' || error.message?.includes('0 rows') || error.code === '42501')) {
-        console.log('⚠️ Eliminación directa falló, intentando en lotes...')
+      // Para modo "all", siempre usar eliminación en lotes por seguridad
+      // Para otros modos, intentar eliminación directa primero
+      if (deleteMode === 'all') {
+        console.log('⚠️ Modo "all" detectado, usando eliminación en lotes por seguridad...')
         
-        // Obtener IDs de productos a eliminar
-        let selectQuery = supabase
+        // Obtener todos los IDs de productos
+        const { data: productsToDelete, error: selectError } = await supabase
           .from('products')
           .select('id')
-
-        if (deleteMode === 'category' && selectedCategory) {
-          selectQuery = selectQuery.eq('category_id', selectedCategory)
-        } else if (deleteMode === 'subcategory' && selectedSubcategory) {
-          selectQuery = selectQuery.eq('category_id', selectedSubcategory)
-        }
-
-        const { data: productsToDelete, error: selectError } = await selectQuery
 
         if (selectError) {
           console.error('Error obteniendo productos:', selectError)
@@ -392,7 +382,9 @@ export default function EliminarMasivoPage() {
         }
 
         if (!productsToDelete || productsToDelete.length === 0) {
-          throw new Error('No se encontraron productos para eliminar')
+          toast.dismiss(loadingToast)
+          toast.info('No hay productos para eliminar.')
+          return
         }
 
         // Eliminar en lotes de 100
@@ -420,17 +412,73 @@ export default function EliminarMasivoPage() {
 
         deletedCount = deleted
         console.log(`✅ Eliminación completada en lotes: ${deletedCount} productos eliminados`)
-      } else if (error) {
-        console.error('❌ Error de Supabase:', {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint
-        })
-        throw error
       } else {
-        console.log('✅ Eliminación completada')
-        console.log('Productos eliminados:', deletedCount)
+        // Para modo category o subcategory, intentar eliminación directa primero
+        let { error } = await query
+
+        // Si falla, intentar eliminar en lotes de 100
+        if (error && (error.code === 'PGRST116' || error.message?.includes('0 rows') || error.code === '42501' || error.code === '21000')) {
+          console.log('⚠️ Eliminación directa falló, intentando en lotes...')
+          
+          // Obtener IDs de productos a eliminar
+          let selectQuery = supabase
+            .from('products')
+            .select('id')
+
+          if (deleteMode === 'category' && selectedCategory) {
+            selectQuery = selectQuery.eq('category_id', selectedCategory)
+          } else if (deleteMode === 'subcategory' && selectedSubcategory) {
+            selectQuery = selectQuery.eq('category_id', selectedSubcategory)
+          }
+
+          const { data: productsToDelete, error: selectError } = await selectQuery
+
+          if (selectError) {
+            console.error('Error obteniendo productos:', selectError)
+            throw selectError
+          }
+
+          if (!productsToDelete || productsToDelete.length === 0) {
+            throw new Error('No se encontraron productos para eliminar')
+          }
+
+          // Eliminar en lotes de 100
+          const batchSize = 100
+          let deleted = 0
+          const totalProducts = productsToDelete.length
+
+          for (let i = 0; i < productsToDelete.length; i += batchSize) {
+            const batch = productsToDelete.slice(i, i + batchSize)
+            const batchIds = batch.map(p => p.id)
+
+            const { error: batchError } = await supabase
+              .from('products')
+              .delete()
+              .in('id', batchIds)
+
+            if (batchError) {
+              console.error(`Error eliminando lote ${Math.floor(i / batchSize) + 1}:`, batchError)
+              throw batchError
+            }
+
+            deleted += batch.length
+            toast.loading(`Eliminando productos... ${deleted}/${totalProducts}`, { id: loadingToast })
+          }
+
+          deletedCount = deleted
+          console.log(`✅ Eliminación completada en lotes: ${deletedCount} productos eliminados`)
+        } else if (error) {
+          console.error('❌ Error de Supabase:', {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint
+          })
+          throw error
+        } else {
+          console.log('✅ Eliminación completada')
+          console.log('Productos eliminados:', deletedCount)
+        }
       }
 
       toast.dismiss(loadingToast)
