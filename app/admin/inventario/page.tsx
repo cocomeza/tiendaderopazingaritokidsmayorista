@@ -53,12 +53,19 @@ interface StockHistory {
   created_at: string
 }
 
+interface Category {
+  id: string
+  name: string
+}
+
 export default function AdminInventarioPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [products, setProducts] = useState<Product[]>([])
   const [lowStockProducts, setLowStockProducts] = useState<Product[]>([])
   const [stockHistory, setStockHistory] = useState<StockHistory[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [categoryMap, setCategoryMap] = useState<Map<string, string>>(new Map())
   
   // Filtros
   const [searchTerm, setSearchTerm] = useState('')
@@ -75,9 +82,41 @@ export default function AdminInventarioPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    loadCategories()
     loadProducts()
     loadStockHistory()
   }, [])
+
+  const loadCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('id, name')
+        .eq('active', true)
+        .order('name')
+
+      if (error) {
+        console.error('Error cargando categorías:', error)
+        return
+      }
+
+      setCategories(data || [])
+      
+      // Crear mapa de nombre (lowercase) -> ID para búsqueda rápida
+      const map = new Map<string, string>()
+      ;(data || []).forEach(cat => {
+        map.set(cat.name.toLowerCase().trim(), cat.id)
+        // También agregar variaciones comunes
+        map.set(cat.name.trim(), cat.id)
+      })
+      setCategoryMap(map)
+      
+      console.log('✅ Categorías cargadas:', data?.length || 0)
+      console.log('📋 Mapa de categorías:', Array.from(map.entries()).slice(0, 5))
+    } catch (error) {
+      console.error('Error cargando categorías:', error)
+    }
+  }
 
   const handleSignOut = async () => {
     try {
@@ -219,7 +258,7 @@ export default function AdminInventarioPage() {
       return
     }
 
-    const headers = ['SKU', 'Nombre', 'Categoría', 'Stock Actual', 'Umbral Bajo', 'Precio', 'Precio Mayorista']
+    const headers = ['SKU', 'Nombre', 'Categoría', 'Stock Actual', 'Umbral Bajo', 'Precio', 'Precio Mayorista', 'Talles', 'Colores']
     
     // Función para escapar valores CSV (maneja comillas y comas)
     const escapeCSVValue = (value: any): string => {
@@ -232,15 +271,29 @@ export default function AdminInventarioPage() {
       return stringValue
     }
     
-    const csvData = products.map(p => ({
-      'SKU': p.sku || `SKU-${p.id.substring(0, 8)}`,
-      'Nombre': p.name || '',
-      'Categoría': p.category || '',
-      'Stock Actual': p.stock ?? 0,
-      'Umbral Bajo': p.low_stock_threshold ?? 10,
-      'Precio': p.price ?? 0,
-      'Precio Mayorista': p.wholesale_price ?? p.price ?? 0
-    }))
+    // Crear mapa inverso ID -> nombre de categoría para la exportación
+    const categoryIdToName = new Map<string, string>()
+    categories.forEach(cat => {
+      categoryIdToName.set(cat.id, cat.name)
+    })
+    
+    const csvData = products.map(p => {
+      const categoryName = p.category_id ? (categoryIdToName.get(p.category_id) || '') : ''
+      // Convertir arrays de sizes y colors a strings separados por espacios
+      const sizesStr = Array.isArray(p.sizes) ? p.sizes.join(' ') : (p.sizes || '')
+      const colorsStr = Array.isArray(p.colors) ? p.colors.join(' ') : (p.colors || '')
+      return {
+        'SKU': p.sku || `SKU-${p.id.substring(0, 8)}`,
+        'Nombre': p.name || '',
+        'Categoría': categoryName,
+        'Stock Actual': p.stock ?? 0,
+        'Umbral Bajo': p.low_stock_threshold ?? 10,
+        'Precio': p.price ?? 0,
+        'Precio Mayorista': p.wholesale_price ?? p.price ?? 0,
+        'Talles': sizesStr,
+        'Colores': colorsStr
+      }
+    })
 
     const csvContent = [
       headers.join(','),
@@ -381,6 +434,8 @@ export default function AdminInventarioPage() {
       const umbralIndex = findColumnIndex(['Umbral Bajo', 'Umbral bajo', 'umbral bajo', 'Umbral', 'umbral', 'Stock Mínimo', 'Stock minimo', 'low_stock_threshold', 'Low Stock Threshold'])
       const precioIndex = findColumnIndex(['Precio', 'precio', 'Price', 'price', 'Precio Unitario', 'Precio unitario'])
       const precioMayoristaIndex = findColumnIndex(['Precio Mayorista', 'Precio mayorista', 'precio mayorista', 'Wholesale Price', 'Precio Mayoreo', 'wholesale_price'])
+      const tallesIndex = findColumnIndex(['Talles', 'talles', 'Talle', 'talle', 'Sizes', 'sizes', 'Size', 'size'])
+      const coloresIndex = findColumnIndex(['Colores', 'colores', 'Color', 'color', 'Colors', 'colors'])
 
       let created = 0
       let updated = 0
@@ -420,15 +475,29 @@ export default function AdminInventarioPage() {
           if (nombre) updateData.name = nombre
           if (categoriaIndex >= 0 && values[categoriaIndex]) {
             const categoriaValue = values[categoriaIndex].trim()
-            // Siempre usar category_id (la tabla no tiene columna 'category')
-            if (headers[categoriaIndex]?.toLowerCase() === 'category_id') {
-              // Si es un UUID válido, usarlo directamente
-              updateData.category_id = categoriaValue || null
-            } else {
-              // Si es un nombre de categoría, necesitaríamos buscar el ID
-              // Por ahora, solo usar category_id si está disponible
-              // Si viene como nombre de categoría, lo ignoramos (no hay mapeo de nombre a ID)
-              console.warn(`Categoría como nombre encontrada: ${categoriaValue}. Se requiere category_id (UUID) para importar.`)
+            if (categoriaValue) {
+              // Si la columna es category_id, usar directamente si es un UUID válido
+              if (headers[categoriaIndex]?.toLowerCase() === 'category_id') {
+                // Validar si es un UUID válido (formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+                const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+                if (uuidRegex.test(categoriaValue)) {
+                  updateData.category_id = categoriaValue
+                } else {
+                  console.warn(`category_id no es un UUID válido: ${categoriaValue}`)
+                }
+              } else {
+                // Es un nombre de categoría, buscar el ID en el mapa
+                const categoryId = categoryMap.get(categoriaValue.toLowerCase()) || 
+                                  categoryMap.get(categoriaValue)
+                
+                if (categoryId) {
+                  updateData.category_id = categoryId
+                  console.log(`✅ Categoría "${categoriaValue}" mapeada a ID: ${categoryId}`)
+                } else {
+                  console.warn(`⚠️ Categoría no encontrada: "${categoriaValue}". Categorías disponibles: ${Array.from(categoryMap.keys()).slice(0, 5).join(', ')}`)
+                  // No asignar categoría si no se encuentra
+                }
+              }
             }
           }
           
@@ -458,6 +527,29 @@ export default function AdminInventarioPage() {
             const precioMayorista = parseFloat(values[precioMayoristaIndex].replace(',', '.'))
             if (!isNaN(precioMayorista) && precioMayorista >= 0) {
               updateData.wholesale_price = precioMayorista
+            }
+          }
+
+          // Parsear talles y colores (separados por espacios o comas)
+          if (tallesIndex >= 0 && values[tallesIndex]) {
+            const tallesStr = values[tallesIndex].trim()
+            if (tallesStr) {
+              // Separar por espacios o comas, filtrar valores vacíos
+              const tallesArray = tallesStr.split(/[\s,]+/).filter(t => t.trim().length > 0)
+              if (tallesArray.length > 0) {
+                updateData.sizes = tallesArray
+              }
+            }
+          }
+
+          if (coloresIndex >= 0 && values[coloresIndex]) {
+            const coloresStr = values[coloresIndex].trim()
+            if (coloresStr) {
+              // Separar por espacios o comas, filtrar valores vacíos
+              const coloresArray = coloresStr.split(/[\s,]+/).filter(c => c.trim().length > 0)
+              if (coloresArray.length > 0) {
+                updateData.colors = coloresArray
+              }
             }
           }
 
@@ -544,8 +636,8 @@ export default function AdminInventarioPage() {
               low_stock_threshold: updateData.low_stock_threshold || 10,
               active: true,
               images: [],
-              sizes: [],
-              colors: []
+              sizes: updateData.sizes || [],
+              colors: updateData.colors || []
             }
             
             // Solo agregar category_id si está disponible (no usar 'category')
