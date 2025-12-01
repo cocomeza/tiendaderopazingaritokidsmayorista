@@ -17,6 +17,24 @@ interface Category {
   parent?: Category
 }
 
+interface Product {
+  id: string
+  name: string
+  description: string | null
+  price: number
+  wholesale_price: number
+  cost_price: number | null
+  stock: number
+  low_stock_threshold: number
+  category_id: string | null
+  sizes: string[]
+  colors: string[]
+  images: string[]
+  active: boolean
+  created_at: string
+  updated_at: string
+}
+
 export default function EliminarMasivoPage() {
   const router = useRouter()
   const [categories, setCategories] = useState<Category[]>([])
@@ -263,6 +281,40 @@ export default function EliminarMasivoPage() {
   }
 
   const handleDelete = async () => {
+    // Verificar autenticación primero
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError) {
+      console.error('Error obteniendo sesión:', sessionError)
+      toast.error('Error de autenticación. Por favor inicia sesión nuevamente.')
+      router.push('/admin/login')
+      return
+    }
+    
+    if (!session) {
+      toast.error('No estás autenticado. Por favor inicia sesión.')
+      router.push('/admin/login')
+      return
+    }
+
+    // Verificar que el usuario sea admin
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', session.user.id)
+      .single()
+
+    if (profileError) {
+      console.error('Error verificando perfil:', profileError)
+      toast.error('Error verificando permisos de administrador.')
+      return
+    }
+
+    if (!profile?.is_admin) {
+      toast.error('No tienes permisos de administrador para realizar esta acción.')
+      return
+    }
+
     let confirmMessage = ''
     let count = productCount || 0
 
@@ -288,26 +340,134 @@ export default function EliminarMasivoPage() {
     }
 
     setDeleting(true)
+    const loadingToast = toast.loading(`Eliminando ${count} productos...`)
+
     try {
+      console.log('🔍 Iniciando eliminación masiva...')
+      console.log('Modo:', deleteMode)
+      console.log('Categoría seleccionada:', selectedCategory)
+      console.log('Subcategoría seleccionada:', selectedSubcategory)
+      console.log('Usuario:', session.user.email)
+      console.log('Es admin:', profile.is_admin)
+
       let query = supabase
         .from('products')
         .delete()
 
       if (deleteMode === 'category' && selectedCategory) {
         query = query.eq('category_id', selectedCategory)
+        console.log('Filtrando por category_id:', selectedCategory)
       } else if (deleteMode === 'subcategory' && selectedSubcategory) {
         query = query.eq('category_id', selectedSubcategory)
+        console.log('Filtrando por category_id (subcategoría):', selectedSubcategory)
       }
 
-      const { error } = await query
+      console.log('Ejecutando consulta de eliminación...')
+      
+      let deletedCount = count
+      
+      // Intentar eliminación directa primero
+      let { error } = await query
 
-      if (error) throw error
+      // Si falla, intentar eliminar en lotes de 100
+      if (error && (error.code === 'PGRST116' || error.message?.includes('0 rows') || error.code === '42501')) {
+        console.log('⚠️ Eliminación directa falló, intentando en lotes...')
+        
+        // Obtener IDs de productos a eliminar
+        let selectQuery = supabase
+          .from('products')
+          .select('id')
 
-      toast.success(`Se eliminaron ${count} productos exitosamente`)
-      router.push('/admin/productos')
+        if (deleteMode === 'category' && selectedCategory) {
+          selectQuery = selectQuery.eq('category_id', selectedCategory)
+        } else if (deleteMode === 'subcategory' && selectedSubcategory) {
+          selectQuery = selectQuery.eq('category_id', selectedSubcategory)
+        }
+
+        const { data: productsToDelete, error: selectError } = await selectQuery
+
+        if (selectError) {
+          console.error('Error obteniendo productos:', selectError)
+          throw selectError
+        }
+
+        if (!productsToDelete || productsToDelete.length === 0) {
+          throw new Error('No se encontraron productos para eliminar')
+        }
+
+        // Eliminar en lotes de 100
+        const batchSize = 100
+        let deleted = 0
+        const totalProducts = productsToDelete.length
+
+        for (let i = 0; i < productsToDelete.length; i += batchSize) {
+          const batch = productsToDelete.slice(i, i + batchSize)
+          const batchIds = batch.map(p => p.id)
+
+          const { error: batchError } = await supabase
+            .from('products')
+            .delete()
+            .in('id', batchIds)
+
+          if (batchError) {
+            console.error(`Error eliminando lote ${Math.floor(i / batchSize) + 1}:`, batchError)
+            throw batchError
+          }
+
+          deleted += batch.length
+          toast.loading(`Eliminando productos... ${deleted}/${totalProducts}`, { id: loadingToast })
+        }
+
+        deletedCount = deleted
+        console.log(`✅ Eliminación completada en lotes: ${deletedCount} productos eliminados`)
+      } else if (error) {
+        console.error('❌ Error de Supabase:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        })
+        throw error
+      } else {
+        console.log('✅ Eliminación completada')
+        console.log('Productos eliminados:', deletedCount)
+      }
+
+      toast.dismiss(loadingToast)
+      toast.success(`Se eliminaron ${deletedCount} productos exitosamente`)
+      
+      // Esperar un momento antes de redirigir
+      setTimeout(() => {
+        router.push('/admin/productos')
+      }, 1500)
     } catch (error: any) {
-      console.error('Error eliminando productos:', error)
-      toast.error('Error al eliminar productos: ' + (error.message || 'Error desconocido'))
+      console.error('❌ Error eliminando productos:', error)
+      
+      let errorMessage = 'Error desconocido'
+      
+      if (error.message) {
+        errorMessage = error.message
+      } else if (error.code) {
+        errorMessage = `Error ${error.code}: ${error.message || 'Error de base de datos'}`
+      }
+
+      // Mensajes más específicos según el tipo de error
+      if (error.code === '42501' || error.message?.includes('permission') || error.message?.includes('policy')) {
+        errorMessage = 'Error de permisos. Verifica que tengas permisos de administrador y que las políticas RLS estén configuradas correctamente.'
+      } else if (error.code === 'PGRST116' || error.message?.includes('0 rows')) {
+        errorMessage = 'No se encontraron productos para eliminar con los criterios seleccionados.'
+      }
+
+      toast.dismiss(loadingToast)
+      toast.error(`Error al eliminar productos: ${errorMessage}`)
+      
+      console.error('Detalles completos del error:', {
+        error,
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      })
     } finally {
       setDeleting(false)
     }
