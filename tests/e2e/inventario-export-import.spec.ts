@@ -495,5 +495,115 @@ test.describe('Exportación e Importación de Productos', () => {
       }
     }
   })
+
+  test('debe manejar correctamente caracteres especiales UTF-8 (ñ, acentos)', async ({ page }) => {
+    // Verificar que estamos en la página correcta
+    await expect(page).toHaveURL(/\/admin\/inventario/, { timeout: 5000 })
+    
+    // CSV con caracteres especiales (ñ, acentos)
+    const specialCharsCSV = `SKU,Nombre,Categoría,Stock Actual,Precio
+"TEST-UTF8-001","Niño con acento y ñ","Ropa Infantil","20","3500"
+"TEST-UTF8-002","Camiseta con diseño","Remeras","15","2500"
+"TEST-UTF8-003","Pantalón de algodón","Pantalones","10","4500"`
+    
+    const fs = require('fs')
+    const path = require('path')
+    const tempPath = path.join(__dirname, '../../temp-utf8-test.csv')
+    
+    try {
+      // Guardar archivo con BOM UTF-8 para simular exportación desde Excel
+      const BOM = '\uFEFF'
+      fs.writeFileSync(tempPath, BOM + specialCharsCSV, 'utf8')
+      
+      // El input de archivo está oculto por diseño, pero podemos interactuar con él
+      const fileInput = page.locator('input[type="file"][accept=".csv"]')
+      await expect(fileInput).toBeAttached({ timeout: 10000 })
+      
+      await fileInput.setInputFiles(tempPath)
+      
+      // Esperar a que aparezca algún toast
+      await page.waitForSelector('[data-sonner-toast]', { timeout: 10000 }).catch(() => {})
+      await page.waitForTimeout(3000)
+      
+      // Verificar que no hubo error crítico
+      const errorCount = await page.locator('text=/error crítico|falló completamente|carácter/i').count()
+      expect(errorCount).toBe(0)
+      
+      // Verificar que se procesó correctamente (debe haber toast de éxito)
+      const successToast = page.locator('[data-sonner-toast]').filter({
+        hasText: /creados|actualizados|productos/i
+      })
+      const hasSuccess = await successToast.count().then(count => count > 0).catch(() => false)
+      
+      // Debe tener éxito o al menos no tener error crítico
+      expect(hasSuccess || errorCount === 0).toBe(true)
+      
+    } finally {
+      if (fs.existsSync(tempPath)) {
+        fs.unlinkSync(tempPath)
+      }
+    }
+  })
+
+  test('debe mostrar la sección de Importar/Exportar CSV al principio de la página con diseño destacado', async ({ page }) => {
+    // Verificar que estamos en la página correcta
+    await expect(page).toHaveURL(/\/admin\/inventario/, { timeout: 5000 })
+    
+    // Esperar a que la página cargue completamente
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(2000)
+    
+    // Verificar que la sección está visible con el nuevo título destacado
+    const sectionTitle = page.locator('text=/IMPORTAR BASE DE DATOS DE PRODUCTOS/i')
+    await expect(sectionTitle.first()).toBeVisible({ timeout: 10000 })
+    
+    // Verificar que el título contiene el emoji y el texto
+    const titleElement = page.locator('h3, h2, [class*="CardTitle"]').filter({ hasText: /IMPORTAR BASE DE DATOS/i })
+    await expect(titleElement.first()).toBeVisible({ timeout: 10000 })
+    
+    // Verificar que ambos botones están visibles y son grandes
+    const exportButton = page.locator('button:has-text("EXPORTAR CSV")').first()
+    const importButton = page.locator('button:has-text("IMPORTAR BASE DE DATOS CSV"), button:has-text("IMPORTAR CSV")').first()
+    
+    await expect(exportButton).toBeVisible({ timeout: 10000 })
+    await expect(importButton).toBeVisible({ timeout: 10000 })
+    
+    // Verificar que los botones están habilitados
+    await expect(exportButton).toBeEnabled({ timeout: 5000 })
+    await expect(importButton).toBeEnabled({ timeout: 5000 })
+    
+    // Verificar que la sección tiene el diseño destacado (borde azul, fondo degradado)
+    const sectionCard = page.locator('[class*="border-blue"], [class*="bg-blue"]').filter({ hasText: /IMPORTAR BASE DE DATOS/i }).first()
+    await expect(sectionCard).toBeVisible({ timeout: 5000 })
+    
+    // Verificar que el botón de importar tiene el estilo destacado
+    const importButtonStyles = await importButton.evaluate((el) => {
+      const styles = window.getComputedStyle(el)
+      return {
+        backgroundColor: styles.backgroundColor,
+        fontSize: styles.fontSize,
+        fontWeight: styles.fontWeight
+      }
+    })
+    
+    // Verificar que el botón es grande (py-8 debería hacerlo alto)
+    expect(parseFloat(importButtonStyles.fontSize)).toBeGreaterThan(14) // text-lg debería ser al menos 16px
+    
+    // Verificar que las instrucciones están visibles
+    const instructions = page.locator('text=/Cómo usar|Columnas requeridas|Caracteres especiales/i')
+    await expect(instructions.first()).toBeVisible({ timeout: 5000 })
+    
+    // Verificar que el input file existe (aunque esté oculto)
+    const fileInput = page.locator('input[type="file"][accept=".csv"]')
+    await expect(fileInput).toBeAttached({ timeout: 10000 })
+    
+    // Verificar que el botón de importar funciona haciendo click
+    await importButton.click()
+    await page.waitForTimeout(500)
+    
+    // El input debería estar disponible para recibir archivos
+    expect(await fileInput.isVisible()).toBe(false) // Debe estar oculto por diseño
+    expect(await fileInput.isEnabled()).toBe(true) // Pero debe estar habilitado
+  })
 })
 

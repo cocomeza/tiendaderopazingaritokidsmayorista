@@ -263,7 +263,7 @@ export default function AdminInventarioPage() {
     toast.success(`${products.length} productos exportados correctamente`)
   }
 
-  // Función para parsear CSV correctamente (maneja comas dentro de valores entre comillas)
+  // Función para parsear CSV correctamente (maneja comas dentro de valores entre comillas y comillas escapadas)
   const parseCSVLine = (line: string): string[] => {
     const result: string[] = []
     let current = ''
@@ -273,7 +273,14 @@ export default function AdminInventarioPage() {
       const char = line[i]
       
       if (char === '"') {
-        inQuotes = !inQuotes
+        if (inQuotes && line[i + 1] === '"') {
+          // Comilla escapada dentro de comillas: ""
+          current += '"'
+          i++ // Saltar la siguiente comilla
+        } else {
+          // Comilla de inicio/fin
+          inQuotes = !inQuotes
+        }
       } else if (char === ',' && !inQuotes) {
         result.push(current.trim())
         current = ''
@@ -283,7 +290,14 @@ export default function AdminInventarioPage() {
     }
     
     result.push(current.trim())
-    return result.map(v => v.replace(/^"|"$/g, ''))
+    // Remover comillas externas si existen
+    return result.map(v => {
+      const trimmed = v.trim()
+      if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+        return trimmed.slice(1, -1).replace(/""/g, '"')
+      }
+      return trimmed
+    })
   }
 
   const handleImportClick = () => {
@@ -298,7 +312,17 @@ export default function AdminInventarioPage() {
     const loadingToast = toast.loading('Procesando archivo CSV...')
 
     try {
-      const text = await file.text()
+      // Leer archivo como UTF-8 y manejar BOM si está presente
+      let text = await file.text()
+      
+      // Remover BOM (Byte Order Mark) si está presente (UTF-8 BOM: \uFEFF)
+      if (text.charCodeAt(0) === 0xFEFF) {
+        text = text.slice(1)
+      }
+      
+      // Normalizar saltos de línea (manejar Windows \r\n y Unix \n)
+      text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+      
       const lines = text.split('\n').filter(line => line.trim())
       
       if (lines.length < 2) {
@@ -606,6 +630,65 @@ export default function AdminInventarioPage() {
       </div>
 
       <div className="container mx-auto px-4 py-8 space-y-6">
+        {/* Exportar/Importar CSV - Sección Separada - PRIMERO Y SIEMPRE VISIBLE */}
+        <Card className="border-4 border-blue-500 bg-gradient-to-r from-blue-50 to-cyan-50 shadow-lg">
+          <CardHeader className="bg-blue-100 border-b-2 border-blue-300">
+            <CardTitle className="flex items-center gap-2 text-blue-800 text-xl">
+              <FileText className="w-6 h-6 text-blue-600" />
+              📥 IMPORTAR BASE DE DATOS DE PRODUCTOS (CSV)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row gap-4 mb-4">
+              <Button 
+                onClick={handleExportProducts} 
+                size="lg"
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white text-lg py-8 font-bold shadow-md"
+              >
+                <Download className="w-6 h-6 mr-3" />
+                EXPORTAR CSV
+              </Button>
+              <Button 
+                onClick={handleImportClick}
+                variant="default" 
+                size="lg"
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-lg py-8 font-bold shadow-md border-2 border-blue-800"
+              >
+                <Upload className="w-6 h-6 mr-3" />
+                📥 IMPORTAR BASE DE DATOS CSV
+              </Button>
+              <input 
+                ref={fileInputRef}
+                type="file" 
+                accept=".csv" 
+                className="hidden" 
+                onChange={handleImportProducts} 
+              />
+            </div>
+            <div className="p-4 bg-white border border-blue-200 rounded-lg">
+              <p className="text-sm text-gray-700 mb-2">
+                <strong className="text-blue-600">💡 Cómo usar:</strong> Exporta los productos a CSV, edita precios, nombres, stock, etc. en Excel, 
+                y vuelve a importar el archivo. Los productos existentes se actualizarán por SKU, y los nuevos se crearán automáticamente.
+              </p>
+              <div className="mt-2 text-xs text-gray-600 space-y-1">
+                <div>
+                  <strong>Columnas requeridas:</strong> SKU, Nombre.
+                </div>
+                <div>
+                  <strong>Opcionales:</strong> Categoría, Stock Actual, Umbral Bajo, Precio, Precio Mayorista.
+                </div>
+                <div className="mt-2 pt-2 border-t border-gray-200">
+                  <strong className="text-orange-600">⚠️ Importante - Caracteres especiales (ñ, acentos):</strong>
+                  <br />
+                  Al guardar desde Excel, usa: <strong>Archivo → Guardar como → CSV UTF-8 (delimitado por comas) (*.csv)</strong>
+                  <br />
+                  O guarda como CSV normal y luego abre con un editor de texto y guárdalo como UTF-8.
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {quickCategories.length > 0 && (
           <Card className="border border-gray-200 shadow-sm">
             <CardContent className="py-4">
@@ -668,55 +751,6 @@ export default function AdminInventarioPage() {
             </CardContent>
           </Card>
         )}
-
-        {/* Exportar/Importar CSV - Sección Separada */}
-        <Card className="border-2 border-blue-300 bg-blue-50/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-blue-600" />
-              Exportar e Importar Productos (CSV)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row gap-4 mb-4">
-              <Button 
-                onClick={handleExportProducts} 
-                size="lg"
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white text-base py-6"
-              >
-                <Download className="w-5 h-5 mr-2" />
-                Exportar CSV
-              </Button>
-              <Button 
-                onClick={handleImportClick}
-                variant="default" 
-                size="lg"
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-base py-6"
-              >
-                <Upload className="w-5 h-5 mr-2" />
-                Importar CSV
-              </Button>
-              <input 
-                ref={fileInputRef}
-                type="file" 
-                accept=".csv" 
-                className="hidden" 
-                onChange={handleImportProducts} 
-              />
-            </div>
-            <div className="p-4 bg-white border border-blue-200 rounded-lg">
-              <p className="text-sm text-gray-700 mb-2">
-                <strong className="text-blue-600">💡 Cómo usar:</strong> Exporta los productos a CSV, edita precios, nombres, stock, etc. en Excel, 
-                y vuelve a importar el archivo. Los productos existentes se actualizarán por SKU, y los nuevos se crearán automáticamente.
-              </p>
-              <div className="mt-2 text-xs text-gray-600">
-                <strong>Columnas requeridas:</strong> SKU, Nombre. 
-                <br />
-                <strong>Opcionales:</strong> Categoría, Stock Actual, Umbral Bajo, Precio, Precio Mayorista.
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Filtros */}
         <Card>
