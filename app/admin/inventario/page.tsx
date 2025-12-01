@@ -420,11 +420,15 @@ export default function AdminInventarioPage() {
           if (nombre) updateData.name = nombre
           if (categoriaIndex >= 0 && values[categoriaIndex]) {
             const categoriaValue = values[categoriaIndex].trim()
-            // Si la columna es category_id, usar category_id directamente
+            // Siempre usar category_id (la tabla no tiene columna 'category')
             if (headers[categoriaIndex]?.toLowerCase() === 'category_id') {
-              updateData.category_id = categoriaValue
+              // Si es un UUID válido, usarlo directamente
+              updateData.category_id = categoriaValue || null
             } else {
-              updateData.category = categoriaValue
+              // Si es un nombre de categoría, necesitaríamos buscar el ID
+              // Por ahora, solo usar category_id si está disponible
+              // Si viene como nombre de categoría, lo ignoramos (no hay mapeo de nombre a ID)
+              console.warn(`Categoría como nombre encontrada: ${categoriaValue}. Se requiere category_id (UUID) para importar.`)
             }
           }
           
@@ -486,9 +490,15 @@ export default function AdminInventarioPage() {
             const previousStock = product.stock
             const newStock = updateData.stock !== undefined ? updateData.stock : previousStock
 
+            // Limpiar updateData: eliminar 'category' si existe (solo usar category_id)
+            const cleanUpdateData = { ...updateData }
+            if ('category' in cleanUpdateData) {
+              delete cleanUpdateData.category
+            }
+
             const { error: updateError } = await supabase
               .from('products')
-              .update(updateData)
+              .update(cleanUpdateData)
               .eq('id', product.id)
 
             if (updateError) {
@@ -525,18 +535,22 @@ export default function AdminInventarioPage() {
               continue
             }
 
-            const newProduct = {
+            const newProduct: any = {
               name: nombre,
               sku: sku || `SKU-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
               price: updateData.price || 0,
               wholesale_price: updateData.wholesale_price || updateData.price * 0.8,
               stock: updateData.stock || 0,
               low_stock_threshold: updateData.low_stock_threshold || 10,
-              category: updateData.category || null,
               active: true,
               images: [],
               sizes: [],
               colors: []
+            }
+            
+            // Solo agregar category_id si está disponible (no usar 'category')
+            if (updateData.category_id) {
+              newProduct.category_id = updateData.category_id
             }
 
             const { data: createdProduct, error: createError } = await supabase
