@@ -347,10 +347,18 @@ export default function AdminInventarioPage() {
         return -1
       }
       
-      // Buscar SKU con variaciones comunes
-      const skuIndex = findColumnIndex(['SKU', 'sku', 'Sku', 'Código', 'Codigo', 'Código SKU', 'Codigo SKU'])
+      // Buscar SKU con variaciones comunes (incluyendo inglés)
+      let skuIndex = findColumnIndex(['SKU', 'sku', 'Sku', 'Código', 'Codigo', 'Código SKU', 'Codigo SKU'])
       
-      // Buscar Nombre con variaciones comunes
+      // Si no hay SKU, usar ID como alternativa (para formatos de exportación completa)
+      if (skuIndex < 0) {
+        skuIndex = findColumnIndex(['id', 'ID', 'Id'])
+        if (skuIndex >= 0) {
+          console.log('⚠️ No se encontró columna SKU, usando ID como alternativa')
+        }
+      }
+      
+      // Buscar Nombre con variaciones comunes (incluyendo inglés)
       const nombreIndex = findColumnIndex(['Nombre', 'nombre', 'Nombre del Producto', 'Producto', 'producto', 'Name', 'name'])
       
       // Log para debugging
@@ -362,17 +370,17 @@ export default function AdminInventarioPage() {
       if (skuIndex < 0 || nombreIndex < 0) {
         toast.dismiss(loadingToast)
         const foundHeaders = headers.slice(0, 10).join(', ') + (headers.length > 10 ? '...' : '')
-        toast.error(`El CSV debe contener las columnas: SKU y Nombre. Columnas encontradas: ${foundHeaders}`)
+        toast.error(`El CSV debe contener las columnas: SKU (o id) y Nombre (o name). Columnas encontradas: ${foundHeaders}`)
         console.error('❌ Headers encontrados:', headers)
         console.error('❌ SKU index:', skuIndex, 'Nombre index:', nombreIndex)
         return
       }
-      // Obtener índices de columnas opcionales (con variaciones)
-      const categoriaIndex = findColumnIndex(['Categoría', 'Categoria', 'categoría', 'categoria', 'Category', 'category'])
-      const stockIndex = findColumnIndex(['Stock Actual', 'Stock', 'stock', 'Stock actual', 'Cantidad', 'cantidad'])
-      const umbralIndex = findColumnIndex(['Umbral Bajo', 'Umbral bajo', 'umbral bajo', 'Umbral', 'umbral', 'Stock Mínimo', 'Stock minimo'])
+      // Obtener índices de columnas opcionales (con variaciones en español e inglés)
+      const categoriaIndex = findColumnIndex(['Categoría', 'Categoria', 'categoría', 'categoria', 'Category', 'category', 'category_id', 'Category ID'])
+      const stockIndex = findColumnIndex(['Stock Actual', 'Stock', 'stock', 'Stock actual', 'Cantidad', 'cantidad', 'Stock Actual'])
+      const umbralIndex = findColumnIndex(['Umbral Bajo', 'Umbral bajo', 'umbral bajo', 'Umbral', 'umbral', 'Stock Mínimo', 'Stock minimo', 'low_stock_threshold', 'Low Stock Threshold'])
       const precioIndex = findColumnIndex(['Precio', 'precio', 'Price', 'price', 'Precio Unitario', 'Precio unitario'])
-      const precioMayoristaIndex = findColumnIndex(['Precio Mayorista', 'Precio mayorista', 'precio mayorista', 'Wholesale Price', 'Precio Mayoreo'])
+      const precioMayoristaIndex = findColumnIndex(['Precio Mayorista', 'Precio mayorista', 'precio mayorista', 'Wholesale Price', 'Precio Mayoreo', 'wholesale_price'])
 
       let created = 0
       let updated = 0
@@ -395,11 +403,14 @@ export default function AdminInventarioPage() {
 
           const sku = values[skuIndex]?.trim() || ''
           const nombre = values[nombreIndex]?.trim() || ''
+          
+          // Determinar si estamos usando ID como SKU
+          const usingIdAsSku = headers[skuIndex]?.toLowerCase() === 'id'
 
           // Validar campos mínimos
           if (!sku && !nombre) {
             errors++
-            errorMessages.push(`Línea ${i + 1}: Falta SKU y Nombre`)
+            errorMessages.push(`Línea ${i + 1}: Falta SKU/ID y Nombre`)
             continue
           }
 
@@ -408,7 +419,13 @@ export default function AdminInventarioPage() {
           
           if (nombre) updateData.name = nombre
           if (categoriaIndex >= 0 && values[categoriaIndex]) {
-            updateData.category = values[categoriaIndex].trim()
+            const categoriaValue = values[categoriaIndex].trim()
+            // Si la columna es category_id, usar category_id directamente
+            if (headers[categoriaIndex]?.toLowerCase() === 'category_id') {
+              updateData.category_id = categoriaValue
+            } else {
+              updateData.category = categoriaValue
+            }
           }
           
           // Parsear números
@@ -440,16 +457,28 @@ export default function AdminInventarioPage() {
             }
           }
 
-          // Buscar producto existente por SKU
+          // Buscar producto existente por SKU o ID
           let product = null
           if (sku) {
-            const { data } = await supabase
-              .from('products')
-              .select('id, stock, name')
-              .eq('sku', sku)
-              .single()
-            
-            product = data
+            if (usingIdAsSku) {
+              // Si estamos usando ID, buscar directamente por ID
+              const { data } = await supabase
+                .from('products')
+                .select('id, stock, name, sku')
+                .eq('id', sku)
+                .single()
+              
+              product = data
+            } else {
+              // Buscar por SKU normal
+              const { data } = await supabase
+                .from('products')
+                .select('id, stock, name')
+                .eq('sku', sku)
+                .single()
+              
+              product = data
+            }
           }
 
           if (product) {
