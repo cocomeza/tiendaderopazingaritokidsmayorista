@@ -81,7 +81,7 @@ jest.mock('framer-motion', () => ({
     h3: 'h3',
     p: 'p',
   },
-  AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
+  AnimatePresence: ({ children }) => children,
 }))
 
 // Mock Zustand

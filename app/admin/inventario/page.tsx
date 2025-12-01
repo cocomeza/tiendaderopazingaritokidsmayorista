@@ -218,22 +218,35 @@ export default function AdminInventarioPage() {
 
     const headers = ['SKU', 'Nombre', 'Categoría', 'Stock Actual', 'Umbral Bajo', 'Precio', 'Precio Mayorista']
     
+    // Función para escapar valores CSV (maneja comillas y comas)
+    const escapeCSVValue = (value: any): string => {
+      if (value === null || value === undefined) return ''
+      const stringValue = String(value)
+      // Si contiene comas, comillas o saltos de línea, envolver en comillas y escapar comillas internas
+      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+        return `"${stringValue.replace(/"/g, '""')}"`
+      }
+      return stringValue
+    }
+    
     const csvData = products.map(p => ({
-      'SKU': p.sku || '',
-      'Nombre': p.name,
+      'SKU': p.sku || `SKU-${p.id.substring(0, 8)}`,
+      'Nombre': p.name || '',
       'Categoría': p.category || '',
-      'Stock Actual': p.stock,
-      'Umbral Bajo': p.low_stock_threshold,
-      'Precio': p.price,
-      'Precio Mayorista': p.wholesale_price || ''
+      'Stock Actual': p.stock ?? 0,
+      'Umbral Bajo': p.low_stock_threshold ?? 10,
+      'Precio': p.price ?? 0,
+      'Precio Mayorista': p.wholesale_price ?? p.price ?? 0
     }))
 
     const csvContent = [
       headers.join(','),
-      ...csvData.map(row => Object.values(row).map(v => `"${v}"`).join(','))
+      ...csvData.map(row => headers.map(header => escapeCSVValue(row[header as keyof typeof row])).join(','))
     ].join('\n')
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    // Agregar BOM para Excel (UTF-8)
+    const BOM = '\uFEFF'
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     const url = URL.createObjectURL(blob)
     link.setAttribute('href', url)
@@ -242,91 +255,267 @@ export default function AdminInventarioPage() {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    URL.revokeObjectURL(url)
 
-    toast.success('Productos exportados correctamente')
+    toast.success(`${products.length} productos exportados correctamente`)
+  }
+
+  // Función para parsear CSV correctamente (maneja comas dentro de valores entre comillas)
+  const parseCSVLine = (line: string): string[] => {
+    const result: string[] = []
+    let current = ''
+    let inQuotes = false
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i]
+      
+      if (char === '"') {
+        inQuotes = !inQuotes
+      } else if (char === ',' && !inQuotes) {
+        result.push(current.trim())
+        current = ''
+      } else {
+        current += char
+      }
+    }
+    
+    result.push(current.trim())
+    return result.map(v => v.replace(/^"|"$/g, ''))
   }
 
   const handleImportProducts = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
+    // Mostrar loading
+    const loadingToast = toast.loading('Procesando archivo CSV...')
+
     try {
       const text = await file.text()
-      const lines = text.split('\n')
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''))
-
-      // Validar headers
-      const requiredHeaders = ['SKU', 'Nombre', 'Stock Actual']
-      const hasRequired = requiredHeaders.every(h => headers.includes(h))
+      const lines = text.split('\n').filter(line => line.trim())
       
-      if (!hasRequired) {
-        toast.error('El CSV debe contener las columnas: SKU, Nombre, Stock Actual')
+      if (lines.length < 2) {
+        toast.dismiss(loadingToast)
+        toast.error('El archivo CSV está vacío o no tiene datos')
         return
       }
 
+      // Parsear headers
+      const headers = parseCSVLine(lines[0]).map(h => h.trim())
+      
+      // Validar headers requeridos
+      const requiredHeaders = ['SKU', 'Nombre']
+      const hasRequired = requiredHeaders.every(h => headers.includes(h))
+      
+      if (!hasRequired) {
+        toast.dismiss(loadingToast)
+        toast.error('El CSV debe contener las columnas: SKU, Nombre')
+        return
+      }
+
+      // Obtener índices de columnas
+      const skuIndex = headers.indexOf('SKU')
+      const nombreIndex = headers.indexOf('Nombre')
+      const categoriaIndex = headers.indexOf('Categoría')
+      const stockIndex = headers.indexOf('Stock Actual')
+      const umbralIndex = headers.indexOf('Umbral Bajo')
+      const precioIndex = headers.indexOf('Precio')
+      const precioMayoristaIndex = headers.indexOf('Precio Mayorista')
+
+      let created = 0
       let updated = 0
       let errors = 0
+      const errorMessages: string[] = []
 
       // Procesar cada línea
       for (let i = 1; i < lines.length; i++) {
         if (!lines[i].trim()) continue
         
-        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''))
-        const skuIndex = headers.indexOf('SKU')
-        const stockIndex = headers.indexOf('Stock Actual')
+        try {
+          const values = parseCSVLine(lines[i])
+          
+          if (values.length < headers.length) {
+            // Rellenar con valores vacíos si faltan columnas
+            while (values.length < headers.length) {
+              values.push('')
+            }
+          }
 
-        if (skuIndex === -1 || stockIndex === -1) continue
+          const sku = values[skuIndex]?.trim() || ''
+          const nombre = values[nombreIndex]?.trim() || ''
 
-        const sku = values[skuIndex]
-        const newStock = parseInt(values[stockIndex])
+          // Validar campos mínimos
+          if (!sku && !nombre) {
+            errors++
+            errorMessages.push(`Línea ${i + 1}: Falta SKU y Nombre`)
+            continue
+          }
 
-        if (isNaN(newStock)) {
+          // Preparar datos para actualizar/crear
+          const updateData: any = {}
+          
+          if (nombre) updateData.name = nombre
+          if (categoriaIndex >= 0 && values[categoriaIndex]) {
+            updateData.category = values[categoriaIndex].trim()
+          }
+          
+          // Parsear números
+          if (stockIndex >= 0 && values[stockIndex]) {
+            const stock = parseInt(values[stockIndex])
+            if (!isNaN(stock) && stock >= 0) {
+              updateData.stock = stock
+            }
+          }
+          
+          if (umbralIndex >= 0 && values[umbralIndex]) {
+            const umbral = parseInt(values[umbralIndex])
+            if (!isNaN(umbral) && umbral >= 0) {
+              updateData.low_stock_threshold = umbral
+            }
+          }
+          
+          if (precioIndex >= 0 && values[precioIndex]) {
+            const precio = parseFloat(values[precioIndex].replace(',', '.'))
+            if (!isNaN(precio) && precio >= 0) {
+              updateData.price = precio
+            }
+          }
+          
+          if (precioMayoristaIndex >= 0 && values[precioMayoristaIndex]) {
+            const precioMayorista = parseFloat(values[precioMayoristaIndex].replace(',', '.'))
+            if (!isNaN(precioMayorista) && precioMayorista >= 0) {
+              updateData.wholesale_price = precioMayorista
+            }
+          }
+
+          // Buscar producto existente por SKU
+          let product = null
+          if (sku) {
+            const { data } = await supabase
+              .from('products')
+              .select('id, stock, name')
+              .eq('sku', sku)
+              .single()
+            
+            product = data
+          }
+
+          if (product) {
+            // Actualizar producto existente
+            const previousStock = product.stock
+            const newStock = updateData.stock !== undefined ? updateData.stock : previousStock
+
+            const { error: updateError } = await supabase
+              .from('products')
+              .update(updateData)
+              .eq('id', product.id)
+
+            if (updateError) {
+              errors++
+              errorMessages.push(`Línea ${i + 1}: Error actualizando ${nombre || sku} - ${updateError.message}`)
+              continue
+            }
+
+            // Registrar cambio de stock en historial si cambió
+            if (updateData.stock !== undefined && updateData.stock !== previousStock) {
+              await supabase.from('stock_history').insert({
+                product_id: product.id,
+                change_type: 'importación',
+                quantity: Math.abs(newStock - previousStock),
+                previous_stock: previousStock,
+                new_stock: newStock,
+                notes: 'Actualización masiva desde CSV'
+              })
+            }
+
+            updated++
+          } else {
+            // Crear nuevo producto
+            if (!nombre) {
+              errors++
+              errorMessages.push(`Línea ${i + 1}: No se puede crear producto sin nombre`)
+              continue
+            }
+
+            // Validar campos requeridos para crear
+            if (!updateData.price) {
+              errors++
+              errorMessages.push(`Línea ${i + 1}: No se puede crear producto sin precio`)
+              continue
+            }
+
+            const newProduct = {
+              name: nombre,
+              sku: sku || `SKU-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              price: updateData.price || 0,
+              wholesale_price: updateData.wholesale_price || updateData.price * 0.8,
+              stock: updateData.stock || 0,
+              low_stock_threshold: updateData.low_stock_threshold || 10,
+              category: updateData.category || null,
+              active: true,
+              images: [],
+              sizes: [],
+              colors: []
+            }
+
+            const { data: createdProduct, error: createError } = await supabase
+              .from('products')
+              .insert(newProduct)
+              .select()
+              .single()
+
+            if (createError) {
+              errors++
+              errorMessages.push(`Línea ${i + 1}: Error creando ${nombre} - ${createError.message}`)
+              continue
+            }
+
+            // Registrar stock inicial en historial
+            if (createdProduct && newProduct.stock > 0) {
+              await supabase.from('stock_history').insert({
+                product_id: createdProduct.id,
+                change_type: 'entrada',
+                quantity: newProduct.stock,
+                previous_stock: 0,
+                new_stock: newProduct.stock,
+                notes: 'Producto creado desde CSV'
+              })
+            }
+
+            created++
+          }
+        } catch (lineError: any) {
           errors++
-          continue
+          errorMessages.push(`Línea ${i + 1}: ${lineError.message || 'Error desconocido'}`)
         }
-
-        // Buscar producto por SKU
-        const { data: product } = await supabase
-          .from('products')
-          .select('id, stock')
-          .eq('sku', sku)
-          .single()
-
-        if (!product) {
-          errors++
-          continue
-        }
-
-        // Actualizar stock
-        const { error } = await supabase
-          .from('products')
-          .update({ stock: newStock })
-          .eq('id', product.id)
-
-        if (error) {
-          errors++
-          continue
-        }
-
-        // Registrar en historial
-        await supabase.from('stock_history').insert({
-          product_id: product.id,
-          change_type: 'importación',
-          quantity: Math.abs(newStock - product.stock),
-          previous_stock: product.stock,
-          new_stock: newStock,
-          notes: 'Actualización masiva desde CSV'
-        })
-
-        updated++
       }
 
-      toast.success(`${updated} productos actualizados. ${errors} errores`)
+      // Mostrar resultados
+      toast.dismiss(loadingToast)
+      
+      let message = `✅ ${created} productos creados, ${updated} productos actualizados`
+      if (errors > 0) {
+        message += `, ${errors} errores`
+      }
+      
+      toast.success(message)
+      
+      if (errors > 0 && errorMessages.length > 0) {
+        console.error('Errores de importación:', errorMessages)
+        // Mostrar primeros 5 errores en consola
+        toast.error(`Ver consola para detalles de ${errors} errores`)
+      }
+
+      // Recargar productos y historial
       loadProducts()
       loadStockHistory()
-    } catch (error) {
+      
+      // Limpiar input
+      event.target.value = ''
+    } catch (error: any) {
+      toast.dismiss(loadingToast)
       console.error('Error importando:', error)
-      toast.error('Error al importar productos')
+      toast.error(`Error al importar productos: ${error.message || 'Error desconocido'}`)
     }
   }
 
@@ -520,6 +709,14 @@ export default function AdminInventarioPage() {
                   </label>
                 </Button>
               </div>
+            </div>
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <strong>💡 Cómo usar:</strong> Exporta los productos a CSV, edita precios, nombres, stock, etc. en Excel, 
+                y vuelve a importar el archivo. Los productos existentes se actualizarán por SKU, y los nuevos se crearán automáticamente.
+                <br />
+                <strong>Columnas requeridas:</strong> SKU, Nombre. <strong>Opcionales:</strong> Categoría, Stock Actual, Umbral Bajo, Precio, Precio Mayorista.
+              </p>
             </div>
           </CardContent>
         </Card>
