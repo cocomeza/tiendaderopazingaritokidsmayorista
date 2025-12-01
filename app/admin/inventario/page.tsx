@@ -334,24 +334,45 @@ export default function AdminInventarioPage() {
       // Parsear headers
       const headers = parseCSVLine(lines[0]).map(h => h.trim())
       
-      // Validar headers requeridos
-      const requiredHeaders = ['SKU', 'Nombre']
-      const hasRequired = requiredHeaders.every(h => headers.includes(h))
+      // Función para normalizar nombres de columnas (case-insensitive, sin espacios extra)
+      const normalizeHeader = (header: string) => header.trim().toLowerCase().replace(/\s+/g, ' ')
       
-      if (!hasRequired) {
+      // Buscar columnas requeridas con variaciones comunes
+      const findColumnIndex = (possibleNames: string[]): number => {
+        for (const name of possibleNames) {
+          const normalizedName = normalizeHeader(name)
+          const index = headers.findIndex(h => normalizeHeader(h) === normalizedName)
+          if (index >= 0) return index
+        }
+        return -1
+      }
+      
+      // Buscar SKU con variaciones comunes
+      const skuIndex = findColumnIndex(['SKU', 'sku', 'Sku', 'Código', 'Codigo', 'Código SKU', 'Codigo SKU'])
+      
+      // Buscar Nombre con variaciones comunes
+      const nombreIndex = findColumnIndex(['Nombre', 'nombre', 'Nombre del Producto', 'Producto', 'producto', 'Name', 'name'])
+      
+      // Log para debugging
+      console.log('📋 Headers encontrados en CSV:', headers)
+      console.log('🔍 SKU encontrado en índice:', skuIndex, skuIndex >= 0 ? `(${headers[skuIndex]})` : 'NO ENCONTRADO')
+      console.log('🔍 Nombre encontrado en índice:', nombreIndex, nombreIndex >= 0 ? `(${headers[nombreIndex]})` : 'NO ENCONTRADO')
+      
+      // Validar headers requeridos
+      if (skuIndex < 0 || nombreIndex < 0) {
         toast.dismiss(loadingToast)
-        toast.error('El CSV debe contener las columnas: SKU, Nombre')
+        const foundHeaders = headers.slice(0, 10).join(', ') + (headers.length > 10 ? '...' : '')
+        toast.error(`El CSV debe contener las columnas: SKU y Nombre. Columnas encontradas: ${foundHeaders}`)
+        console.error('❌ Headers encontrados:', headers)
+        console.error('❌ SKU index:', skuIndex, 'Nombre index:', nombreIndex)
         return
       }
-
-      // Obtener índices de columnas
-      const skuIndex = headers.indexOf('SKU')
-      const nombreIndex = headers.indexOf('Nombre')
-      const categoriaIndex = headers.indexOf('Categoría')
-      const stockIndex = headers.indexOf('Stock Actual')
-      const umbralIndex = headers.indexOf('Umbral Bajo')
-      const precioIndex = headers.indexOf('Precio')
-      const precioMayoristaIndex = headers.indexOf('Precio Mayorista')
+      // Obtener índices de columnas opcionales (con variaciones)
+      const categoriaIndex = findColumnIndex(['Categoría', 'Categoria', 'categoría', 'categoria', 'Category', 'category'])
+      const stockIndex = findColumnIndex(['Stock Actual', 'Stock', 'stock', 'Stock actual', 'Cantidad', 'cantidad'])
+      const umbralIndex = findColumnIndex(['Umbral Bajo', 'Umbral bajo', 'umbral bajo', 'Umbral', 'umbral', 'Stock Mínimo', 'Stock minimo'])
+      const precioIndex = findColumnIndex(['Precio', 'precio', 'Price', 'price', 'Precio Unitario', 'Precio unitario'])
+      const precioMayoristaIndex = findColumnIndex(['Precio Mayorista', 'Precio mayorista', 'precio mayorista', 'Wholesale Price', 'Precio Mayoreo'])
 
       let created = 0
       let updated = 0
