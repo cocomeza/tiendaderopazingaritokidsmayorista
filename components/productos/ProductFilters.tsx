@@ -42,18 +42,21 @@ export function ProductFilters({ products, onFilterChange, categories }: FilterP
   const allColors = [...new Set(products.flatMap(p => p.colors || []))].sort()
   const allSizes = [...new Set(products.flatMap(p => p.sizes || []))].sort()
 
+  // Validar que categories sea un array válido
+  const validCategoriesArray = Array.isArray(categories) ? categories : []
+  
   // Organizar categorías por grupos
-  const menuCategories = categories.filter(cat => cat.group_type === 'menu')
+  const menuCategories = validCategoriesArray.filter(cat => cat && cat.group_type === 'menu')
     .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
   
-  const ageCategories = categories.filter(cat => cat.group_type === 'age')
+  const ageCategories = validCategoriesArray.filter(cat => cat && cat.group_type === 'age')
     .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
   
-  const backToSchoolCategories = categories.filter(cat => cat.group_type === 'back-to-school')
+  const backToSchoolCategories = validCategoriesArray.filter(cat => cat && cat.group_type === 'back-to-school')
     .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
   
   // Todas las categorías (para mostrar todas disponibles, incluso sin group_type)
-  const allCategories = categories
+  const allCategories = validCategoriesArray
     .filter(cat => cat && cat.id && cat.name) // Filtrar categorías válidas
     .sort((a, b) => {
       // Ordenar primero por display_order si existe, luego por nombre
@@ -70,8 +73,14 @@ export function ProductFilters({ products, onFilterChange, categories }: FilterP
   // Log para depuración
   if (typeof window !== 'undefined') {
     console.log('🔍 ProductFilters - Categorías recibidas:', categories.length)
-    console.log('🔍 ProductFilters - Todas las categorías:', allCategories.length)
-    console.log('🔍 ProductFilters - Primeras 5 categorías:', allCategories.slice(0, 5).map(c => c.name))
+    console.log('🔍 ProductFilters - Categorías raw:', categories)
+    console.log('🔍 ProductFilters - Todas las categorías filtradas:', allCategories.length)
+    if (allCategories.length > 0) {
+      console.log('🔍 ProductFilters - Primeras 5 categorías:', allCategories.slice(0, 5).map(c => ({ name: c.name, id: c.id, group_type: c.group_type })))
+    } else {
+      console.warn('⚠️ ProductFilters - No hay categorías para mostrar')
+      console.warn('⚠️ ProductFilters - categories prop:', categories)
+    }
   }
   
   // Agrupar categorías por rango de edad

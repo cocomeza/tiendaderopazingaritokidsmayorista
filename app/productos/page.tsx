@@ -143,7 +143,21 @@ export default function ProductosPage() {
       })) as ProductWithVariants[]
       setAllProducts(productsWithVariants)
       setFilteredProducts(productsWithVariants)
-      setCategories(categoriesData || [])
+      
+      // Asegurar que categoriesData sea un array válido
+      const validCategories = (categoriesData || []).filter(cat => 
+        cat && cat.id && cat.name
+      )
+      setCategories(validCategories)
+      
+      // Log detallado para depuración
+      if (validCategories.length === 0) {
+        console.warn('⚠️ No se cargaron categorías válidas')
+        console.warn('📋 categoriesData recibido:', categoriesData)
+        console.warn('📋 categoriesError:', categoriesError)
+      } else {
+        console.log('✅ Categorías válidas establecidas:', validCategories.length)
+      }
       
     } catch (err) {
       console.error('Error general:', err)
