@@ -100,6 +100,8 @@ export default function ProductosPage() {
       let categoriesData = null
       let categoriesError = null
       
+      console.log('🔍 Iniciando carga de categorías...')
+      
       // Intentar cargar categorías activas primero
       const { data: activeCategories, error: activeError } = await supabase
         .from('categories')
@@ -107,17 +109,26 @@ export default function ProductosPage() {
         .eq('active', true)
         .order('name')
 
+      console.log('📡 Respuesta de Supabase - activeCategories:', activeCategories)
+      console.log('📡 Respuesta de Supabase - activeError:', activeError)
+
       if (activeError) {
         console.error('❌ Error cargando categorías activas:', activeError)
         console.error('Código:', activeError.code)
         console.error('Mensaje:', activeError.message)
+        console.error('Detalles:', activeError.details)
+        console.error('Hint:', activeError.hint)
         categoriesError = activeError
         
-        // Intentar cargar todas las categorías como fallback
+        // Intentar cargar todas las categorías como fallback (sin filtro active)
+        console.log('🔄 Intentando cargar todas las categorías (sin filtro active)...')
         const { data: allCategories, error: allError } = await supabase
           .from('categories')
           .select('id, name, group_type, age_range, display_order')
           .order('name')
+        
+        console.log('📡 Respuesta fallback - allCategories:', allCategories)
+        console.log('📡 Respuesta fallback - allError:', allError)
         
         if (allError) {
           console.error('❌ Error cargando todas las categorías:', allError)
@@ -130,9 +141,22 @@ export default function ProductosPage() {
         categoriesData = activeCategories
         console.log('✅ Categorías activas cargadas:', categoriesData?.length || 0)
         if (categoriesData && categoriesData.length > 0) {
-          console.log('📋 Primeras 5 categorías:', categoriesData.slice(0, 5).map(c => ({ name: c.name, id: c.id, active: 'true' })))
+          console.log('📋 Primeras 5 categorías:', categoriesData.slice(0, 5).map(c => ({ name: c.name, id: c.id, group_type: c.group_type })))
         } else {
           console.warn('⚠️ No se encontraron categorías activas')
+          console.warn('⚠️ activeCategories es:', activeCategories)
+          
+          // Intentar cargar sin filtro active como último recurso
+          console.log('🔄 Intentando cargar sin filtro active...')
+          const { data: allCategoriesNoFilter, error: noFilterError } = await supabase
+            .from('categories')
+            .select('id, name, group_type, age_range, display_order')
+            .order('name')
+          
+          if (!noFilterError && allCategoriesNoFilter && allCategoriesNoFilter.length > 0) {
+            console.warn('⚠️ Se encontraron categorías sin filtro active:', allCategoriesNoFilter.length)
+            categoriesData = allCategoriesNoFilter.filter(c => c.active !== false) // Filtrar manualmente
+          }
         }
       }
 
