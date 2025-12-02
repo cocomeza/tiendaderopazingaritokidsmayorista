@@ -56,10 +56,11 @@ export default function PreciosPage() {
 
   const loadData = async () => {
     try {
-      // Cargar categorías
+      // Cargar categorías activas
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
         .select('id, name')
+        .eq('active', true)
         .order('name')
 
       if (categoriesError) throw categoriesError

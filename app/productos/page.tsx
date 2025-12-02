@@ -19,7 +19,13 @@ import { Database } from '@/lib/types/database'
 type ProductRow = Database['public']['Tables']['products']['Row']
 type ProductVariantRow = Database['public']['Tables']['product_variants']['Row']
 type ProductWithVariants = ProductRow & { product_variants?: ProductVariantRow[] }
-type CategorySimple = { id: string; name: string }
+type CategorySimple = { 
+  id: string
+  name: string
+  group_type?: string | null
+  age_range?: string | null
+  display_order?: number
+}
 
 export default function ProductosPage() {
   const [allProducts, setAllProducts] = useState<ProductWithVariants[]>([])
@@ -90,10 +96,10 @@ export default function ProductosPage() {
         }, new Map<string, ProductVariantRow[]>())
       }
 
-      // Cargar categorías
+      // Cargar categorías activas con todos los campos necesarios para filtros
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
-        .select('id, name')
+        .select('id, name, group_type, age_range, display_order')
         .eq('active', true)
         .order('name')
 
