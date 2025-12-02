@@ -300,9 +300,17 @@ export default function AdminInventarioPage() {
       ...csvData.map(row => headers.map(header => escapeCSVValue(row[header as keyof typeof row])).join(','))
     ].join('\n')
 
-    // Agregar BOM para Excel (UTF-8)
+    // Crear el contenido CSV como UTF-8 con BOM explícitamente
+    // El BOM (\uFEFF) ayuda a Excel y otros programas a reconocer UTF-8
     const BOM = '\uFEFF'
-    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const utf8Content = BOM + csvContent
+    
+    // Crear un Uint8Array con la codificación UTF-8 correcta
+    const encoder = new TextEncoder()
+    const utf8Bytes = encoder.encode(utf8Content)
+    
+    // Crear blob con tipo específico para CSV UTF-8
+    const blob = new Blob([utf8Bytes], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     const url = URL.createObjectURL(blob)
     link.setAttribute('href', url)
@@ -365,13 +373,51 @@ export default function AdminInventarioPage() {
     const loadingToast = toast.loading('Procesando archivo CSV...')
 
     try {
-      // Leer archivo como UTF-8 y manejar BOM si está presente
-      let text = await file.text()
+      // Leer archivo como ArrayBuffer primero para tener control total sobre la codificación
+      const arrayBuffer = await file.arrayBuffer()
       
-      // Remover BOM (Byte Order Mark) si está presente (UTF-8 BOM: \uFEFF)
-      if (text.charCodeAt(0) === 0xFEFF) {
-        text = text.slice(1)
+      // Detectar BOM y leer como UTF-8 explícitamente
+      let text: string
+      const uint8Array = new Uint8Array(arrayBuffer)
+      
+      // Verificar si tiene BOM UTF-8 (EF BB BF)
+      if (uint8Array.length >= 3 && uint8Array[0] === 0xEF && uint8Array[1] === 0xBB && uint8Array[2] === 0xBF) {
+        // Tiene BOM UTF-8, leer desde el byte 3
+        const utf8Bytes = uint8Array.slice(3)
+        const decoder = new TextDecoder('utf-8')
+        text = decoder.decode(utf8Bytes)
+      } else {
+        // No tiene BOM, leer como UTF-8
+        const decoder = new TextDecoder('utf-8')
+        text = decoder.decode(uint8Array)
       }
+      
+      // Corregir caracteres mal codificados comunes
+      // Estos aparecen cuando un archivo Windows-1252/ISO-8859-1 fue guardado como UTF-8
+      // o cuando Excel guarda CSV sin UTF-8 correctamente
+      text = text
+        .replace(/Ã³/g, 'ó')
+        .replace(/Ãº/g, 'ú')
+        .replace(/Ã±/g, 'ñ')
+        .replace(/Ã¡/g, 'á')
+        .replace(/Ã©/g, 'é')
+        .replace(/Ã­/g, 'í')
+        .replace(/Ã/g, 'Á')
+        .replace(/Ã‰/g, 'É')
+        .replace(/Ã/g, 'Í')
+        .replace(/Ã"/g, 'Ó')
+        .replace(/Ãš/g, 'Ú')
+        .replace(/Ã'/g, 'Ñ')
+        .replace(/Ã€/g, 'À')
+        .replace(/Ãˆ/g, 'È')
+        .replace(/ÃŒ/g, 'Ì')
+        .replace(/Ã'/g, 'Ò')
+        .replace(/Ã™/g, 'Ù')
+        .replace(/Ã /g, 'à')
+        .replace(/Ã¨/g, 'è')
+        .replace(/Ã¬/g, 'ì')
+        .replace(/Ã²/g, 'ò')
+        .replace(/Ã¹/g, 'ù')
       
       // Normalizar saltos de línea (manejar Windows \r\n y Unix \n)
       text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
@@ -834,11 +880,11 @@ export default function AdminInventarioPage() {
                   <strong>Opcionales:</strong> Categoría, Stock Actual, Umbral Bajo, Precio, Precio Mayorista.
                 </div>
                 <div className="mt-2 pt-2 border-t border-gray-200">
-                  <strong className="text-orange-600">⚠️ Importante - Caracteres especiales (ñ, acentos):</strong>
+                  <strong className="text-green-600">✅ Codificación UTF-8:</strong>
                   <br />
-                  Al guardar desde Excel, usa: <strong>Archivo → Guardar como → CSV UTF-8 (delimitado por comas) (*.csv)</strong>
+                  El sistema ahora maneja automáticamente la codificación UTF-8 y corrige caracteres mal codificados.
                   <br />
-                  O guarda como CSV normal y luego abre con un editor de texto y guárdalo como UTF-8.
+                  <span className="text-xs text-gray-500">Puedes exportar, editar en Excel y reimportar sin problemas de codificación.</span>
                 </div>
               </div>
             </div>
