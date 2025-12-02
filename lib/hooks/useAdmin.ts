@@ -32,14 +32,20 @@ export function useAdmin() {
         .from('profiles')
         .select('is_admin')
         .eq('id', session.user.id)
-        .single()
+        .maybeSingle()
 
-      if (error || !profile) {
+      // Si hay error o no hay perfil, no es admin
+      // Error 406 puede ser por RLS, pero no bloqueamos la app
+      if (error) {
+        // Solo loguear errores críticos, no errores de RLS comunes
+        if (error.code !== 'PGRST116' && error.code !== 'PGRST301') {
+          console.warn('Error checking admin status:', error.message)
+        }
         setIsAdmin(false)
         return
       }
 
-      setIsAdmin(profile.is_admin || false)
+      setIsAdmin(profile?.is_admin || false)
     } catch (error) {
       console.error('Error checking admin status:', error)
       setIsAdmin(false)

@@ -78,13 +78,18 @@ function RegisterPageContent() {
       return
     }
 
-    // Validar formato de CUIT solo si se ingresó (es opcional)
-    if (formData.cuit.trim()) {
-      const cuitRegex = /^\d{2}-?\d{8}-?\d{1}$/
-      if (!cuitRegex.test(formData.cuit.replace(/-/g, ''))) {
-        toast.error('El formato del CUIT no es válido. Debe tener 11 dígitos.')
-        return
-      }
+    // Validar CUIT (obligatorio)
+    if (!formData.cuit.trim()) {
+      toast.error('Por favor ingresa el CUIT de tu empresa')
+      return
+    }
+
+    // Validar formato de CUIT
+    const cuitRegex = /^\d{2}-?\d{8}-?\d{1}$/
+    const cuitClean = formData.cuit.replace(/-/g, '')
+    if (!cuitRegex.test(cuitClean) || cuitClean.length !== 11) {
+      toast.error('El formato del CUIT no es válido. Debe tener 11 dígitos (formato: XX-XXXXXXXX-X)')
+      return
     }
 
     if (!formData.locality.trim()) {
@@ -139,30 +144,26 @@ function RegisterPageContent() {
       if (data.user) {
         console.log('Creando perfil para usuario:', data.user.id)
         
-        // Preparar los datos del perfil - solo campos básicos obligatorios
+        // Preparar los datos del perfil - incluyendo CUIT (obligatorio)
         const profileData: any = {
           id: data.user.id,
           email: formData.email,
           full_name: formData.fullName,
           phone: formData.phone,
           company_name: formData.companyName,
-          billing_address: formData.billingAddress
-        }
-
-        // Agregar CUIT solo si está presente (es opcional)
-        if (formData.cuit.trim()) {
-          profileData.cuit = formData.cuit.replace(/-/g, '')
+          billing_address: formData.billingAddress,
+          cuit: formData.cuit.replace(/-/g, '') // Guardar CUIT sin guiones
         }
 
         console.log('📝 Datos del perfil básicos:', profileData)
 
-        // Intentar insertar el perfil básico primero
+        // Intentar insertar el perfil
         const { data: profileInsertData, error: profileError } = await supabase
           .from('profiles')
           .upsert(profileData, { onConflict: 'id' })
           .select()
 
-        console.log('✅ Resultado insert perfil básico:', profileInsertData)
+        console.log('✅ Resultado insert perfil:', profileInsertData)
         
         if (profileError) {
           console.error('❌ Error completo del perfil:', JSON.stringify(profileError, null, 2))
@@ -171,9 +172,31 @@ function RegisterPageContent() {
           console.error('Detalles:', profileError.details)
           console.error('Hint:', profileError.hint)
           
-          toast.error('Error al crear el perfil: ' + (profileError.message || 'Error desconocido. Verifica la consola para más detalles.'))
-          setLoading(false)
-          return
+          // Si el error es porque la columna CUIT no existe, intentar sin ella (fallback)
+          if (profileError.code === 'PGRST204' && profileError.message?.includes('cuit')) {
+            console.warn('⚠️ Columna CUIT no encontrada, intentando crear perfil sin CUIT...')
+            const profileDataWithoutCuit = { ...profileData }
+            delete profileDataWithoutCuit.cuit
+            
+            const { data: retryData, error: retryError } = await supabase
+              .from('profiles')
+              .upsert(profileDataWithoutCuit, { onConflict: 'id' })
+              .select()
+            
+            if (retryError) {
+              console.error('❌ Error al crear perfil sin CUIT:', retryError)
+              toast.error('Error al crear el perfil. Por favor contacta al administrador.')
+              setLoading(false)
+              return
+            }
+            
+            console.log('✅ Perfil creado sin CUIT (columna no existe en BD)')
+            toast.warning('Perfil creado, pero la columna CUIT no existe en la base de datos. Contacta al administrador.')
+          } else {
+            toast.error('Error al crear el perfil: ' + (profileError.message || 'Error desconocido. Verifica la consola para más detalles.'))
+            setLoading(false)
+            return
+          }
         }
 
         // Si el perfil básico se creó correctamente, intentar agregar los campos opcionales
@@ -302,18 +325,19 @@ function RegisterPageContent() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">CUIT</label>
+                  <label className="text-sm font-medium text-gray-700">CUIT *</label>
                   <div className="relative">
                     <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <Input
                       type="text"
-                      placeholder="20-12345678-9 (opcional)"
+                      placeholder="20-12345678-9"
                       value={formData.cuit}
                       onChange={(e) => handleInputChange('cuit', e.target.value)}
                       className="pl-10"
+                      required
                     />
                   </div>
-                  <p className="text-xs text-gray-500">Formato: XX-XXXXXXXX-X (opcional)</p>
+                  <p className="text-xs text-gray-500">Formato: XX-XXXXXXXX-X (11 dígitos, obligatorio)</p>
                 </div>
 
                 <div className="space-y-2">
