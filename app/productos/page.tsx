@@ -103,9 +103,11 @@ export default function ProductosPage() {
       console.log('🔍 Iniciando carga de categorías...')
       
       // Intentar cargar categorías activas primero
+      // Primero intentar con todas las columnas, luego con solo las básicas si falla
+      let selectColumns = 'id, name, group_type, age_range, display_order'
       const { data: activeCategories, error: activeError } = await supabase
         .from('categories')
-        .select('id, name, group_type, age_range, display_order')
+        .select(selectColumns)
         .eq('active', true)
         .order('name')
 
@@ -116,26 +118,51 @@ export default function ProductosPage() {
         console.error('❌ Error cargando categorías activas:', activeError)
         console.error('Código:', activeError.code)
         console.error('Mensaje:', activeError.message)
-        console.error('Detalles:', activeError.details)
-        console.error('Hint:', activeError.hint)
-        categoriesError = activeError
         
-        // Intentar cargar todas las categorías como fallback (sin filtro active)
-        console.log('🔄 Intentando cargar todas las categorías (sin filtro active)...')
-        const { data: allCategories, error: allError } = await supabase
-          .from('categories')
-          .select('id, name, group_type, age_range, display_order')
-          .order('name')
-        
-        console.log('📡 Respuesta fallback - allCategories:', allCategories)
-        console.log('📡 Respuesta fallback - allError:', allError)
-        
-        if (allError) {
-          console.error('❌ Error cargando todas las categorías:', allError)
-          categoriesError = allError
+        // Si el error es por columna no encontrada, intentar solo con columnas básicas
+        if (activeError.message?.includes('does not exist') || activeError.code === '42703') {
+          console.log('🔄 Error de columna faltante, intentando solo con columnas básicas...')
+          const { data: basicCategories, error: basicError } = await supabase
+            .from('categories')
+            .select('id, name')
+            .eq('active', true)
+            .order('name')
+          
+          if (!basicError && basicCategories) {
+            console.log('✅ Categorías cargadas con columnas básicas:', basicCategories.length)
+            // Agregar valores por defecto para las columnas faltantes
+            categoriesData = basicCategories.map(cat => ({
+              ...cat,
+              group_type: null,
+              age_range: null,
+              display_order: 0
+            }))
+          } else {
+            console.error('❌ Error incluso con columnas básicas:', basicError)
+            categoriesError = basicError || activeError
+          }
         } else {
-          console.warn('⚠️ Cargadas todas las categorías (incluyendo inactivas):', allCategories?.length || 0)
-          categoriesData = allCategories
+          categoriesError = activeError
+          
+          // Intentar cargar todas las categorías como fallback (sin filtro active)
+          console.log('🔄 Intentando cargar todas las categorías (sin filtro active)...')
+          const { data: allCategories, error: allError } = await supabase
+            .from('categories')
+            .select('id, name')
+            .order('name')
+          
+          if (!allError && allCategories) {
+            console.warn('⚠️ Cargadas todas las categorías (incluyendo inactivas):', allCategories.length)
+            categoriesData = allCategories.map(cat => ({
+              ...cat,
+              group_type: null,
+              age_range: null,
+              display_order: 0
+            }))
+          } else {
+            console.error('❌ Error cargando todas las categorías:', allError)
+            categoriesError = allError || categoriesError
+          }
         }
       } else {
         categoriesData = activeCategories

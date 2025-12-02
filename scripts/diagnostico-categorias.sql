@@ -12,13 +12,19 @@ SELECT
   COUNT(*) FILTER (WHERE active = false) as categorias_inactivas
 FROM categories;
 
--- 2. Listar todas las categorías activas
-SELECT id, name, active, group_type, age_range, display_order, created_at
+-- 2. Verificar qué columnas existen en la tabla categories
+SELECT column_name, data_type, is_nullable
+FROM information_schema.columns
+WHERE table_schema = 'public' AND table_name = 'categories'
+ORDER BY ordinal_position;
+
+-- 3. Listar todas las categorías activas (solo con columnas que existen)
+SELECT id, name, active, created_at
 FROM categories
 WHERE active = true
 ORDER BY name;
 
--- 3. Verificar políticas RLS existentes
+-- 4. Verificar políticas RLS existentes
 SELECT 
   schemaname,
   tablename,
@@ -32,14 +38,14 @@ FROM pg_policies
 WHERE tablename = 'categories'
 ORDER BY policyname;
 
--- 4. Verificar si RLS está habilitado
+-- 5. Verificar si RLS está habilitado
 SELECT 
   tablename,
   rowsecurity as rls_enabled
 FROM pg_tables
 WHERE schemaname = 'public' AND tablename = 'categories';
 
--- 5. Probar consulta como usuario anónimo (simular)
+-- 6. Probar consulta como usuario anónimo (simular)
 -- Esto debería funcionar si las políticas están correctas
 SET ROLE anon;
 SELECT COUNT(*) as categorias_visibles_para_anonimo
