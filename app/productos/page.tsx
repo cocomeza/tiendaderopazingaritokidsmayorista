@@ -97,17 +97,43 @@ export default function ProductosPage() {
       }
 
       // Cargar categorías activas con todos los campos necesarios para filtros
-      const { data: categoriesData, error: categoriesError } = await supabase
+      let categoriesData = null
+      let categoriesError = null
+      
+      // Intentar cargar categorías activas primero
+      const { data: activeCategories, error: activeError } = await supabase
         .from('categories')
         .select('id, name, group_type, age_range, display_order')
         .eq('active', true)
         .order('name')
 
-      if (categoriesError) {
-        console.error('❌ Error categorías:', categoriesError)
+      if (activeError) {
+        console.error('❌ Error cargando categorías activas:', activeError)
+        console.error('Código:', activeError.code)
+        console.error('Mensaje:', activeError.message)
+        categoriesError = activeError
+        
+        // Intentar cargar todas las categorías como fallback
+        const { data: allCategories, error: allError } = await supabase
+          .from('categories')
+          .select('id, name, group_type, age_range, display_order')
+          .order('name')
+        
+        if (allError) {
+          console.error('❌ Error cargando todas las categorías:', allError)
+          categoriesError = allError
+        } else {
+          console.warn('⚠️ Cargadas todas las categorías (incluyendo inactivas):', allCategories?.length || 0)
+          categoriesData = allCategories
+        }
       } else {
-        console.log('✅ Categorías cargadas:', categoriesData?.length || 0)
-        console.log('📋 Primeras 5 categorías:', categoriesData?.slice(0, 5).map(c => ({ name: c.name, id: c.id })))
+        categoriesData = activeCategories
+        console.log('✅ Categorías activas cargadas:', categoriesData?.length || 0)
+        if (categoriesData && categoriesData.length > 0) {
+          console.log('📋 Primeras 5 categorías:', categoriesData.slice(0, 5).map(c => ({ name: c.name, id: c.id, active: 'true' })))
+        } else {
+          console.warn('⚠️ No se encontraron categorías activas')
+        }
       }
 
       console.log('✅ Productos cargados:', productsData?.length || 0)
