@@ -54,6 +54,7 @@ export function ProductFilters({ products, onFilterChange, categories }: FilterP
   
   // Todas las categorías (para mostrar todas disponibles, incluso sin group_type)
   const allCategories = categories
+    .filter(cat => cat && cat.id && cat.name) // Filtrar categorías válidas
     .sort((a, b) => {
       // Ordenar primero por display_order si existe, luego por nombre
       const orderA = a.display_order || 999
@@ -64,7 +65,14 @@ export function ProductFilters({ products, onFilterChange, categories }: FilterP
   
   // Contar productos por categoría
   const getCategoryCount = (categoryId: string) => 
-    products.filter(p => p.category_id === categoryId).length
+    products.filter(p => p && p.category_id === categoryId).length
+  
+  // Log para depuración
+  if (typeof window !== 'undefined') {
+    console.log('🔍 ProductFilters - Categorías recibidas:', categories.length)
+    console.log('🔍 ProductFilters - Todas las categorías:', allCategories.length)
+    console.log('🔍 ProductFilters - Primeras 5 categorías:', allCategories.slice(0, 5).map(c => c.name))
+  }
   
   // Agrupar categorías por rango de edad
   const ageGroups = {
@@ -195,69 +203,73 @@ export function ProductFilters({ products, onFilterChange, categories }: FilterP
       <div className="p-4 space-y-4">
 
         {/* Categorías Generales - Todas las categorías disponibles */}
-        {allCategories.length > 0 && (
-          <div className="bg-white border-2 border-gray-200 rounded-lg">
-            <Button
-              variant="ghost"
-              className="w-full justify-between p-4 h-auto border-b border-gray-200"
-              onClick={() => toggleSection('categories')}
-            >
-              <span className="font-bold text-gray-800 text-left">
-                📂 CATEGORÍAS ({allCategories.length})
-              </span>
-              {expandedSections.categories ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-            </Button>
-            
-            {expandedSections.categories && (
-              <div className="p-4 space-y-2 max-h-96 overflow-y-auto">
-                <Button
-                  variant={filters.category === '' && !filters.menuCategory && !filters.ageCategory && !filters.backToSchoolCategory ? 'default' : 'ghost'}
-                  size="sm"
-                  className="w-full justify-start font-semibold"
-                  onClick={() => {
-                    handleFilterChange('category', '')
-                    handleFilterChange('menuCategory', '')
-                    handleFilterChange('ageCategory', '')
-                    handleFilterChange('backToSchoolCategory', '')
-                  }}
-                >
-                  Todas las categorías
-                </Button>
-                {allCategories.map((category) => {
-                  const count = getCategoryCount(category.id)
-                  const isSelected = filters.category === category.id || 
-                                   filters.menuCategory === category.id || 
-                                   filters.ageCategory === category.id || 
-                                   filters.backToSchoolCategory === category.id
-                  
-                  return (
-                    <div
-                      key={category.id}
-                      className={`flex items-center justify-between p-2 rounded cursor-pointer hover:bg-gray-50 ${
-                        isSelected ? 'bg-purple-50 border border-purple-200' : ''
-                      }`}
-                      onClick={() => {
-                        // Limpiar otros filtros de categoría
-                        handleFilterChange('menuCategory', '')
-                        handleFilterChange('ageCategory', '')
-                        handleFilterChange('backToSchoolCategory', '')
-                        // Establecer esta categoría
-                        handleFilterChange('category', isSelected ? '' : category.id)
-                      }}
-                    >
-                      <span className="font-medium text-sm">{category.name}</span>
-                      {count > 0 && (
-                        <Badge variant="secondary" className="bg-gray-200 text-gray-700 text-xs">
-                          {count}
-                        </Badge>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
+        <div className="bg-white border-2 border-gray-200 rounded-lg">
+          <Button
+            variant="ghost"
+            className="w-full justify-between p-4 h-auto border-b border-gray-200"
+            onClick={() => toggleSection('categories')}
+          >
+            <span className="font-bold text-gray-800 text-left">
+              📂 CATEGORÍAS {allCategories.length > 0 ? `(${allCategories.length})` : ''}
+            </span>
+            {expandedSections.categories ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          </Button>
+          
+          {expandedSections.categories && (
+            <div className="p-4 space-y-2 max-h-96 overflow-y-auto">
+              {allCategories.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-4">No hay categorías disponibles</p>
+              ) : (
+                <>
+                  <Button
+                    variant={filters.category === '' && !filters.menuCategory && !filters.ageCategory && !filters.backToSchoolCategory ? 'default' : 'ghost'}
+                    size="sm"
+                    className="w-full justify-start font-semibold"
+                    onClick={() => {
+                      handleFilterChange('category', '')
+                      handleFilterChange('menuCategory', '')
+                      handleFilterChange('ageCategory', '')
+                      handleFilterChange('backToSchoolCategory', '')
+                    }}
+                  >
+                    Todas las categorías
+                  </Button>
+                  {allCategories.map((category) => {
+                    const count = getCategoryCount(category.id)
+                    const isSelected = filters.category === category.id || 
+                                     filters.menuCategory === category.id || 
+                                     filters.ageCategory === category.id || 
+                                     filters.backToSchoolCategory === category.id
+                    
+                    return (
+                      <div
+                        key={category.id}
+                        className={`flex items-center justify-between p-2 rounded cursor-pointer hover:bg-gray-50 ${
+                          isSelected ? 'bg-purple-50 border border-purple-200' : ''
+                        }`}
+                        onClick={() => {
+                          // Limpiar otros filtros de categoría
+                          handleFilterChange('menuCategory', '')
+                          handleFilterChange('ageCategory', '')
+                          handleFilterChange('backToSchoolCategory', '')
+                          // Establecer esta categoría
+                          handleFilterChange('category', isSelected ? '' : category.id)
+                        }}
+                      >
+                        <span className="font-medium text-sm">{category.name}</span>
+                        {count > 0 && (
+                          <Badge variant="secondary" className="bg-gray-200 text-gray-700 text-xs">
+                            {count}
+                          </Badge>
+                        )}
+                      </div>
+                    )
+                  })}
+                </>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Categorías del Menú Principal */}
         {menuCategories.length > 0 && (

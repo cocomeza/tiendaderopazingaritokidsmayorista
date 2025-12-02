@@ -104,7 +104,10 @@ export default function ProductosPage() {
         .order('name')
 
       if (categoriesError) {
-        console.error('Error categorías:', categoriesError)
+        console.error('❌ Error categorías:', categoriesError)
+      } else {
+        console.log('✅ Categorías cargadas:', categoriesData?.length || 0)
+        console.log('📋 Primeras 5 categorías:', categoriesData?.slice(0, 5).map(c => ({ name: c.name, id: c.id })))
       }
 
       console.log('✅ Productos cargados:', productsData?.length || 0)
