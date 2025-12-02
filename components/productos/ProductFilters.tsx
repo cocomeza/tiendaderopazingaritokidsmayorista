@@ -212,6 +212,7 @@ export function ProductFilters({ products, onFilterChange, categories }: FilterP
       <div className="p-4 space-y-4">
 
         {/* Categorías Generales - Todas las categorías disponibles */}
+        {/* Mostrar siempre la sección, incluso si no hay categorías */}
         <div className="bg-white border-2 border-gray-200 rounded-lg">
           <Button
             variant="ghost"
@@ -219,7 +220,7 @@ export function ProductFilters({ products, onFilterChange, categories }: FilterP
             onClick={() => toggleSection('categories')}
           >
             <span className="font-bold text-gray-800 text-left">
-              📂 CATEGORÍAS {allCategories.length > 0 ? `(${allCategories.length})` : ''}
+              📂 CATEGORÍAS {allCategories.length > 0 ? `(${allCategories.length})` : '(0)'}
             </span>
             {expandedSections.categories ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
           </Button>
@@ -227,7 +228,10 @@ export function ProductFilters({ products, onFilterChange, categories }: FilterP
           {expandedSections.categories && (
             <div className="p-4 space-y-2 max-h-96 overflow-y-auto">
               {allCategories.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-4">No hay categorías disponibles</p>
+                <div className="text-center py-4">
+                  <p className="text-sm text-gray-500 mb-2">No hay categorías disponibles</p>
+                  <p className="text-xs text-gray-400">Las categorías se cargarán automáticamente cuando estén disponibles</p>
+                </div>
               ) : (
                 <>
                   <Button
@@ -253,7 +257,7 @@ export function ProductFilters({ products, onFilterChange, categories }: FilterP
                     return (
                       <div
                         key={category.id}
-                        className={`flex items-center justify-between p-2 rounded cursor-pointer hover:bg-gray-50 ${
+                        className={`flex items-center justify-between p-2 rounded cursor-pointer hover:bg-gray-50 transition-colors ${
                           isSelected ? 'bg-purple-50 border border-purple-200' : ''
                         }`}
                         onClick={() => {
