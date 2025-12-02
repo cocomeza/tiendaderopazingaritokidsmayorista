@@ -258,9 +258,10 @@ export default function EditarProductoPage() {
 
   const loadCategories = async () => {
     try {
+      // Cargar todas las categorías (activas e inactivas) para admin
       const { data, error } = await supabase
         .from('categories')
-        .select('id, name')
+        .select('id, name, active')
         .order('name')
 
       if (error) {
@@ -269,6 +270,7 @@ export default function EditarProductoPage() {
       }
 
       setCategories(data || [])
+      console.log(`✅ Cargadas ${data?.length || 0} categorías`)
     } catch (error) {
       console.error('Error cargando categorías:', error)
     } finally {
