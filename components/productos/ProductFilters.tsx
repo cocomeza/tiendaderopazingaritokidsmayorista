@@ -239,10 +239,16 @@ export function ProductFilters({ products, onFilterChange, categories }: FilterP
                     size="sm"
                     className="w-full justify-start font-semibold"
                     onClick={() => {
-                      handleFilterChange('category', '')
-                      handleFilterChange('menuCategory', '')
-                      handleFilterChange('ageCategory', '')
-                      handleFilterChange('backToSchoolCategory', '')
+                      // Limpiar todos los filtros de categoría de una vez
+                      const clearedFilters = {
+                        ...filters,
+                        category: '',
+                        menuCategory: '',
+                        ageCategory: '',
+                        backToSchoolCategory: ''
+                      }
+                      setFilters(clearedFilters)
+                      onFilterChange(clearedFilters)
                     }}
                   >
                     Todas las categorías
@@ -261,12 +267,17 @@ export function ProductFilters({ products, onFilterChange, categories }: FilterP
                           isSelected ? 'bg-purple-50 border border-purple-200' : ''
                         }`}
                         onClick={() => {
-                          // Limpiar otros filtros de categoría
-                          handleFilterChange('menuCategory', '')
-                          handleFilterChange('ageCategory', '')
-                          handleFilterChange('backToSchoolCategory', '')
-                          // Establecer esta categoría
-                          handleFilterChange('category', isSelected ? '' : category.id)
+                          // Si ya está seleccionada, limpiar todos los filtros de categoría (mostrar todas)
+                          // Si no está seleccionada, seleccionar solo esta categoría
+                          const updatedFilters = {
+                            ...filters,
+                            category: isSelected ? '' : category.id,
+                            menuCategory: '',
+                            ageCategory: '',
+                            backToSchoolCategory: ''
+                          }
+                          setFilters(updatedFilters)
+                          onFilterChange(updatedFilters)
                         }}
                       >
                         <span className="font-medium text-sm">{category.name}</span>
@@ -538,6 +549,24 @@ export function ProductFilters({ products, onFilterChange, categories }: FilterP
               </Button>
             </div>
           )}
+        </div>
+
+        {/* Botón Limpiar Filtros */}
+        <div className="pt-4 border-t border-gray-200">
+          <Button
+            variant="outline"
+            onClick={clearFilters}
+            className="w-full border-2 border-gray-300 hover:bg-gray-50 hover:border-gray-400 text-gray-700 font-semibold"
+            disabled={activeFiltersCount === 0}
+          >
+            <X className="w-4 h-4 mr-2" />
+            Limpiar Filtros
+            {activeFiltersCount > 0 && (
+              <Badge variant="secondary" className="ml-2 bg-gray-200 text-gray-700">
+                {activeFiltersCount}
+              </Badge>
+            )}
+          </Button>
         </div>
 
       </div>
