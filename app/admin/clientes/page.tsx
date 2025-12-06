@@ -352,7 +352,30 @@ const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
       }
 
       if (permanentDeleteMode) {
+        // Primero verificar si hay pedidos relacionados
+        const { data: ordersData, error: ordersError } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('user_id', deleteConfirm.id)
+          .limit(1)
+
+        if (ordersError) {
+          console.error('Error verificando pedidos:', ordersError)
+        }
+
+        // Si hay pedidos, informar al usuario pero continuar con la eliminación
+        // (la constraint debería manejar el cascade, pero si falla, mostramos un mensaje claro)
+        if (ordersData && ordersData.length > 0) {
+          const { count } = await supabase
+            .from('orders')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', deleteConfirm.id)
+
+          toast.info(`El cliente tiene ${count || ordersData.length} pedido(s). Estos serán eliminados automáticamente.`)
+        }
+
         // Eliminación permanente - esto también eliminará el usuario de auth.users por cascade
+        // y todos los pedidos relacionados si la constraint tiene ON DELETE CASCADE
         const { error } = await supabase
           .from('profiles')
           .delete()
@@ -363,6 +386,8 @@ const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
           
           if (error.code === 'PGRST116' || error.message?.includes('permission denied') || error.message?.includes('policy')) {
             toast.error('Error de permisos: No tienes permisos para eliminar este perfil. Verifica las políticas RLS en Supabase.')
+          } else if (error.message?.includes('foreign key constraint') || error.message?.includes('violates foreign key')) {
+            toast.error('No se puede eliminar el cliente porque tiene pedidos asociados. La constraint de foreign key no está configurada con CASCADE. Por favor, aplica la migración 026_fix_profiles_delete_cascade.sql en Supabase.')
           } else {
             toast.error('Error al eliminar el cliente: ' + (error.message || JSON.stringify(error)))
           }
