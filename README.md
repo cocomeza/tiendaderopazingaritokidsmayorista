@@ -56,18 +56,38 @@ Abre [http://localhost:3000](http://localhost:3000)
 
 ## ✨ Características
 
+### 📦 Sistema de Pedidos
+- ✅ Creación de pedidos desde el carrito
+- ✅ Envío de pedidos por WhatsApp
+- ✅ Números de orden únicos (ZK-YYYYMMDD-XXXX)
+- ✅ Gestión de estados de pedidos
+- ✅ Estados: Pendiente, Confirmado, EN PREPARACIÓN, Enviado, ENTREGADO, Cancelado
+- ✅ Estados de pago: PENDIENTE DE PAGO, PAGADO, Rechazado
+- ✅ Sincronización en tiempo real entre admin y cliente
+- ✅ Auto-refresh cada 30 segundos
+- ✅ Datos completos de cliente, envío y facturación
+- ✅ Impresión y descarga de pedidos en PDF
+- ✅ Comprobante de impresión con datos del cliente (CUIT, Email, Dirección de Facturación)
+- ✅ Vista "Mis Pedidos" para clientes
+- ✅ Panel de administración de pedidos completo
+
 ### 🛍️ E-commerce
-- ✅ Catálogo de productos con filtros
+- ✅ Catálogo de productos con filtros avanzados
+- ✅ Filtrado por categorías, precios, colores y talles
 - ✅ Carrito de compras persistente
 - ✅ Sistema de favoritos
 - ✅ Búsqueda en tiempo real
 - ✅ Vista previa rápida de productos
+- ✅ Checkout completo con datos de facturación
+- ✅ Integración con WhatsApp para envío de pedidos
 
 ### 👥 Autenticación
 - ✅ Registro y login de usuarios
+- ✅ Registro con CUIT obligatorio
 - ✅ Perfil de usuario personalizado
-- ✅ Recuperación de contraseña
+- ✅ Recuperación de contraseña mejorada
 - ✅ Autenticación segura con Supabase
+- ✅ Manejo robusto de tokens de recuperación
 
 ### 🔐 Panel Administrativo
 - ✅ Gestión de productos
@@ -75,6 +95,10 @@ Abre [http://localhost:3000](http://localhost:3000)
 - ✅ Actualización masiva de precios
 - ✅ Sistema de descuentos
 - ✅ Control de inventario
+- ✅ Importación/Exportación CSV de productos
+- ✅ Gestión completa de pedidos
+- ✅ Sincronización de estados de pedidos
+- ✅ Datos de cliente, envío y facturación
 - ✅ Separación completa cliente/admin
 - ✅ Interfaz simplificada para administradores
 
@@ -100,7 +124,14 @@ tiendaderopazingaritokids/
 ├── docs/                # 📚 Documentación
 ├── scripts-sql/         # 🗄️ Scripts SQL
 ├── tests/               # 🧪 Tests automatizados
+│   ├── e2e/             # Tests end-to-end (Playwright)
+│   │   ├── auth.spec.ts              # Tests de autenticación
+│   │   ├── categorias-filtros.spec.ts # Tests de filtros
+│   │   ├── pedidos-sincronizacion.spec.ts # Tests de sincronización
+│   │   └── comprobante-impresion.spec.ts # Tests de impresión
+│   └── unit/             # Tests unitarios
 └── supabase/           # Migraciones de Supabase
+    └── migrations/     # Migraciones SQL (22+ migraciones)
 ```
 
 ---
@@ -149,10 +180,14 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_clave_anon
 ## 🧪 Testing
 
 El proyecto incluye:
-- ✅ Tests E2E con Playwright
+- ✅ Tests E2E con Playwright (24+ tests)
+- ✅ Tests de sincronización de pedidos
+- ✅ Tests de funcionalidad de impresión
+- ✅ Tests de autenticación y recuperación de contraseña
+- ✅ Tests de filtros de categorías
 - ✅ Tests de accesibilidad con axe-core
 - ✅ Tests de carga con k6
-- ✅ 15+ tests automatizados
+- ✅ Cobertura completa de funcionalidades críticas
 
 Ver [Documentación de Tests](./docs/tests.md)
 
@@ -188,6 +223,20 @@ Ver [Documentación de Tests](./docs/tests.md)
 3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
 4. Push al branch (`git push origin feature/AmazingFeature`)
 5. Abre un Pull Request
+
+---
+
+## 🆕 Últimas Mejoras
+
+### Versión Actual (Diciembre 2025)
+- ✅ **Sistema de Pedidos Completo**: Gestión end-to-end de pedidos con sincronización en tiempo real
+- ✅ **Comprobante de Impresión**: Formato profesional con datos del cliente (CUIT, Email, Dirección de Facturación)
+- ✅ **Sincronización de Estados**: Los cambios del admin se reflejan automáticamente en el panel del cliente
+- ✅ **Datos de Facturación**: Integración completa de datos de facturación y envío
+- ✅ **Tests Automatizados**: 24+ tests E2E cubriendo funcionalidades críticas
+- ✅ **Filtros Mejorados**: Filtrado avanzado por categorías con botón "Limpiar Filtros"
+- ✅ **Recuperación de Contraseña**: Manejo robusto de tokens y ventanas nuevas
+- ✅ **Importación/Exportación CSV**: Mejoras en encoding UTF-8 y manejo de categorías
 
 ---
 

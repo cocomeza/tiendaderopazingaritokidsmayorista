@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Lock, Eye, EyeOff, ArrowLeft, CheckCircle } from 'lucide-react'
+import { Lock, Eye, EyeOff, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,13 +14,141 @@ import Link from 'next/link'
 export default function ResetPasswordPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [initializing, setInitializing] = useState(true)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     password: '',
     confirmPassword: ''
   })
+
+  // Verificar el token de recuperación cuando la página carga
+  useEffect(() => {
+    let mounted = true
+    let subscription: { unsubscribe: () => void } | null = null
+
+    const initializeReset = async () => {
+      try {
+        // Verificar si hay un hash fragment en la URL (viene del email)
+        const hash = window.location.hash
+        const hashParams = new URLSearchParams(hash.substring(1))
+        const accessToken = hashParams.get('access_token')
+        const type = hashParams.get('type')
+
+        // Si hay un token en el hash, Supabase lo procesará automáticamente
+        if (accessToken && type === 'recovery') {
+          // Escuchar cambios en la sesión de autenticación
+          const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (!mounted) return
+
+            if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
+              // Limpiar el hash de la URL para que no se vea
+              try {
+                window.history.replaceState(null, '', window.location.pathname)
+              } catch (e) {
+                console.warn('No se pudo limpiar el hash de la URL:', e)
+              }
+              
+              if (session) {
+                setError(null)
+                setInitializing(false)
+              } else {
+                setError('El enlace de recuperación es inválido o ha expirado. Por favor solicita un nuevo enlace.')
+                setInitializing(false)
+              }
+              
+              if (authSubscription) {
+                authSubscription.unsubscribe()
+              }
+            }
+          })
+
+          subscription = authSubscription || null
+
+          // También verificar la sesión después de un breve delay
+          // por si Supabase ya procesó el hash antes de que se registre el listener
+          const checkSession = async (retries = 3) => {
+            if (!mounted) return
+
+            try {
+              const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+              
+              if (!mounted) return
+
+              if (session && !sessionError) {
+                try {
+                  window.history.replaceState(null, '', window.location.pathname)
+                } catch (e) {
+                  console.warn('No se pudo limpiar el hash de la URL:', e)
+                }
+                setError(null)
+                setInitializing(false)
+                if (subscription) {
+                  subscription.unsubscribe()
+                }
+              } else if (!session && retries > 0) {
+                // Esperar un poco más por si Supabase aún está procesando
+                setTimeout(() => checkSession(retries - 1), 500)
+              } else {
+                setError('El enlace de recuperación es inválido o ha expirado. Por favor solicita un nuevo enlace.')
+                setInitializing(false)
+                if (subscription) {
+                  subscription.unsubscribe()
+                }
+              }
+            } catch (err) {
+              console.error('Error verificando sesión:', err)
+              if (retries > 0) {
+                setTimeout(() => checkSession(retries - 1), 500)
+              } else {
+                setError('Error al procesar el enlace de recuperación. Por favor intenta nuevamente.')
+                setInitializing(false)
+                if (subscription) {
+                  subscription.unsubscribe()
+                }
+              }
+            }
+          }
+
+          // Esperar un momento para que Supabase procese el hash
+          setTimeout(() => checkSession(), 500)
+        } else {
+          // No hay token en la URL, verificar si hay una sesión activa de recuperación
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+          
+          if (sessionError || !session) {
+            setError('No se encontró un enlace de recuperación válido. Por favor solicita un nuevo enlace desde la página de recuperación.')
+            setInitializing(false)
+            return
+          }
+
+          setError(null)
+          setInitializing(false)
+        }
+      } catch (err) {
+        console.error('Error inicializando reset:', err)
+        if (mounted) {
+          setError('Error al procesar el enlace de recuperación. Por favor intenta nuevamente.')
+          setInitializing(false)
+        }
+      }
+    }
+
+    initializeReset()
+
+    return () => {
+      mounted = false
+      if (subscription) {
+        try {
+          subscription.unsubscribe()
+        } catch (e) {
+          console.warn('Error al desuscribirse:', e)
+        }
+      }
+    }
+  }, [])
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -40,19 +168,38 @@ export default function ResetPasswordPage() {
     }
 
     setLoading(true)
+    setError(null)
 
     try {
+      // Verificar que haya una sesión válida antes de actualizar
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError || !session) {
+        setError('Tu sesión de recuperación ha expirado. Por favor solicita un nuevo enlace.')
+        setLoading(false)
+        return
+      }
+
       const { error } = await supabase.auth.updateUser({
         password: formData.password
       })
 
       if (error) {
-        toast.error('Error al actualizar contraseña: ' + error.message)
+        if (error.message.includes('expired') || error.message.includes('invalid')) {
+          setError('El enlace de recuperación ha expirado. Por favor solicita un nuevo enlace.')
+        } else {
+          setError('Error al actualizar contraseña: ' + error.message)
+        }
+        toast.error('Error al actualizar contraseña')
+        setLoading(false)
         return
       }
 
       toast.success('Contraseña actualizada correctamente')
       setSuccess(true)
+      
+      // Cerrar sesión después de actualizar la contraseña para forzar nuevo login
+      await supabase.auth.signOut()
       
       // Redirigir al login después de 2 segundos
       setTimeout(() => {
@@ -60,6 +207,7 @@ export default function ResetPasswordPage() {
       }, 2000)
     } catch (error) {
       console.error('Error general:', error)
+      setError('Error inesperado al actualizar contraseña. Por favor intenta nuevamente.')
       toast.error('Error inesperado al actualizar contraseña')
     } finally {
       setLoading(false)
@@ -91,7 +239,39 @@ export default function ResetPasswordPage() {
           </CardHeader>
 
           <CardContent className="px-6 pb-6">
-            {!success ? (
+            {initializing ? (
+              <div className="text-center py-8">
+                <div className="w-8 h-8 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-gray-600">Verificando enlace de recuperación...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <AlertCircle className="w-10 h-10 text-red-600" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  Error de Recuperación
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  {error}
+                </p>
+                <div className="space-y-3">
+                  <Button 
+                    onClick={() => router.push('/auth/recuperar-password')}
+                    className="w-full bg-orange-600 hover:bg-orange-700"
+                  >
+                    Solicitar Nuevo Enlace
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => router.push('/auth/login')}
+                    className="w-full"
+                  >
+                    Volver al Login
+                  </Button>
+                </div>
+              </div>
+            ) : !success ? (
               <>
                 <form onSubmit={handleResetPassword} className="space-y-6">
                   <div className="space-y-2">

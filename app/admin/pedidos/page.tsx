@@ -50,6 +50,26 @@ interface Customer {
   phone?: string
 }
 
+interface ShippingAddress {
+  name?: string
+  phone?: string
+  address?: string
+  city?: string
+  province?: string
+  postal_code?: string
+}
+
+interface BillingAddress {
+  name?: string
+  cuit?: string
+  email?: string
+  phone?: string
+  address?: string
+  city?: string
+  province?: string
+  postal_code?: string
+}
+
 interface Order {
   id: string
   order_number: string
@@ -60,7 +80,8 @@ interface Order {
   discount: number
   total: number
   notes?: string
-  shipping_address?: string
+  shipping_address?: ShippingAddress | string
+  billing_address?: BillingAddress | string
   created_at: string
   updated_at: string
   customer?: Customer
@@ -284,8 +305,9 @@ export default function AdminPedidosPage() {
       pendiente: { color: 'yellow', bg: 'bg-yellow-50', label: 'Pendiente', icon: Package },
       confirmado: { color: 'blue', bg: 'bg-blue-50', label: 'Confirmado', icon: CheckCircle },
       preparando: { color: 'purple', bg: 'bg-purple-50', label: 'Preparando', icon: Package },
+      en_preparacion: { color: 'purple', bg: 'bg-purple-50', label: 'EN PREPARACIÓN', icon: Package },
       enviado: { color: 'indigo', bg: 'bg-indigo-50', label: 'Enviado', icon: Truck },
-      entregado: { color: 'green', bg: 'bg-green-50', label: 'Entregado', icon: CheckCircle },
+      entregado: { color: 'green', bg: 'bg-green-50', label: 'ENTREGADO', icon: CheckCircle },
       cancelado: { color: 'red', bg: 'bg-red-50', label: 'Cancelado', icon: XCircle }
     }
     
@@ -384,15 +406,16 @@ export default function AdminPedidosPage() {
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos</SelectItem>
-                    <SelectItem value="pendiente">Pendiente</SelectItem>
-                    <SelectItem value="confirmado">Confirmado</SelectItem>
-                    <SelectItem value="preparando">Preparando</SelectItem>
-                    <SelectItem value="enviado">Enviado</SelectItem>
-                    <SelectItem value="entregado">Entregado</SelectItem>
-                    <SelectItem value="cancelado">Cancelado</SelectItem>
-                  </SelectContent>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos</SelectItem>
+                      <SelectItem value="pendiente">Pendiente</SelectItem>
+                      <SelectItem value="confirmado">Confirmado</SelectItem>
+                      <SelectItem value="preparando">Preparando</SelectItem>
+                      <SelectItem value="en_preparacion">EN PREPARACIÓN</SelectItem>
+                      <SelectItem value="enviado">Enviado</SelectItem>
+                      <SelectItem value="entregado">Entregado</SelectItem>
+                      <SelectItem value="cancelado">Cancelado</SelectItem>
+                    </SelectContent>
                 </Select>
               </div>
 
@@ -504,7 +527,9 @@ export default function AdminPedidosPage() {
 
                       <div className="flex flex-col lg:flex-row lg:items-center gap-3 mt-4">
                         <div className="flex-1 space-y-1">
-                          <Label className="text-xs uppercase tracking-wide text-gray-500">Estado del pedido</Label>
+                          <Label className="text-xs uppercase tracking-wide text-gray-500">
+                            {order.payment_status === 'pagado' ? 'Estado (PAGADO)' : 'Estado del pedido'}
+                          </Label>
                           <Select
                             value={order.status}
                             onValueChange={(value) => handleUpdateOrderStatus(order.id, value, { keepModalOpen: true })}
@@ -514,12 +539,22 @@ export default function AdminPedidosPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="pendiente">Pendiente</SelectItem>
-                              <SelectItem value="confirmado">Confirmado</SelectItem>
-                              <SelectItem value="preparando">Preparando</SelectItem>
-                              <SelectItem value="enviado">Enviado</SelectItem>
-                              <SelectItem value="entregado">Entregado</SelectItem>
-                              <SelectItem value="cancelado">Cancelado</SelectItem>
+                              {order.payment_status === 'pagado' ? (
+                                <>
+                                  <SelectItem value="en_preparacion">A) EN PREPARACIÓN</SelectItem>
+                                  <SelectItem value="preparando">A) EN PREPARACIÓN (alt)</SelectItem>
+                                  <SelectItem value="entregado">B) ENTREGADO</SelectItem>
+                                </>
+                              ) : (
+                                <>
+                                  <SelectItem value="pendiente">Pendiente</SelectItem>
+                                  <SelectItem value="confirmado">Confirmado</SelectItem>
+                                  <SelectItem value="preparando">Preparando</SelectItem>
+                                  <SelectItem value="enviado">Enviado</SelectItem>
+                                  <SelectItem value="entregado">Entregado</SelectItem>
+                                  <SelectItem value="cancelado">Cancelado</SelectItem>
+                                </>
+                              )}
                             </SelectContent>
                           </Select>
                         </div>
@@ -534,8 +569,8 @@ export default function AdminPedidosPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="pendiente">Pendiente</SelectItem>
-                              <SelectItem value="pagado">Pagado</SelectItem>
+                              <SelectItem value="pendiente">1) PENDIENTE DE PAGO</SelectItem>
+                              <SelectItem value="pagado">2) PAGADO</SelectItem>
                               <SelectItem value="rechazado">Rechazado</SelectItem>
                             </SelectContent>
                           </Select>
@@ -576,70 +611,217 @@ export default function AdminPedidosPage() {
             </div>
 
             <div className="overflow-y-auto max-h-[calc(90vh-200px)] p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <h3 className="font-semibold text-gray-700 mb-2">Número de Pedido</h3>
-                  <p className="text-lg font-bold text-purple-600">{selectedOrder.order_number}</p>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-700 mb-2">Fecha</h3>
-                  <p>{new Date(selectedOrder.created_at).toLocaleDateString('es-AR')}</p>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-700 mb-2">Cliente</h3>
-                  <p>{selectedOrder.customer?.full_name || 'Sin nombre'}</p>
-                  <p className="text-sm text-gray-500">{selectedOrder.customer?.email}</p>
-                </div>
-                {selectedOrder.customer?.phone && (
+              {/* ORDEN DE COMPRA */}
+              <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-4 mb-6">
+                <h3 className="font-bold text-purple-900 mb-2 text-lg">📋 ORDEN DE COMPRA</h3>
+                <p className="text-2xl font-bold text-purple-600">{selectedOrder.order_number}</p>
+                <p className="text-sm text-gray-600 mt-1">
+                  Fecha: {new Date(selectedOrder.created_at).toLocaleDateString('es-AR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+              </div>
+
+              {/* DATOS DEL CLIENTE */}
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-6">
+                <h3 className="font-bold text-blue-900 mb-4 text-lg">👤 DATOS DEL CLIENTE</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <h3 className="font-semibold text-gray-700 mb-2">Teléfono</h3>
-                    <p>{selectedOrder.customer.phone}</p>
+                    <p className="text-sm text-gray-600 mb-1">Nombre</p>
+                    <p className="font-medium">{selectedOrder.customer?.full_name || 'Sin nombre'}</p>
                   </div>
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Email</p>
+                    <p className="font-medium">{selectedOrder.customer?.email || 'Sin email'}</p>
+                  </div>
+                  {selectedOrder.customer?.phone && (
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Teléfono</p>
+                      <p className="font-medium">{selectedOrder.customer.phone}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* DATOS DE ENVÍO */}
+              <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 mb-6">
+                <h3 className="font-bold text-green-900 mb-4 text-lg">🚚 DATOS DE ENVÍO</h3>
+                {selectedOrder.shipping_address && typeof selectedOrder.shipping_address === 'object' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {(selectedOrder.shipping_address as ShippingAddress).name && (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Nombre</p>
+                        <p className="font-medium">{(selectedOrder.shipping_address as ShippingAddress).name}</p>
+                      </div>
+                    )}
+                    {(selectedOrder.shipping_address as ShippingAddress).phone && (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Teléfono</p>
+                        <p className="font-medium">{(selectedOrder.shipping_address as ShippingAddress).phone}</p>
+                      </div>
+                    )}
+                    {(selectedOrder.shipping_address as ShippingAddress).address && (
+                      <div className="md:col-span-2">
+                        <p className="text-sm text-gray-600 mb-1">Dirección</p>
+                        <p className="font-medium">{(selectedOrder.shipping_address as ShippingAddress).address}</p>
+                      </div>
+                    )}
+                    {(selectedOrder.shipping_address as ShippingAddress).city && (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Ciudad</p>
+                        <p className="font-medium">{(selectedOrder.shipping_address as ShippingAddress).city}</p>
+                      </div>
+                    )}
+                    {(selectedOrder.shipping_address as ShippingAddress).province && (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Provincia</p>
+                        <p className="font-medium">{(selectedOrder.shipping_address as ShippingAddress).province}</p>
+                      </div>
+                    )}
+                    {(selectedOrder.shipping_address as ShippingAddress).postal_code && (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Código Postal</p>
+                        <p className="font-medium">{(selectedOrder.shipping_address as ShippingAddress).postal_code}</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 italic">No hay datos de envío registrados</p>
                 )}
               </div>
 
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div>
-                    <Label>Estado del Pedido</Label>
-                    <Select
-                      value={selectedOrder.status}
-                      onValueChange={(value) => {
-                        handleUpdateOrderStatus(selectedOrder.id, value)
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pendiente">Pendiente</SelectItem>
-                        <SelectItem value="confirmado">Confirmado</SelectItem>
-                        <SelectItem value="preparando">Preparando</SelectItem>
-                        <SelectItem value="enviado">Enviado</SelectItem>
-                        <SelectItem value="entregado">Entregado</SelectItem>
-                        <SelectItem value="cancelado">Cancelado</SelectItem>
-                      </SelectContent>
-                    </Select>
+              {/* DATOS DE FACTURACIÓN */}
+              <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4 mb-6">
+                <h3 className="font-bold text-orange-900 mb-4 text-lg">🧾 DATOS DE FACTURACIÓN</h3>
+                {selectedOrder.billing_address && typeof selectedOrder.billing_address === 'object' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {(selectedOrder.billing_address as BillingAddress).name && (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Razón Social</p>
+                        <p className="font-medium">{(selectedOrder.billing_address as BillingAddress).name}</p>
+                      </div>
+                    )}
+                    {(selectedOrder.billing_address as BillingAddress).cuit && (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">CUIT</p>
+                        <p className="font-medium">{(selectedOrder.billing_address as BillingAddress).cuit}</p>
+                      </div>
+                    )}
+                    {(selectedOrder.billing_address as BillingAddress).email && (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Email</p>
+                        <p className="font-medium">{(selectedOrder.billing_address as BillingAddress).email}</p>
+                      </div>
+                    )}
+                    {(selectedOrder.billing_address as BillingAddress).phone && (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Teléfono</p>
+                        <p className="font-medium">{(selectedOrder.billing_address as BillingAddress).phone}</p>
+                      </div>
+                    )}
+                    {(selectedOrder.billing_address as BillingAddress).address && (
+                      <div className="md:col-span-2">
+                        <p className="text-sm text-gray-600 mb-1">Dirección</p>
+                        <p className="font-medium">{(selectedOrder.billing_address as BillingAddress).address}</p>
+                      </div>
+                    )}
+                    {(selectedOrder.billing_address as BillingAddress).city && (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Ciudad</p>
+                        <p className="font-medium">{(selectedOrder.billing_address as BillingAddress).city}</p>
+                      </div>
+                    )}
+                    {(selectedOrder.billing_address as BillingAddress).province && (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Provincia</p>
+                        <p className="font-medium">{(selectedOrder.billing_address as BillingAddress).province}</p>
+                      </div>
+                    )}
+                    {(selectedOrder.billing_address as BillingAddress).postal_code && (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">Código Postal</p>
+                        <p className="font-medium">{(selectedOrder.billing_address as BillingAddress).postal_code}</p>
+                      </div>
+                    )}
                   </div>
+                ) : (
+                  <p className="text-gray-500 italic">No hay datos de facturación registrados</p>
+                )}
+              </div>
+
+              {/* ESTADO DEL PEDIDO */}
+              <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 mb-6">
+                <h3 className="font-bold text-yellow-900 mb-4 text-lg">📊 ESTADO DEL PEDIDO</h3>
+                <div className="space-y-4">
                   <div>
-                    <Label>Estado de Pago</Label>
+                    <Label className="text-sm font-semibold text-gray-700 mb-2 block">Estado de Pago</Label>
                     <Select
                       value={selectedOrder.payment_status}
                       onValueChange={(value) => {
                         handleUpdatePaymentStatus(selectedOrder.id, value)
                       }}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-white">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="pendiente">Pendiente</SelectItem>
-                        <SelectItem value="pagado">Pagado</SelectItem>
+                        <SelectItem value="pendiente">1) PENDIENTE DE PAGO</SelectItem>
+                        <SelectItem value="pagado">2) PAGADO</SelectItem>
                         <SelectItem value="rechazado">Rechazado</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {selectedOrder.payment_status === 'pagado' && (
+                    <div>
+                      <Label className="text-sm font-semibold text-gray-700 mb-2 block">Estado del Pedido (cuando está PAGADO)</Label>
+                      <Select
+                        value={selectedOrder.status}
+                        onValueChange={(value) => {
+                          handleUpdateOrderStatus(selectedOrder.id, value)
+                        }}
+                      >
+                        <SelectTrigger className="bg-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="en_preparacion">A) EN PREPARACIÓN</SelectItem>
+                          <SelectItem value="preparando">A) EN PREPARACIÓN (alternativo)</SelectItem>
+                          <SelectItem value="entregado">B) ENTREGADO</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {selectedOrder.payment_status !== 'pagado' && (
+                    <div>
+                      <Label className="text-sm font-semibold text-gray-700 mb-2 block">Estado del Pedido</Label>
+                      <Select
+                        value={selectedOrder.status}
+                        onValueChange={(value) => {
+                          handleUpdateOrderStatus(selectedOrder.id, value)
+                        }}
+                      >
+                        <SelectTrigger className="bg-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pendiente">Pendiente</SelectItem>
+                          <SelectItem value="confirmado">Confirmado</SelectItem>
+                          <SelectItem value="preparando">Preparando</SelectItem>
+                          <SelectItem value="enviado">Enviado</SelectItem>
+                          <SelectItem value="entregado">Entregado</SelectItem>
+                          <SelectItem value="cancelado">Cancelado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
+              </div>
 
                 {selectedOrder.items && selectedOrder.items.length > 0 && (
                   <div>

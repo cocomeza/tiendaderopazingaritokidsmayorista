@@ -123,6 +123,28 @@ export default function CheckoutPage() {
       const discount = getDiscountAmount()
       const total = getTotalWithDiscount()
 
+      // Preparar datos de envío
+      const shippingAddress = profileData ? {
+        name: profileData.full_name || user.email,
+        phone: profileData.phone || '',
+        address: profileData.address || '',
+        city: profileData.city || '',
+        province: profileData.province || '',
+        postal_code: profileData.postal_code || ''
+      } : null
+
+      // Preparar datos de facturación
+      const billingAddress = profileData ? {
+        name: profileData.full_name || user.email,
+        cuit: profileData.cuit || '',
+        email: user.email,
+        phone: profileData.phone || '',
+        address: profileData.billing_address || profileData.address || '',
+        city: profileData.city || '',
+        province: profileData.province || '',
+        postal_code: profileData.postal_code || ''
+      } : null
+
       // Crear el pedido en la base de datos
       const { data: newOrder, error: orderError } = await supabase
         .from('orders')
@@ -135,7 +157,8 @@ export default function CheckoutPage() {
           discount: discount,
           total: total,
           notes: notes || null,
-          shipping_address: profileData?.billing_address || profileData?.address || null
+          shipping_address: shippingAddress,
+          billing_address: billingAddress
         })
         .select()
         .single()
