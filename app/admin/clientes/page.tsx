@@ -47,6 +47,9 @@ interface Customer {
   is_active: boolean
   created_at: string
   last_login: string
+  ordersCount?: number
+  totalSpent?: number
+  paidOrdersCount?: number
 }
 
 interface OrderSummary {
@@ -109,10 +112,35 @@ const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
         profile => !profile.is_admin || profile.is_admin === false
       )
 
-      console.log('Clientes cargados:', clientsOnly.length)
-      console.log('Datos de primer cliente:', clientsOnly[0])
+      // Cargar estadísticas de pedidos para cada cliente
+      const customersWithOrders = await Promise.all(
+        clientsOnly.map(async (customer) => {
+          const { count } = await supabase
+            .from('orders')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', customer.id)
+          
+          const { data: ordersData } = await supabase
+            .from('orders')
+            .select('total, payment_status')
+            .eq('user_id', customer.id)
+          
+          const totalOrders = count || 0
+          const totalSpent = ordersData?.reduce((sum, order) => sum + (order.total || 0), 0) || 0
+          const paidOrders = ordersData?.filter(order => order.payment_status === 'pagado').length || 0
+
+          return {
+            ...customer,
+            ordersCount: totalOrders,
+            totalSpent,
+            paidOrdersCount: paidOrders
+          }
+        })
+      )
+
+      console.log('Clientes cargados:', customersWithOrders.length)
       
-      setCustomers(clientsOnly)
+      setCustomers(customersWithOrders as Customer[])
     } catch (error) {
       console.error('Error general:', error)
       toast.error('Error inesperado al cargar clientes')
@@ -180,16 +208,24 @@ const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
         .eq('id', orderId)
 
       if (error) {
+        console.error('Error actualizando estado:', error)
         toast.error('No se pudo actualizar el estado del pedido')
         return
       }
 
       toast.success('Estado del pedido actualizado')
-      setCustomerOrders((prev) =>
-        prev
-          ? prev.map((order) => (order.id === orderId ? { ...order, status: newStatus } : order))
-          : prev
-      )
+      
+      // Recargar los pedidos para obtener datos actualizados
+      if (selectedCustomer) {
+        await handleOpenCustomerOrders(
+          selectedCustomer,
+          setSelectedCustomer,
+          setCustomerOrders,
+          setLoadingOrders,
+          setUpdatingStatusId,
+          setUpdatingPaymentId
+        )
+      }
 
       if (!options?.keepModalOpen) {
         setSelectedCustomer(null)
@@ -198,7 +234,7 @@ const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
       console.error('Error actualizando estado del pedido:', error)
       toast.error('Error inesperado al actualizar el estado del pedido')
     } finally {
-      setUpdatingStatusId((prev) => (prev === orderId ? null : prev))
+      setUpdatingStatusId(null)
     }
   }
 
@@ -211,16 +247,24 @@ const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
         .eq('id', orderId)
 
       if (error) {
+        console.error('Error actualizando estado de pago:', error)
         toast.error('No se pudo actualizar el estado de pago')
         return
       }
 
       toast.success('Estado de pago actualizado')
-      setCustomerOrders((prev) =>
-        prev
-          ? prev.map((order) => (order.id === orderId ? { ...order, payment_status: newStatus } : order))
-          : prev
-      )
+      
+      // Recargar los pedidos para obtener datos actualizados
+      if (selectedCustomer) {
+        await handleOpenCustomerOrders(
+          selectedCustomer,
+          setSelectedCustomer,
+          setCustomerOrders,
+          setLoadingOrders,
+          setUpdatingStatusId,
+          setUpdatingPaymentId
+        )
+      }
 
       if (!options?.keepModalOpen) {
         setSelectedCustomer(null)
@@ -229,7 +273,7 @@ const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
       console.error('Error actualizando estado de pago:', error)
       toast.error('Error inesperado al actualizar el estado de pago')
     } finally {
-      setUpdatingPaymentId((prev) => (prev === orderId ? null : prev))
+      setUpdatingPaymentId(null)
     }
   }
 
@@ -552,6 +596,26 @@ const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
                   </div>
                 </div>
 
+                {/* Información de pedidos */}
+                {(customer.ordersCount !== undefined && customer.ordersCount > 0) && (
+                  <div className="mb-4 p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-200">
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="flex items-center gap-1">
+                        <ShoppingBag className="w-3 h-3 text-purple-600" />
+                        <span className="text-gray-600">Pedidos:</span>
+                        <span className="font-bold text-purple-700">{customer.ordersCount}</span>
+                      </div>
+                      {customer.totalSpent !== undefined && customer.totalSpent > 0 && (
+                        <div className="flex items-center gap-1">
+                          <DollarSign className="w-3 h-3 text-green-600" />
+                          <span className="text-gray-600">Total:</span>
+                          <span className="font-bold text-green-700">{formatPrice(customer.totalSpent)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Footer con badge y botón */}
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 pt-3 border-t">
                   <Badge 
@@ -570,7 +634,8 @@ const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
                     className="w-full sm:w-auto hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300"
                     onClick={() => handleOpenCustomerOrders(customer, setSelectedCustomer, setCustomerOrders, setLoadingOrders, setUpdatingStatusId, setUpdatingPaymentId)}
                   >
-                    Ver Pedidos
+                    <ShoppingBag className="w-4 h-4 mr-1" />
+                    {customer.ordersCount ? `${customer.ordersCount} Pedido${customer.ordersCount > 1 ? 's' : ''}` : 'Ver Pedidos'}
                   </Button>
                 </div>
               </CardContent>
@@ -743,7 +808,35 @@ const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
 
               {!loadingOrders && customerOrders && customerOrders.length > 0 && (
                 <div className="space-y-3">
-                  {customerOrders.map((order) => (
+                  {customerOrders.map((order) => {
+                    const getStatusBadge = (status: string) => {
+                      const statusMap: Record<string, { label: string; color: string; bg: string }> = {
+                        pendiente: { label: 'PENDIENTE', color: 'text-yellow-700', bg: 'bg-yellow-50' },
+                        confirmado: { label: 'CONFIRMADO', color: 'text-blue-700', bg: 'bg-blue-50' },
+                        preparando: { label: 'PREPARANDO', color: 'text-purple-700', bg: 'bg-purple-50' },
+                        en_preparacion: { label: 'EN PREPARACIÓN', color: 'text-purple-700', bg: 'bg-purple-50' },
+                        enviado: { label: 'ENVIADO', color: 'text-indigo-700', bg: 'bg-indigo-50' },
+                        entregado: { label: 'ENTREGADO', color: 'text-green-700', bg: 'bg-green-50' },
+                        cancelado: { label: 'CANCELADO', color: 'text-red-700', bg: 'bg-red-50' }
+                      }
+                      const statusInfo = statusMap[status] || { label: status.toUpperCase(), color: 'text-gray-700', bg: 'bg-gray-50' }
+                      return (
+                        <Badge className={`${statusInfo.bg} ${statusInfo.color} border`}>
+                          {statusInfo.label}
+                        </Badge>
+                      )
+                    }
+                    
+                    const getPaymentBadge = (paymentStatus: string) => {
+                      if (paymentStatus === 'pagado') {
+                        return <Badge className="bg-green-50 text-green-700 border border-green-200">PAGADO</Badge>
+                      } else if (paymentStatus === 'rechazado') {
+                        return <Badge className="bg-red-50 text-red-700 border border-red-200">RECHAZADO</Badge>
+                      }
+                      return <Badge className="bg-yellow-50 text-yellow-700 border border-yellow-200">PENDIENTE DE PAGO</Badge>
+                    }
+                    
+                    return (
                     <Card key={order.id} className="border border-gray-200 hover:border-purple-300 transition">
                       <CardContent className="p-4 space-y-3">
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
@@ -756,6 +849,12 @@ const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
                             <p className="text-xs text-gray-500 uppercase">Total</p>
                             <p className="text-lg font-bold text-purple-600">{formatPrice(order.total)}</p>
                           </div>
+                        </div>
+                        
+                        {/* Badges de estado */}
+                        <div className="flex flex-wrap gap-2">
+                          {getStatusBadge(order.status)}
+                          {getPaymentBadge(order.payment_status)}
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -770,12 +869,25 @@ const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="pendiente">Pendiente</SelectItem>
-                                <SelectItem value="confirmado">Confirmado</SelectItem>
-                                <SelectItem value="preparando">Preparando</SelectItem>
-                                <SelectItem value="enviado">Enviado</SelectItem>
-                                <SelectItem value="entregado">Entregado</SelectItem>
-                                <SelectItem value="cancelado">Cancelado</SelectItem>
+                                {order.payment_status === 'pagado' ? (
+                                  <>
+                                    <SelectItem value="en_preparacion">A) EN PREPARACIÓN</SelectItem>
+                                    <SelectItem value="preparando">A) EN PREPARACIÓN (alt)</SelectItem>
+                                    <SelectItem value="enviado">Enviado</SelectItem>
+                                    <SelectItem value="entregado">B) ENTREGADO</SelectItem>
+                                    <SelectItem value="cancelado">Cancelado</SelectItem>
+                                  </>
+                                ) : (
+                                  <>
+                                    <SelectItem value="pendiente">PENDIENTE DE PAGO</SelectItem>
+                                    <SelectItem value="confirmado">Confirmado</SelectItem>
+                                    <SelectItem value="preparando">Preparando</SelectItem>
+                                    <SelectItem value="en_preparacion">EN PREPARACIÓN</SelectItem>
+                                    <SelectItem value="enviado">Enviado</SelectItem>
+                                    <SelectItem value="entregado">Entregado</SelectItem>
+                                    <SelectItem value="cancelado">Cancelado</SelectItem>
+                                  </>
+                                )}
                               </SelectContent>
                             </Select>
                           </div>
@@ -790,8 +902,8 @@ const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="pendiente">Pendiente</SelectItem>
-                                <SelectItem value="pagado">Pagado</SelectItem>
+                                <SelectItem value="pendiente">PENDIENTE DE PAGO</SelectItem>
+                                <SelectItem value="pagado">PAGADO</SelectItem>
                                 <SelectItem value="rechazado">Rechazado</SelectItem>
                               </SelectContent>
                             </Select>
@@ -811,7 +923,8 @@ const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
                         )}
                       </CardContent>
                     </Card>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>

@@ -33,17 +33,70 @@ export default function ResetPasswordPage() {
       try {
         // Verificar si hay un hash fragment en la URL (viene del email)
         const hash = window.location.hash
-        const hashParams = new URLSearchParams(hash.substring(1))
+        
+        // Si no hay hash, verificar si hay una sesión activa
+        if (!hash || hash.length <= 1) {
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+          
+          if (sessionError || !session) {
+            setError('No se encontró un enlace de recuperación válido. Por favor solicita un nuevo enlace desde la página de recuperación.')
+            setInitializing(false)
+            return
+          }
+
+          setError(null)
+          setInitializing(false)
+          return
+        }
+
+        // Parsear el hash (remover el # inicial)
+        const hashString = hash.startsWith('#') ? hash.substring(1) : hash
+        const hashParams = new URLSearchParams(hashString)
         const accessToken = hashParams.get('access_token')
         const type = hashParams.get('type')
+        const refreshToken = hashParams.get('refresh_token')
 
-        // Si hay un token en el hash, Supabase lo procesará automáticamente
+        console.log('Hash detectado:', { hasToken: !!accessToken, type, hashLength: hash.length })
+
+        // Si hay un token en el hash, procesarlo
         if (accessToken && type === 'recovery') {
-          // Escuchar cambios en la sesión de autenticación
+          // Primero, establecer la sesión manualmente con el token
+          try {
+            const { data: { session: setSessionData }, error: setSessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || ''
+            })
+
+            if (setSessionError) {
+              console.error('Error estableciendo sesión:', setSessionError)
+              // Continuar con el flujo normal aunque falle
+            } else if (setSessionData?.session) {
+              console.log('Sesión establecida correctamente')
+              // Limpiar el hash de la URL
+              try {
+                window.history.replaceState(null, '', window.location.pathname)
+              } catch (e) {
+                console.warn('No se pudo limpiar el hash:', e)
+              }
+              setError(null)
+              setInitializing(false)
+              if (subscription) {
+                subscription.unsubscribe()
+              }
+              return
+            }
+          } catch (setSessionErr) {
+            console.error('Error al establecer sesión:', setSessionErr)
+            // Continuar con el flujo de verificación
+          }
+
+          // Escuchar cambios en la sesión de autenticación como respaldo
           const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (!mounted) return
 
-            if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
+            console.log('Auth state change:', event, 'Has session:', !!session)
+
+            if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
               // Limpiar el hash de la URL para que no se vea
               try {
                 window.history.replaceState(null, '', window.location.pathname)
@@ -69,13 +122,15 @@ export default function ResetPasswordPage() {
 
           // También verificar la sesión después de un breve delay
           // por si Supabase ya procesó el hash antes de que se registre el listener
-          const checkSession = async (retries = 3) => {
+          const checkSession = async (retries = 5) => {
             if (!mounted) return
 
             try {
               const { data: { session }, error: sessionError } = await supabase.auth.getSession()
               
               if (!mounted) return
+
+              console.log('Verificando sesión (intento):', { hasSession: !!session, error: sessionError?.message, retries })
 
               if (session && !sessionError) {
                 try {
@@ -90,7 +145,7 @@ export default function ResetPasswordPage() {
                 }
               } else if (!session && retries > 0) {
                 // Esperar un poco más por si Supabase aún está procesando
-                setTimeout(() => checkSession(retries - 1), 500)
+                setTimeout(() => checkSession(retries - 1), 1000)
               } else {
                 setError('El enlace de recuperación es inválido o ha expirado. Por favor solicita un nuevo enlace.')
                 setInitializing(false)
@@ -101,7 +156,7 @@ export default function ResetPasswordPage() {
             } catch (err) {
               console.error('Error verificando sesión:', err)
               if (retries > 0) {
-                setTimeout(() => checkSession(retries - 1), 500)
+                setTimeout(() => checkSession(retries - 1), 1000)
               } else {
                 setError('Error al procesar el enlace de recuperación. Por favor intenta nuevamente.')
                 setInitializing(false)
@@ -113,18 +168,10 @@ export default function ResetPasswordPage() {
           }
 
           // Esperar un momento para que Supabase procese el hash
-          setTimeout(() => checkSession(), 500)
+          setTimeout(() => checkSession(), 1000)
         } else {
-          // No hay token en la URL, verificar si hay una sesión activa de recuperación
-          const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-          
-          if (sessionError || !session) {
-            setError('No se encontró un enlace de recuperación válido. Por favor solicita un nuevo enlace desde la página de recuperación.')
-            setInitializing(false)
-            return
-          }
-
-          setError(null)
+          // No hay token válido en la URL
+          setError('No se encontró un enlace de recuperación válido. Por favor solicita un nuevo enlace desde la página de recuperación.')
           setInitializing(false)
         }
       } catch (err) {
