@@ -283,7 +283,8 @@ export default function AdminPedidosPage() {
     const link = document.createElement('a')
     const url = URL.createObjectURL(blob)
     link.setAttribute('href', url)
-    link.setAttribute('download', `pedidos_${new Date().toISOString().split('T')[0]}.csv`)
+    const dateStr = new Date().toISOString().split('T')[0]
+    link.setAttribute('download', `pedidos_${dateStr}.csv`)
     link.style.visibility = 'hidden'
     document.body.appendChild(link)
     link.click()
@@ -823,48 +824,47 @@ export default function AdminPedidosPage() {
                 </div>
               </div>
 
-                {selectedOrder.items && selectedOrder.items.length > 0 && (
-                  <div>
-                    <h3 className="font-semibold text-gray-700 mb-3">Productos</h3>
-                    <div className="space-y-2">
-                      {selectedOrder.items.map((item) => (
-                        <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <p className="font-medium">{item.product_name}</p>
-                            <p className="text-sm text-gray-500">Cant: {item.quantity} × {formatPrice(item.unit_price)}</p>
-                          </div>
-                          <p className="font-bold">{formatPrice(item.subtotal)}</p>
+              {selectedOrder.items && selectedOrder.items.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="font-semibold text-gray-700 mb-3">Productos</h3>
+                  <div className="space-y-2">
+                    {selectedOrder.items.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <p className="font-medium">{item.product_name}</p>
+                          <p className="text-sm text-gray-500">Cant: {item.quantity} × {formatPrice(item.unit_price)}</p>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="bg-purple-50 p-4 rounded-lg space-y-2">
-                  <div className="flex justify-between">
-                    <span>Subtotal:</span>
-                    <span className="font-bold">{formatPrice(selectedOrder.subtotal)}</span>
-                  </div>
-                  {selectedOrder.discount > 0 && (
-                    <div className="flex justify-between text-green-600">
-                      <span>Descuento:</span>
-                      <span className="font-bold">-{formatPrice(selectedOrder.discount)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-xl font-bold">
-                    <span>Total:</span>
-                    <span className="text-purple-600">{formatPrice(selectedOrder.total)}</span>
+                        <p className="font-bold">{formatPrice(item.subtotal)}</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
+              )}
 
-                {selectedOrder.notes && (
-                  <div>
-                    <Label>Notas del Pedido</Label>
-                    <Textarea value={selectedOrder.notes} readOnly rows={3} />
+              <div className="bg-purple-50 p-4 rounded-lg space-y-2 mb-6">
+                <div className="flex justify-between">
+                  <span>Subtotal:</span>
+                  <span className="font-bold">{formatPrice(selectedOrder.subtotal)}</span>
+                </div>
+                {selectedOrder.discount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Descuento:</span>
+                    <span className="font-bold">-{formatPrice(selectedOrder.discount)}</span>
                   </div>
                 )}
-
+                <div className="flex justify-between text-xl font-bold">
+                  <span>Total:</span>
+                  <span className="text-purple-600">{formatPrice(selectedOrder.total)}</span>
+                </div>
               </div>
+
+              {selectedOrder.notes && (
+                <div className="mb-6">
+                  <Label>Notas del Pedido</Label>
+                  <Textarea value={selectedOrder.notes} readOnly rows={3} />
+                </div>
+              )}
+
             </div>
           </div>
         </div>
