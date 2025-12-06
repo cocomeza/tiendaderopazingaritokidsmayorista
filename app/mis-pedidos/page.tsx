@@ -69,24 +69,34 @@ export default function MisPedidosPage() {
 
   useEffect(() => {
     if (!authLoading) {
-      if (!isAuthenticated) {
+      if (!isAuthenticated || !user) {
+        console.log('Usuario no autenticado, redirigiendo a login')
         router.push('/auth/login?redirect=/mis-pedidos')
         return
       }
+      
+      console.log('Usuario autenticado, cargando pedidos:', user.id, user.email)
       loadOrders()
       
       // Auto-refresh cada 30 segundos para sincronizar con cambios del admin
       const interval = setInterval(() => {
-        loadOrders()
+        if (user) {
+          loadOrders()
+        }
       }, 30000)
       
       return () => clearInterval(interval)
     }
-  }, [authLoading, isAuthenticated])
+  }, [authLoading, isAuthenticated, user])
 
   const loadOrders = async (showToast = false) => {
     try {
-      if (!user) return
+      if (!user) {
+        console.warn('No hay usuario autenticado')
+        return
+      }
+
+      console.log('Cargando pedidos para usuario:', user.id, user.email)
 
       const { data, error } = await supabase
         .from('orders')
@@ -96,9 +106,17 @@ export default function MisPedidosPage() {
 
       if (error) {
         console.error('Error cargando pedidos:', error)
-        toast.error('Error al cargar tus pedidos')
+        console.error('Detalles del error:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        })
+        toast.error('Error al cargar tus pedidos: ' + error.message)
         return
       }
+
+      console.log('Pedidos cargados:', data?.length || 0, 'pedidos encontrados')
 
       // Cargar el perfil del usuario para obtener datos del cliente
       const { data: profileData, error: profileError } = await supabase
@@ -109,6 +127,13 @@ export default function MisPedidosPage() {
 
       if (profileError) {
         console.error('Error cargando perfil:', profileError)
+        console.error('Detalles del error de perfil:', {
+          message: profileError.message,
+          code: profileError.code,
+          details: profileError.details
+        })
+      } else {
+        console.log('Perfil cargado correctamente:', profileData?.email)
       }
 
       // Cargar TODOS los items de todos los pedidos en una sola query
@@ -123,6 +148,8 @@ export default function MisPedidosPage() {
         
         allItems = itemsData || []
       }
+
+      console.log('Items cargados:', allItems.length, 'items para', orderIds.length, 'pedidos')
 
       // Agrupar items por pedido y agregar datos del cliente
       const ordersWithItems = (data || []).map(order => {
@@ -146,7 +173,7 @@ export default function MisPedidosPage() {
         }
 
         return {
-          ...order,
+        ...order,
           items: allItems.filter(item => item.order_id === order.id),
           customer_email: profileData?.email || user.email || '',
           customer_cuit: profileData?.cuit || '',
@@ -155,10 +182,11 @@ export default function MisPedidosPage() {
         }
       })
 
+      console.log('Pedidos procesados:', ordersWithItems.length)
       setOrders(ordersWithItems)
       
       if (showToast) {
-        toast.success('Pedidos actualizados')
+        toast.success(`Pedidos actualizados: ${ordersWithItems.length} pedidos`)
       }
     } catch (error) {
       console.error('Error general:', error)
@@ -526,7 +554,7 @@ export default function MisPedidosPage() {
       } else if (statusFilter === 'preparando' && order.status !== 'en_preparacion' && order.status !== 'preparando') {
         return false
       } else if (statusFilter !== 'en_preparacion' && statusFilter !== 'preparando' && order.status !== statusFilter) {
-        return false
+      return false
       }
     }
 
@@ -588,12 +616,12 @@ export default function MisPedidosPage() {
                 <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} data-testid="refresh-icon" />
                 <span data-testid="refresh-button-text">{refreshing ? 'Actualizando...' : 'Actualizar'}</span>
               </Button>
-              <Link href="/productos">
+            <Link href="/productos">
                 <Button variant="outline" data-testid="back-to-products-button">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Volver a Productos
-                </Button>
-              </Link>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Volver a Productos
+              </Button>
+            </Link>
             </div>
           </div>
         </div>
@@ -698,15 +726,34 @@ export default function MisPedidosPage() {
                   </h3>
                   <p className="text-gray-500 mb-6">
                     {orders.length === 0 
-                      ? 'Cuando realices tu primer pedido, aparecerá aquí'
+                      ? 'Cuando realices tu primer pedido desde el carrito y lo envíes por WhatsApp, aparecerá aquí con todos sus detalles y estado.'
                       : 'Intenta ajustar los filtros para ver tus pedidos'}
                   </p>
                   {orders.length === 0 && (
-                    <Link href="/productos">
-                      <Button className="bg-purple-600 hover:bg-purple-700">
-                        Ver Productos
-                      </Button>
-                    </Link>
+                    <div className="space-y-3">
+                      <Link href="/productos">
+                        <Button className="bg-purple-600 hover:bg-purple-700 w-full sm:w-auto">
+                          Ver Productos
+                        </Button>
+                      </Link>
+                      <div className="text-xs text-gray-400 mt-4">
+                        <p>💡 Tip: Agrega productos al carrito y completa tu pedido para verlo aquí</p>
+                      </div>
+                    </div>
+                  )}
+                  {orders.length > 0 && (
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        setStatusFilter('todos')
+                        setDateFrom('')
+                        setDateTo('')
+                        setMinPrice('')
+                        setMaxPrice('')
+                      }}
+                    >
+                      Limpiar Filtros
+                    </Button>
                   )}
                 </CardContent>
               </Card>
@@ -731,7 +778,7 @@ export default function MisPedidosPage() {
                       <div className="flex flex-col gap-2 items-end" data-testid={`order-status-badges-${order.id}`}>
                         {getStatusBadge(order.status, order.payment_status)}
                         <span data-testid={`payment-badge-${order.id}`}>
-                          {getPaymentBadge(order.payment_status)}
+                        {getPaymentBadge(order.payment_status)}
                         </span>
                       </div>
                     </div>
