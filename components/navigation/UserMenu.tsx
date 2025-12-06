@@ -45,7 +45,7 @@ export function UserMenu({ cartDrawerOpen: externalCartDrawerOpen, setCartDrawer
   const totalCartItems = getTotalItems()
   const cartTotal = getTotalWholesalePrice()
 
-  const abrirWhatsApp = () => {
+  const abrirWhatsApp = async () => {
     // Verificar que el total de unidades sea >= 5
     if (totalCartItems < 5) {
       toast.error('Compra mínima requerida', {
@@ -55,48 +55,21 @@ export function UserMenu({ cartDrawerOpen: externalCartDrawerOpen, setCartDrawer
       return
     }
 
-    const numero = '543407440243'
-    const resumenProductos = items.map(item => {
-      const detalles = [
-        item.size ? `Talle: ${item.size}` : null,
-        item.color ? `Color: ${item.color}` : null,
-      ].filter(Boolean).join(' | ')
+    // Si el usuario está autenticado, redirigir al checkout para crear el pedido con número de orden
+    if (isAuthenticated && user) {
+      setCartDrawerOpen(false)
+      router.push('/checkout')
+      return
+    }
 
-      const resumenProducto = detalles ? `${item.name} (${detalles})` : item.name
-
-      return `• ${resumenProducto} - Cantidad: ${item.quantity} - $${(item.wholesale_price * item.quantity).toLocaleString('es-AR')}`
-    }).join('\n')
-
-    const total = `Total: $${cartTotal.toLocaleString('es-AR')}`
-
-    const datosTransferencia =
-      DATOS_TRANSFERENCIA.alias || DATOS_TRANSFERENCIA.cbu || DATOS_TRANSFERENCIA.medios
-        ? [
-            'Datos para pago:',
-            DATOS_TRANSFERENCIA.medios ? `Medios aceptados: ${DATOS_TRANSFERENCIA.medios}` : null,
-            DATOS_TRANSFERENCIA.alias ? `Alias: ${DATOS_TRANSFERENCIA.alias}` : null,
-            DATOS_TRANSFERENCIA.cbu ? `CBU: ${DATOS_TRANSFERENCIA.cbu}` : null,
-            'Recordá enviar el comprobante o captura del pago para confirmar tu pedido.'
-          ]
-            .filter(Boolean)
-            .join('\n')
-        : ''
-
-    const mensaje = [
-      'Hola! Quiero hacer un pedido MAYORISTA:',
-      '',
-      resumenProductos,
-      '',
-      total,
-      '',
-      'Compra mínima: 5 unidades por producto',
-      '',
-      datosTransferencia
-    ]
-      .filter(Boolean)
-      .join('\n')
-    
-    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank')
+    // Si no está autenticado, mostrar mensaje y redirigir al login
+    toast.info('Debes iniciar sesión para crear un pedido con número de orden', {
+      description: 'Serás redirigido al login...',
+      duration: 3000,
+    })
+    setTimeout(() => {
+      router.push('/auth/login?redirect=/checkout')
+    }, 1000)
   }
 
   const handleSignOut = async () => {

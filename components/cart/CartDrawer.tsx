@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ShoppingCart, X, Plus, Minus, Trash2, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -25,6 +26,7 @@ export function CartButton() {
 }
 
 export function CartDrawer() {
+  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const { items, updateQuantity, removeItem, clearCart, getTotalWholesalePrice, getTotalItems } = useCartStore()
 
@@ -41,15 +43,9 @@ export function CartDrawer() {
       return
     }
 
-    const numero = '543407440243'
-    const mensaje = `Hola! Quiero hacer un pedido MAYORISTA:\n\n${items.map(item => 
-      `• ${item.name}${item.size || item.color ? ` (${[
-        item.size ? `Talle: ${item.size}` : null,
-        item.color ? `Color: ${item.color}` : null,
-      ].filter(Boolean).join(' | ')})` : ''} - Cantidad: ${item.quantity} - $${(item.wholesale_price * item.quantity).toLocaleString('es-AR')}`
-    ).join('\n')}\n\nTotal: $${total.toLocaleString('es-AR')}\n\n(Compra mínima: 5 unidades en total)`
-    
-    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank')
+    // Redirigir al checkout para crear el pedido con número de orden
+    setIsOpen(false)
+    router.push('/checkout')
   }
 
   return (
