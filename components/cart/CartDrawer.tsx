@@ -127,7 +127,6 @@ export function CartDrawer() {
           status: 'pendiente',
           payment_status: 'pendiente',
           subtotal: subtotal,
-          discount: 0,
           total: totalAmount,
           notes: null,
           shipping_address: shippingAddress,

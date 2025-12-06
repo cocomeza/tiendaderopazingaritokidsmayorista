@@ -131,7 +131,6 @@ export function UserMenu({ cartDrawerOpen: externalCartDrawerOpen, setCartDrawer
           status: 'pendiente',
           payment_status: 'pendiente',
           subtotal: subtotal,
-          discount: 0,
           total: total,
           notes: null,
           shipping_address: shippingAddress,
