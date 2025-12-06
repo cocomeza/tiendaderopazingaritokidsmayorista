@@ -71,6 +71,54 @@ BEGIN
   END IF;
 END $$;
 
+-- Agregar quantity si no existe
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'order_items' AND column_name = 'quantity'
+  ) THEN
+    ALTER TABLE order_items ADD COLUMN quantity integer NOT NULL DEFAULT 1 CHECK (quantity > 0);
+    RAISE NOTICE '✅ Columna "quantity" agregada a "order_items"';
+  ELSE
+    RAISE NOTICE 'ℹ️ Columna "quantity" ya existe en "order_items"';
+  END IF;
+END $$;
+
+-- Agregar unit_price si no existe
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'order_items' AND column_name = 'unit_price'
+  ) THEN
+    ALTER TABLE order_items ADD COLUMN unit_price numeric(10, 2) NOT NULL DEFAULT 0 CHECK (unit_price >= 0);
+    RAISE NOTICE '✅ Columna "unit_price" agregada a "order_items"';
+  ELSE
+    RAISE NOTICE 'ℹ️ Columna "unit_price" ya existe en "order_items"';
+  END IF;
+END $$;
+
+-- Agregar subtotal si no existe
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'order_items' AND column_name = 'subtotal'
+  ) THEN
+    ALTER TABLE order_items ADD COLUMN subtotal numeric(10, 2) NOT NULL DEFAULT 0 CHECK (subtotal >= 0);
+    
+    -- Si hay registros existentes, calcular subtotal desde quantity * unit_price
+    UPDATE order_items
+    SET subtotal = quantity * unit_price
+    WHERE subtotal = 0 AND quantity > 0 AND unit_price > 0;
+    
+    RAISE NOTICE '✅ Columna "subtotal" agregada a "order_items"';
+  ELSE
+    RAISE NOTICE 'ℹ️ Columna "subtotal" ya existe en "order_items"';
+  END IF;
+END $$;
+
 -- Verificar que la migración se completó correctamente
 DO $$
 DECLARE
@@ -78,6 +126,9 @@ DECLARE
   product_sku_exists BOOLEAN;
   size_exists BOOLEAN;
   color_exists BOOLEAN;
+  quantity_exists BOOLEAN;
+  unit_price_exists BOOLEAN;
+  subtotal_exists BOOLEAN;
 BEGIN
   SELECT EXISTS (
     SELECT 1 FROM information_schema.columns
@@ -99,11 +150,29 @@ BEGIN
     WHERE table_name = 'order_items' AND column_name = 'color'
   ) INTO color_exists;
   
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'order_items' AND column_name = 'quantity'
+  ) INTO quantity_exists;
+  
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'order_items' AND column_name = 'unit_price'
+  ) INTO unit_price_exists;
+  
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'order_items' AND column_name = 'subtotal'
+  ) INTO subtotal_exists;
+  
   RAISE NOTICE '--- VERIFICACIÓN DE MIGRACIÓN ---';
   RAISE NOTICE 'Columna product_name existe: %', product_name_exists;
   RAISE NOTICE 'Columna product_sku existe: %', product_sku_exists;
   RAISE NOTICE 'Columna size existe: %', size_exists;
   RAISE NOTICE 'Columna color existe: %', color_exists;
+  RAISE NOTICE 'Columna quantity existe: %', quantity_exists;
+  RAISE NOTICE 'Columna unit_price existe: %', unit_price_exists;
+  RAISE NOTICE 'Columna subtotal existe: %', subtotal_exists;
   RAISE NOTICE '✅ Migración completada correctamente';
 END $$;
 
