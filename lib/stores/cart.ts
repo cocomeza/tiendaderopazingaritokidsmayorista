@@ -24,9 +24,6 @@ interface CartStore {
   getTotalItems: () => number
   getTotalPrice: () => number
   getTotalWholesalePrice: () => number
-  getDiscountPercentage: () => number
-  getDiscountAmount: () => number
-  getTotalWithDiscount: () => number
 }
 
 export const useCartStore = create<CartStore>()(
@@ -90,30 +87,6 @@ export const useCartStore = create<CartStore>()(
       
       getTotalWholesalePrice: () => {
         return get().items.reduce((total, item) => total + (item.wholesale_price * item.quantity), 0)
-      },
-
-      getDiscountPercentage: () => {
-        const totalItems = get().getTotalItems()
-        
-        // Escala de descuentos por defecto (se puede conectar con la base de datos después)
-        if (totalItems >= 100) return 25
-        if (totalItems >= 50) return 20
-        if (totalItems >= 25) return 15
-        if (totalItems >= 10) return 10
-        if (totalItems >= 5) return 5
-        return 0
-      },
-
-      getDiscountAmount: () => {
-        const total = get().getTotalWholesalePrice()
-        const discountPercentage = get().getDiscountPercentage()
-        return total * (discountPercentage / 100)
-      },
-
-      getTotalWithDiscount: () => {
-        const total = get().getTotalWholesalePrice()
-        const discount = get().getDiscountAmount()
-        return total - discount
       }
     }),
     {

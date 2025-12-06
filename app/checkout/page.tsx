@@ -37,9 +37,6 @@ export default function CheckoutPage() {
     items, 
     getTotalItems, 
     getTotalWholesalePrice, 
-    getTotalWithDiscount,
-    getDiscountPercentage,
-    getDiscountAmount,
     clearCart 
   } = useCartStore()
   const [user, setUser] = useState<any>(null)
@@ -121,8 +118,8 @@ export default function CheckoutPage() {
       console.log('Número de orden generado:', orderNumber)
       
       const subtotal = getTotalWholesalePrice()
-      const discount = getDiscountAmount()
-      const total = getTotalWithDiscount()
+      const discount = 0
+      const total = subtotal
 
       // Preparar datos de envío
       const shippingAddress = profileData ? {
@@ -371,27 +368,12 @@ export default function CheckoutPage() {
                     <span>${formatPrice(getTotalWholesalePrice())}</span>
                   </div>
                   
-                  {getDiscountPercentage() > 0 && (
-                    <>
-                      <div className="flex justify-between items-center text-green-600">
-                        <span>Descuento por cantidad ({getDiscountPercentage()}%):</span>
-                        <span>-${formatPrice(getDiscountAmount())}</span>
-                      </div>
-                      <div className="border-t pt-2">
-                        <div className="flex justify-between items-center text-lg font-bold">
-                          <span>Total Final:</span>
-                          <span className="text-purple-600">${formatPrice(getTotalWithDiscount())}</span>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                  
-                  {getDiscountPercentage() === 0 && (
+                  <div className="border-t pt-2 mt-2">
                     <div className="flex justify-between items-center text-lg font-bold">
                       <span>Total Final:</span>
                       <span className="text-purple-600">${formatPrice(getTotalWholesalePrice())}</span>
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             </CardContent>
