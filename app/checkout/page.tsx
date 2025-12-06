@@ -216,29 +216,41 @@ export default function CheckoutPage() {
     const totalItems = getTotalItems()
     const totalPrice = getTotalWholesalePrice()
     
-    let message = `🛒 *NUEVO PEDIDO - ZINGARITO KIDS*\n\n`
-    if (orderNumber) {
-      message += `📋 *Pedido N°:* ${orderNumber}\n`
-    }
-    message += `👤 *Cliente:* ${profileData?.full_name || user?.email || 'Usuario'}\n`
-    if (profileData?.phone) {
-      message += `📞 *Teléfono:* ${profileData.phone}\n`
-    }
-    message += `📅 *Fecha:* ${new Date().toLocaleDateString('es-AR')}\n\n`
-    message += `📦 *Productos:*\n`
+    // Formato consistente con el resto de la aplicación
+    let message = `Hola! Quiero hacer un pedido MAYORISTA:\n\n`
     
+    // Agregar número de orden si existe
+    if (orderNumber) {
+      message += `📋 *ORDEN DE COMPRA N°: ${orderNumber}*\n\n`
+    }
+    
+    // Listar productos con formato: • Nombre (Talle: X | Color: Y) - Cantidad: Z - $Precio
     items.forEach(item => {
-      message += `• ${item.name} x${item.quantity} - $${formatPrice(item.wholesale_price * item.quantity)}\n`
+      const detalles = [
+        item.size ? `Talle: ${item.size}` : null,
+        item.color ? `Color: ${item.color || 'Color único'}` : null,
+      ].filter(Boolean)
+      
+      const detallesStr = detalles.length > 0 ? ` (${detalles.join(' | ')})` : ''
+      const precioItem = (item.wholesale_price * item.quantity)
+      
+      message += `• ${item.name}${detallesStr} - Cantidad: ${item.quantity} - $${precioItem.toLocaleString('es-AR')}\n`
     })
     
-    message += `\n💰 *TOTAL: $${formatPrice(totalPrice)}*\n`
-    message += `📊 *Total de productos: ${totalItems}*\n\n`
+    message += `\nTotal: $${totalPrice.toLocaleString('es-AR')}\n`
+    message += `\nCompra mínima: 5 unidades por producto\n\n`
     
+    // Agregar datos de transferencia
+    message += `Datos para pago:\n\n`
+    message += `Medios aceptados: Transferencia bancaria, efectivo o cheque\n`
+    message += `Alias: ${businessInfo.alias}\n`
+    message += `CBU: ${businessInfo.cbu}\n`
+    message += `\nRecordá enviar el comprobante o captura del pago para confirmar tu pedido.`
+    
+    // Agregar notas si existen
     if (notes) {
-      message += `📝 *Notas:* ${notes}\n\n`
+      message += `\n\nNotas: ${notes}`
     }
-    
-    message += `✅ *Confirmo el pedido y procedo con el pago*`
     
     return encodeURIComponent(message)
   }

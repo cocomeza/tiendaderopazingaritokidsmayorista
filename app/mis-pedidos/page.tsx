@@ -361,7 +361,12 @@ export default function MisPedidosPage() {
         
         <div class="header">
           <h1>ZINGARITO KIDS</h1>
-          <p>Pedido N°: <strong>${order.order_number}</strong></p>
+          <p style="font-size: 18px; font-weight: bold; color: #7c3aed; margin: 10px 0;">
+            📋 ORDEN DE COMPRA N°: <strong>${order.order_number}</strong>
+          </p>
+          <p style="font-size: 14px; color: #666; margin: 5px 0;">
+            Pedido N°: <strong>${order.order_number}</strong>
+          </p>
           <p>Fecha: ${new Date(order.created_at).toLocaleDateString('es-AR', {
             day: '2-digit',
             month: '2-digit',
