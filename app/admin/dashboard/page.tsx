@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase/client'
+import { toast } from 'sonner'
 import { 
   Users, 
   ShoppingBag, 
   DollarSign, 
   Package,
-  AlertTriangle
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react'
 import { Spotlight } from '@/components/ui/spotlight'
 import { TextGenerateEffect } from '@/components/ui/text-generate-effect'
@@ -27,45 +29,74 @@ export default function AdminDashboard() {
     lowStockProducts: 0
   })
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
     loadStats()
+    
+    // Actualizar estadísticas cada 30 segundos para reflejar nuevos pedidos
+    const interval = setInterval(() => {
+      loadStats()
+    }, 30000)
+    
+    return () => clearInterval(interval)
   }, [])
 
-  const loadStats = async () => {
+  const loadStats = async (showToast = false) => {
     try {
+      if (showToast) {
+        setRefreshing(true)
+      }
+      
       // Obtener estadísticas de productos
       const { count: totalProducts } = await supabase
         .from('products')
-        .select('*', { count: 'exact' })
+        .select('*', { count: 'exact', head: true })
 
       // Obtener productos con stock bajo
       const { count: lowStockProducts } = await supabase
         .from('products')
-        .select('*', { count: 'exact' })
+        .select('*', { count: 'exact', head: true })
         .lte('stock', 10)
 
-      // Obtener estadísticas de clientes
+      // Obtener estadísticas de clientes (solo clientes, no admins)
       const { count: totalClients } = await supabase
         .from('profiles')
-        .select('*', { count: 'exact' })
+        .select('*', { count: 'exact', head: true })
+        .or('is_admin.is.null,is_admin.eq.false')
 
-      // Obtener estadísticas de órdenes
+      // Obtener estadísticas de órdenes (todos los pedidos)
       const { count: totalOrders } = await supabase
         .from('orders')
-        .select('*', { count: 'exact' })
+        .select('*', { count: 'exact', head: true })
+
+      // Calcular ingresos totales de pedidos pagados
+      const { data: paidOrders } = await supabase
+        .from('orders')
+        .select('total')
+        .eq('payment_status', 'pagado')
+
+      const totalRevenue = paidOrders?.reduce((sum, order) => sum + (order.total || 0), 0) || 0
 
       setStats({
         totalProducts: totalProducts || 0,
         totalClients: totalClients || 0,
         totalOrders: totalOrders || 0,
-        totalRevenue: 0, // TODO: Calcular ingresos reales
+        totalRevenue: totalRevenue,
         lowStockProducts: lowStockProducts || 0
       })
+      
+      if (showToast) {
+        toast.success('Estadísticas actualizadas')
+      }
     } catch (error) {
       console.error('Error loading stats:', error)
+      if (showToast) {
+        toast.error('Error al actualizar estadísticas')
+      }
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
@@ -87,7 +118,7 @@ export default function AdminDashboard() {
         />
         <BackgroundBeams className="absolute inset-0 z-0" />
         <div className="relative z-10 text-center p-4">
-          <div className="mb-6">
+          <div className="mb-6 flex items-center justify-between max-w-4xl mx-auto">
             <Link href="/admin">
               <Button 
                 variant="ghost" 
@@ -96,6 +127,15 @@ export default function AdminDashboard() {
                 ← Volver al Admin
               </Button>
             </Link>
+            <Button
+              onClick={() => loadStats(true)}
+              disabled={refreshing}
+              variant="ghost"
+              className="text-white hover:text-white hover:bg-white/20 rounded-xl flex items-center gap-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Actualizando...' : 'Actualizar'}
+            </Button>
           </div>
           <TextGenerateEffect
             words="Panel Administrativo"
