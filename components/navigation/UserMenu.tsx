@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Plus, Minus, Trash2, MessageCircle, X } from 'lucide-react'
 import { toast } from 'sonner'
+import { supabase } from '@/lib/supabase/client'
 
 interface UserMenuProps {
   cartDrawerOpen?: boolean
@@ -45,6 +46,25 @@ export function UserMenu({ cartDrawerOpen: externalCartDrawerOpen, setCartDrawer
   const totalCartItems = getTotalItems()
   const cartTotal = getTotalWholesalePrice()
 
+  const generateOrderNumber = async () => {
+    const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+    
+    const { data } = await supabase
+      .from('orders')
+      .select('order_number')
+      .like('order_number', `ZK-${datePart}-%`)
+      .order('order_number', { ascending: false })
+      .limit(1)
+    
+    let counter = 1
+    if (data && data.length > 0) {
+      const lastNumber = data[0].order_number.split('-')[2]
+      counter = parseInt(lastNumber) + 1
+    }
+    
+    return `ZK-${datePart}-${counter.toString().padStart(4, '0')}`
+  }
+
   const abrirWhatsApp = async () => {
     // Verificar que el total de unidades sea >= 5
     if (totalCartItems < 5) {
@@ -55,21 +75,154 @@ export function UserMenu({ cartDrawerOpen: externalCartDrawerOpen, setCartDrawer
       return
     }
 
-    // Si el usuario está autenticado, redirigir al checkout para crear el pedido con número de orden
-    if (isAuthenticated && user) {
-      setCartDrawerOpen(false)
-      router.push('/checkout')
+    // Verificar autenticación
+    if (!isAuthenticated || !user) {
+      toast.info('Debes iniciar sesión para crear un pedido', {
+        description: 'Serás redirigido al login...',
+        duration: 3000,
+      })
+      setTimeout(() => {
+        router.push('/auth/login?redirect=/productos')
+      }, 1000)
       return
     }
 
-    // Si no está autenticado, mostrar mensaje y redirigir al login
-    toast.info('Debes iniciar sesión para crear un pedido con número de orden', {
-      description: 'Serás redirigido al login...',
-      duration: 3000,
-    })
-    setTimeout(() => {
-      router.push('/auth/login?redirect=/checkout')
-    }, 1000)
+    try {
+      // Cargar perfil del usuario
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      // Generar número de orden
+      const orderNumber = await generateOrderNumber()
+      
+      const subtotal = cartTotal
+      const total = subtotal
+
+      // Preparar datos de envío y facturación
+      const shippingAddress = profileData ? {
+        name: profileData.full_name || user.email,
+        phone: profileData.phone || '',
+        address: profileData.address || '',
+        city: profileData.city || '',
+        province: profileData.province || '',
+        postal_code: profileData.postal_code || ''
+      } : null
+
+      const billingAddress = profileData ? {
+        name: profileData.full_name || user.email,
+        cuit: profileData.cuit || '',
+        email: user.email,
+        phone: profileData.phone || '',
+        address: profileData.billing_address || profileData.address || '',
+        city: profileData.city || '',
+        province: profileData.province || '',
+        postal_code: profileData.postal_code || ''
+      } : null
+
+      // Crear el pedido en la base de datos
+      const { data: newOrder, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          order_number: orderNumber,
+          user_id: user.id,
+          status: 'pendiente',
+          payment_status: 'pendiente',
+          subtotal: subtotal,
+          discount: 0,
+          total: total,
+          notes: null,
+          shipping_address: shippingAddress,
+          billing_address: billingAddress
+        })
+        .select()
+        .single()
+
+      if (orderError) {
+        console.error('Error creando pedido:', orderError)
+        toast.error('Error al crear el pedido: ' + orderError.message)
+        return
+      }
+
+      // Crear los items del pedido
+      const orderItems = items.map(item => ({
+        order_id: newOrder.id,
+        product_id: item.productId,
+        product_name: item.name,
+        quantity: item.quantity,
+        unit_price: item.wholesale_price,
+        subtotal: item.wholesale_price * item.quantity
+      }))
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems)
+
+      if (itemsError) {
+        console.error('Error creando items del pedido:', itemsError)
+        toast.error('Error al guardar los items del pedido')
+        return
+      }
+
+      // Generar mensaje de WhatsApp con el número de orden
+      const resumenProductos = items.map(item => {
+        const detalles = [
+          item.size ? `Talle: ${item.size}` : null,
+          item.color ? `Color: ${item.color || 'Color único'}` : null,
+        ].filter(Boolean).join(' | ')
+
+        const resumenProducto = detalles ? `${item.name} (${detalles})` : item.name
+        const precioItem = (item.wholesale_price * item.quantity)
+
+        return `• ${resumenProducto} - Cantidad: ${item.quantity} - $${precioItem.toLocaleString('es-AR')}`
+      }).join('\n')
+
+      const totalFormatted = `Total: $${cartTotal.toLocaleString('es-AR')}`
+
+      const datosTransferencia = [
+        'Datos para pago:',
+        `Medios aceptados: ${DATOS_TRANSFERENCIA.medios}`,
+        `Alias: ${DATOS_TRANSFERENCIA.alias}`,
+        `CBU: ${DATOS_TRANSFERENCIA.cbu}`,
+        'Recordá enviar el comprobante o captura del pago para confirmar tu pedido.'
+      ].join('\n')
+
+      const mensaje = [
+        'Hola! Quiero hacer un pedido MAYORISTA:',
+        '',
+        `📋 ORDEN DE COMPRA N°: ${orderNumber}`,
+        '',
+        resumenProductos,
+        '',
+        totalFormatted,
+        '',
+        'Compra mínima: 5 unidades por producto',
+        '',
+        datosTransferencia
+      ]
+        .filter(Boolean)
+        .join('\n')
+      
+      // Abrir WhatsApp con el mensaje
+      const numero = '543407440243'
+      window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank')
+      
+      toast.success(`Pedido ${orderNumber} creado exitosamente`)
+      
+      // Cerrar el drawer
+      setCartDrawerOpen(false)
+      
+      // Limpiar carrito después de un delay
+      setTimeout(() => {
+        clearCart()
+      }, 1500)
+
+    } catch (error) {
+      console.error('Error general:', error)
+      toast.error('Error inesperado al procesar el pedido')
+    }
   }
 
   const handleSignOut = async () => {

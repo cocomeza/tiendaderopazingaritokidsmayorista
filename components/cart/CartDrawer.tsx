@@ -6,7 +6,15 @@ import { ShoppingCart, X, Plus, Minus, Trash2, MessageCircle } from 'lucide-reac
 import { Button } from '@/components/ui/button'
 import { CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useCartStore } from '@/lib/stores/cart'
+import { useAuth } from '@/lib/hooks/useAuth'
+import { supabase } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+
+const DATOS_TRANSFERENCIA = {
+  alias: 'ZINGARITO.KIDS',
+  cbu: '0170123456789012345678',
+  medios: 'Transferencia bancaria, efectivo o cheque'
+}
 
 export function CartButton() {
   const { getTotalItems } = useCartStore()
@@ -27,13 +35,33 @@ export function CartButton() {
 
 export function CartDrawer() {
   const router = useRouter()
+  const { user, isAuthenticated } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const { items, updateQuantity, removeItem, clearCart, getTotalWholesalePrice, getTotalItems } = useCartStore()
 
   const total = getTotalWholesalePrice()
   const totalItems = getTotalItems()
 
-  const abrirWhatsApp = () => {
+  const generateOrderNumber = async () => {
+    const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+    
+    const { data } = await supabase
+      .from('orders')
+      .select('order_number')
+      .like('order_number', `ZK-${datePart}-%`)
+      .order('order_number', { ascending: false })
+      .limit(1)
+    
+    let counter = 1
+    if (data && data.length > 0) {
+      const lastNumber = data[0].order_number.split('-')[2]
+      counter = parseInt(lastNumber) + 1
+    }
+    
+    return `ZK-${datePart}-${counter.toString().padStart(4, '0')}`
+  }
+
+  const abrirWhatsApp = async () => {
     // Verificar que el total de unidades sea >= 5
     if (totalItems < 5) {
       toast.error('Compra mínima requerida', {
@@ -43,9 +71,131 @@ export function CartDrawer() {
       return
     }
 
-    // Redirigir al checkout para crear el pedido con número de orden
-    setIsOpen(false)
-    router.push('/checkout')
+    // Verificar autenticación
+    if (!isAuthenticated || !user) {
+      toast.info('Debes iniciar sesión para crear un pedido', {
+        description: 'Serás redirigido al login...',
+        duration: 3000,
+      })
+      setTimeout(() => {
+        router.push('/auth/login?redirect=/productos')
+      }, 1000)
+      return
+    }
+
+    try {
+      // Cargar perfil del usuario
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      // Generar número de orden
+      const orderNumber = await generateOrderNumber()
+      
+      const subtotal = total
+      const totalAmount = subtotal
+
+      // Preparar datos de envío y facturación
+      const shippingAddress = profileData ? {
+        name: profileData.full_name || user.email,
+        phone: profileData.phone || '',
+        address: profileData.address || '',
+        city: profileData.city || '',
+        province: profileData.province || '',
+        postal_code: profileData.postal_code || ''
+      } : null
+
+      const billingAddress = profileData ? {
+        name: profileData.full_name || user.email,
+        cuit: profileData.cuit || '',
+        email: user.email,
+        phone: profileData.phone || '',
+        address: profileData.billing_address || profileData.address || '',
+        city: profileData.city || '',
+        province: profileData.province || '',
+        postal_code: profileData.postal_code || ''
+      } : null
+
+      // Crear el pedido en la base de datos
+      const { data: newOrder, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          order_number: orderNumber,
+          user_id: user.id,
+          status: 'pendiente',
+          payment_status: 'pendiente',
+          subtotal: subtotal,
+          discount: 0,
+          total: totalAmount,
+          notes: null,
+          shipping_address: shippingAddress,
+          billing_address: billingAddress
+        })
+        .select()
+        .single()
+
+      if (orderError) {
+        console.error('Error creando pedido:', orderError)
+        toast.error('Error al crear el pedido: ' + orderError.message)
+        return
+      }
+
+      // Crear los items del pedido
+      const orderItems = items.map(item => ({
+        order_id: newOrder.id,
+        product_id: item.productId,
+        product_name: item.name,
+        quantity: item.quantity,
+        unit_price: item.wholesale_price,
+        subtotal: item.wholesale_price * item.quantity
+      }))
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems)
+
+      if (itemsError) {
+        console.error('Error creando items del pedido:', itemsError)
+        toast.error('Error al guardar los items del pedido')
+        return
+      }
+
+      // Generar mensaje de WhatsApp con el número de orden
+      const mensaje = `Hola! Quiero hacer un pedido MAYORISTA:\n\n${items.map(item => {
+        const detalles = [
+          item.size ? `Talle: ${item.size}` : null,
+          item.color ? `Color: ${item.color || 'Color único'}` : null,
+        ].filter(Boolean).join(' | ')
+        
+        const detallesStr = detalles ? ` (${detalles})` : ''
+        const precioItem = (item.wholesale_price * item.quantity)
+        
+        return `• ${item.name}${detallesStr} - Cantidad: ${item.quantity} - $${precioItem.toLocaleString('es-AR')}`
+      }).join('\n')}\n\nTotal: $${total.toLocaleString('es-AR')}\n\nCompra mínima: 5 unidades por producto\n\nDatos para pago:\n\nMedios aceptados: ${DATOS_TRANSFERENCIA.medios}\nAlias: ${DATOS_TRANSFERENCIA.alias}\nCBU: ${DATOS_TRANSFERENCIA.cbu}\n\nRecordá enviar el comprobante o captura del pago para confirmar tu pedido.`
+      
+      // Agregar número de orden al inicio del mensaje
+      const mensajeConOrden = `Hola! Quiero hacer un pedido MAYORISTA:\n\n📋 ORDEN DE COMPRA N°: ${orderNumber}\n\n${mensaje.split('\n\n').slice(1).join('\n\n')}`
+      
+      // Abrir WhatsApp con el mensaje
+      const numero = '543407440243'
+      window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensajeConOrden)}`, '_blank')
+      
+      toast.success(`Pedido ${orderNumber} creado exitosamente`)
+      
+      // Cerrar el drawer
+      setIsOpen(false)
+      
+      // Limpiar carrito después de un delay
+      setTimeout(() => {
+        clearCart()
+      }, 1500)
+
+    } catch (error) {
+      console.error('Error general:', error)
+      toast.error('Error inesperado al procesar el pedido')
+    }
   }
 
   return (
