@@ -118,6 +118,7 @@ export default function CheckoutPage() {
     try {
       // Generar número de pedido único
       const orderNumber = await generateOrderNumber()
+      console.log('Número de orden generado:', orderNumber)
       
       const subtotal = getTotalWholesalePrice()
       const discount = getDiscountAmount()
@@ -190,7 +191,9 @@ export default function CheckoutPage() {
       }
 
       // Generar mensaje de WhatsApp con el número de pedido
+      console.log('Generando mensaje WhatsApp con orderNumber:', orderNumber)
       const message = generateWhatsAppMessage(orderNumber)
+      console.log('Mensaje generado (sin encode):', decodeURIComponent(message))
       const whatsappUrl = `https://wa.me/543407440243?text=${message}`
       
       // Abrir WhatsApp en nueva ventana
@@ -216,12 +219,17 @@ export default function CheckoutPage() {
     const totalItems = getTotalItems()
     const totalPrice = getTotalWholesalePrice()
     
+    console.log('generateWhatsAppMessage llamado con orderNumber:', orderNumber)
+    
     // Formato consistente con el resto de la aplicación
     let message = `Hola! Quiero hacer un pedido MAYORISTA:\n\n`
     
-    // Agregar número de orden si existe
-    if (orderNumber) {
-      message += `📋 *ORDEN DE COMPRA N°: ${orderNumber}*\n\n`
+    // Agregar número de orden si existe (sin asteriscos para mejor compatibilidad con WhatsApp)
+    if (orderNumber && orderNumber.trim() !== '') {
+      message += `📋 ORDEN DE COMPRA N°: ${orderNumber}\n\n`
+      console.log('Número de orden agregado al mensaje:', orderNumber)
+    } else {
+      console.warn('⚠️ orderNumber está vacío o no definido')
     }
     
     // Listar productos con formato: • Nombre (Talle: X | Color: Y) - Cantidad: Z - $Precio
