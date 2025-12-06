@@ -147,13 +147,15 @@ export function UserMenu({ cartDrawerOpen: externalCartDrawerOpen, setCartDrawer
 
       // Crear los items del pedido
       const orderItems = items.map(item => {
+        const subtotal = Number(item.wholesale_price * item.quantity)
         const orderItem: any = {
           order_id: newOrder.id,
           product_id: item.productId,
           product_name: item.name,
           quantity: item.quantity,
           unit_price: Number(item.wholesale_price),
-          subtotal: Number(item.wholesale_price * item.quantity)
+          subtotal: subtotal,
+          total_price: subtotal // total_price es igual a subtotal
         }
         
         // Agregar campos opcionales solo si tienen valores

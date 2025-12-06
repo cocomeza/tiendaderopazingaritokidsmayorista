@@ -119,6 +119,31 @@ BEGIN
   END IF;
 END $$;
 
+-- Agregar total_price si no existe (puede ser un alias de subtotal)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'order_items' AND column_name = 'total_price'
+  ) THEN
+    ALTER TABLE order_items ADD COLUMN total_price numeric(10, 2) NOT NULL DEFAULT 0 CHECK (total_price >= 0);
+    
+    -- Si hay registros existentes, calcular total_price desde subtotal o quantity * unit_price
+    UPDATE order_items
+    SET total_price = COALESCE(subtotal, quantity * unit_price, 0)
+    WHERE total_price = 0 AND (subtotal > 0 OR (quantity > 0 AND unit_price > 0));
+    
+    RAISE NOTICE '✅ Columna "total_price" agregada a "order_items"';
+  ELSE
+    RAISE NOTICE 'ℹ️ Columna "total_price" ya existe en "order_items"';
+    
+    -- Asegurar que los registros existentes tengan total_price si está NULL
+    UPDATE order_items
+    SET total_price = COALESCE(subtotal, quantity * unit_price, 0)
+    WHERE total_price IS NULL OR total_price = 0;
+  END IF;
+END $$;
+
 -- Verificar que la migración se completó correctamente
 DO $$
 DECLARE
@@ -129,6 +154,7 @@ DECLARE
   quantity_exists BOOLEAN;
   unit_price_exists BOOLEAN;
   subtotal_exists BOOLEAN;
+  total_price_exists BOOLEAN;
 BEGIN
   SELECT EXISTS (
     SELECT 1 FROM information_schema.columns
@@ -165,6 +191,11 @@ BEGIN
     WHERE table_name = 'order_items' AND column_name = 'subtotal'
   ) INTO subtotal_exists;
   
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'order_items' AND column_name = 'total_price'
+  ) INTO total_price_exists;
+  
   RAISE NOTICE '--- VERIFICACIÓN DE MIGRACIÓN ---';
   RAISE NOTICE 'Columna product_name existe: %', product_name_exists;
   RAISE NOTICE 'Columna product_sku existe: %', product_sku_exists;
@@ -173,6 +204,7 @@ BEGIN
   RAISE NOTICE 'Columna quantity existe: %', quantity_exists;
   RAISE NOTICE 'Columna unit_price existe: %', unit_price_exists;
   RAISE NOTICE 'Columna subtotal existe: %', subtotal_exists;
+  RAISE NOTICE 'Columna total_price existe: %', total_price_exists;
   RAISE NOTICE '✅ Migración completada correctamente';
 END $$;
 
