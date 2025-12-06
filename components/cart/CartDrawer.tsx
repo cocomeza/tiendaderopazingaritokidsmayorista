@@ -142,14 +142,26 @@ export function CartDrawer() {
       }
 
       // Crear los items del pedido
-      const orderItems = items.map(item => ({
-        order_id: newOrder.id,
-        product_id: item.productId,
-        product_name: item.name,
-        quantity: item.quantity,
-        unit_price: item.wholesale_price,
-        subtotal: item.wholesale_price * item.quantity
-      }))
+      const orderItems = items.map(item => {
+        const orderItem: any = {
+          order_id: newOrder.id,
+          product_id: item.productId,
+          product_name: item.name,
+          quantity: item.quantity,
+          unit_price: Number(item.wholesale_price),
+          subtotal: Number(item.wholesale_price * item.quantity)
+        }
+        
+        // Agregar campos opcionales solo si tienen valores
+        if (item.size) {
+          orderItem.size = item.size
+        }
+        if (item.color) {
+          orderItem.color = item.color
+        }
+        
+        return orderItem
+      })
 
       const { error: itemsError } = await supabase
         .from('order_items')
@@ -157,7 +169,8 @@ export function CartDrawer() {
 
       if (itemsError) {
         console.error('Error creando items del pedido:', itemsError)
-        toast.error('Error al guardar los items del pedido')
+        console.error('Items que se intentaron insertar:', orderItems)
+        toast.error('Error al guardar los items del pedido: ' + (itemsError.message || 'Error desconocido'))
         return
       }
 
