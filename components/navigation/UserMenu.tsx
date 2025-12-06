@@ -209,15 +209,8 @@ export function UserMenu({ cartDrawerOpen: externalCartDrawerOpen, setCartDrawer
       const numero = '543407440243'
       window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank')
       
-      toast.success(`Pedido ${orderNumber} creado exitosamente`)
-      
       // Cerrar el drawer
       setCartDrawerOpen(false)
-      
-      // Limpiar carrito después de un delay
-      setTimeout(() => {
-        clearCart()
-      }, 1500)
 
     } catch (error) {
       console.error('Error general:', error)
