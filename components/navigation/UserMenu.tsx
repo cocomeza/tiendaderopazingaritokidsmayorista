@@ -204,33 +204,20 @@ export function UserMenu({ cartDrawerOpen: externalCartDrawerOpen, setCartDrawer
         return
       }
 
-      // Generar mensaje de WhatsApp con formato original
-      const itemsList = items.map(item => {
-        const sizeText = item.size ? `Talle: ${item.size}` : ''
-        const colorText = item.color ? `Color: ${item.color}` : 'Color único'
-        const attributes = [sizeText, colorText].filter(Boolean).join(' | ')
-        return `* ${item.name}${attributes ? ` (${attributes})` : ''} - Cantidad: ${item.quantity} - $${(item.wholesale_price * item.quantity).toLocaleString('es-AR')}`
-      }).join('\n\n')
+      // Generar mensaje de WhatsApp con formato simplificado
+      const mensaje = `Hola 👋, ¿cómo estás?
 
-      const mensaje = `Hola! Quiero hacer un pedido MAYORISTA:
+Acabo de armar mi carrito en la web mayorista.
 
- ORDEN DE COMPRA N°: ${orderNumber}
+📦 Número de pedido: ${orderNumber}
 
-${itemsList}
+🧸 Cantidad de artículos: ${totalCartItems}
 
-Total: $${cartTotal.toLocaleString('es-AR')}
+💵 Total del pedido: $${cartTotal.toLocaleString('es-AR')}
 
-Compra mínima: 5 unidades por producto
+Por favor, ¿me confirmás si está todo correcto para proceder con el pago?
 
-Datos para pago:
-
-Medios aceptados: Transferencia bancaria, efectivo o cheque
-
-Alias: ZINGARITO.KIDS
-
-CBU: 0170123456789012345678
-
-Recordá enviar el comprobante o captura del pago para confirmar tu pedido.`
+¡Gracias!`
       
       // Abrir WhatsApp con el mensaje
       const numero = '543407440243'
