@@ -221,7 +221,14 @@ Por favor, ¿me confirmás si está todo correcto para proceder con el pago?
       
       // Abrir WhatsApp con el mensaje
       const numero = '543407440243'
-    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank')
+      const whatsappUrl = `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`
+      window.open(whatsappUrl, '_blank')
+      
+      // Mostrar mensaje de éxito
+      toast.success(`Pedido ${orderNumber} creado exitosamente`)
+      
+      // Limpiar carrito después de crear el pedido
+      clearCart()
       
       // Cerrar el drawer
       setCartDrawerOpen(false)
