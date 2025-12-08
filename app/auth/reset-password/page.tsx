@@ -40,6 +40,19 @@ export default function ResetPasswordPage() {
         const accessTokenFromQuery = searchParams.get('access_token')
         const typeFromQuery = searchParams.get('type')
         
+        // CRÍTICO: Si estamos en localhost pero tenemos un token, redirigir a producción
+        if (typeof window !== 'undefined' && window.location.hostname === 'localhost' && (hash || accessTokenFromQuery)) {
+          const productionUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://tiendaderopazingaritokidsmayorista.vercel.app'
+          const tokenHash = hash || (accessTokenFromQuery ? `#access_token=${accessTokenFromQuery}&type=${typeFromQuery}&refresh_token=${searchParams.get('refresh_token') || ''}&expires_at=${searchParams.get('expires_at') || ''}&expires_in=${searchParams.get('expires_in') || ''}&token_type=${searchParams.get('token_type') || 'bearer'}&type=${typeFromQuery}` : '')
+          
+          if (tokenHash && productionUrl && !productionUrl.includes('localhost')) {
+            console.log('🔄 Redirigiendo desde localhost a producción con token...')
+            console.log('URL destino:', `${productionUrl}/auth/reset-password${tokenHash.startsWith('#') ? tokenHash : '#' + tokenHash}`)
+            window.location.replace(`${productionUrl}/auth/reset-password${tokenHash.startsWith('#') ? tokenHash : '#' + tokenHash}`)
+            return
+          }
+        }
+        
         // Si la URL contiene localhost pero estamos en producción, extraer el hash y redirigir
         if (fullUrl.includes('localhost') && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
           const hashMatch = fullUrl.match(/#(.+)$/)

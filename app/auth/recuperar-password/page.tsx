@@ -28,12 +28,21 @@ export default function RecuperarPasswordPage() {
     setLoading(true)
 
     try {
-      // Usar la URL de producción si está disponible, sino usar la URL actual
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+      // CRÍTICO: Siempre usar la URL de producción, nunca localhost
+      // Si estamos en desarrollo local, aún así usar la URL de producción para que los emails funcionen
+      let siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+      
+      // Si no hay variable de entorno o es localhost, usar la URL de producción hardcodeada
+      if (!siteUrl || siteUrl.includes('localhost')) {
+        siteUrl = 'https://tiendaderopazingaritokidsmayorista.vercel.app'
+      }
+      
       const redirectUrl = `${siteUrl}/auth/reset-password`
       
-      console.log('Enviando email de recuperación a:', email)
-      console.log('URL de redirección:', redirectUrl)
+      console.log('📧 Enviando email de recuperación a:', email)
+      console.log('🔗 URL de redirección:', redirectUrl)
+      console.log('ℹ️ NEXT_PUBLIC_SITE_URL:', process.env.NEXT_PUBLIC_SITE_URL)
+      console.log('ℹ️ window.location.origin:', typeof window !== 'undefined' ? window.location.origin : 'N/A')
       
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectUrl,
