@@ -10,9 +10,10 @@ interface FilterProps {
   products: any[]
   onFilterChange: (filters: any) => void
   categories: any[]
+  availableColors?: string[]
 }
 
-export function ProductFilters({ products, onFilterChange, categories }: FilterProps) {
+export function ProductFilters({ products, onFilterChange, categories, availableColors }: FilterProps) {
   const [filters, setFilters] = useState({
     category: '',
     menuCategory: '',
@@ -39,7 +40,14 @@ export function ProductFilters({ products, onFilterChange, categories }: FilterP
   })
 
   // Extraer opciones únicas de los productos
-  const allColors = [...new Set(products.flatMap(p => p.colors || []))].sort()
+  const productColors = [...new Set(products.flatMap(p => p.colors || []))]
+  
+  // Combinar colores de productos con colores disponibles (de custom_colors)
+  const allColors = [...new Set([
+    ...productColors,
+    ...(availableColors || [])
+  ])].sort()
+  
   const allSizes = [...new Set(products.flatMap(p => p.sizes || []))].sort()
 
   // Validar que categories sea un array válido
@@ -104,6 +112,7 @@ export function ProductFilters({ products, onFilterChange, categories }: FilterP
       'blanco': '#FFFFFF',
       'rojo': '#FF0000',
       'azul': '#0000FF',
+      'azul marino': '#000080',
       'verde': '#008000',
       'amarillo': '#FFFF00',
       'rosa': '#FFC0CB',
@@ -113,6 +122,7 @@ export function ProductFilters({ products, onFilterChange, categories }: FilterP
       'morado': '#800080',
       'celeste': '#87CEEB',
       'aqua': '#00FFFF',
+      'acqua': '#00FFFF',
       'oliva': '#808000',
       'manteca': '#F5F5DC',
       'natural': '#F5F5DC',
@@ -122,9 +132,14 @@ export function ProductFilters({ products, onFilterChange, categories }: FilterP
       'coral': '#FF7F50',
       'lila': '#C8A2C8',
       'bordo': '#800020',
+      'borravino': '#800020',
       'violeta': '#8A2BE2',
       'dorado': '#FFD700',
-      'plateado': '#C0C0C0'
+      'plateado': '#C0C0C0',
+      'terracota': '#E2725B',
+      'tostado': '#D2B48C',
+      'fucsia': '#FF00FF',
+      'batik': '#8B4513'
     }
     
     return colorMap[colorName.toLowerCase()] || '#CCCCCC'

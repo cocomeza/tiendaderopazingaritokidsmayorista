@@ -31,6 +31,7 @@ export default function ProductosPage() {
   const [allProducts, setAllProducts] = useState<ProductWithVariants[]>([])
   const [filteredProducts, setFilteredProducts] = useState<ProductWithVariants[]>([])
   const [categories, setCategories] = useState<CategorySimple[]>([])
+  const [allAvailableColors, setAllAvailableColors] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showFilters, setShowFilters] = useState(false)
@@ -208,6 +209,29 @@ export default function ProductosPage() {
         console.warn('📋 categoriesError:', categoriesError)
       } else {
         console.log('✅ Categorías válidas establecidas:', validCategories.length)
+      }
+      
+      // Cargar colores desde custom_colors
+      console.log('🎨 Cargando colores desde custom_colors...')
+      const { data: customColorsData, error: colorsError } = await supabase
+        .from('custom_colors')
+        .select('name')
+        .order('name')
+      
+      if (colorsError) {
+        console.warn('⚠️ Error cargando colores personalizados (puede que la tabla no exista):', colorsError.message)
+        // Si no hay tabla custom_colors, usar solo colores de productos
+        const productColors = [...new Set(productsData?.flatMap(p => p.colors || []) || [])].sort()
+        setAllAvailableColors(productColors)
+      } else {
+        const customColors = (customColorsData || []).map(c => c.name).filter(Boolean)
+        console.log('✅ Colores personalizados cargados:', customColors.length)
+        
+        // Combinar colores de productos con colores personalizados
+        const productColors = [...new Set(productsData?.flatMap(p => p.colors || []) || [])]
+        const allColors = [...new Set([...productColors, ...customColors])].sort()
+        setAllAvailableColors(allColors)
+        console.log('✅ Total de colores disponibles:', allColors.length, '(de productos:', productColors.length, ', personalizados:', customColors.length, ')')
       }
       
     } catch (err) {
@@ -458,6 +482,7 @@ export default function ProductosPage() {
               products={allProducts}
               onFilterChange={applyFilters}
               categories={categories}
+              availableColors={allAvailableColors}
             />
             </div>
           </div>
@@ -470,6 +495,7 @@ export default function ProductosPage() {
                 products={allProducts}
                 onFilterChange={applyFilters}
                 categories={categories}
+                availableColors={allAvailableColors}
               />
               </div>
             </div>
