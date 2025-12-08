@@ -253,7 +253,7 @@ export function ProductFilters({ products, onFilterChange, categories, available
                           onFilterChange(updatedFilters)
                         }}
                       >
-                        <span className="font-medium text-sm">{category.name}</span>
+                        <span className="font-medium text-sm">{category.name.toLowerCase()}</span>
                         {count > 0 && (
                           <Badge variant="secondary" className="bg-gray-200 text-gray-700 text-xs">
                             {count}

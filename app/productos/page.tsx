@@ -234,25 +234,49 @@ export default function ProductosPage() {
       
       // Cargar talles desde custom_sizes y product_variants
       console.log('📏 Cargando talles desde custom_sizes y product_variants...')
-      const { data: customSizesData, error: sizesError } = await supabase
-        .from('custom_sizes')
-        .select('name')
-        .order('name')
       
-      // Cargar talles desde product_variants
-      const { data: variantsData, error: variantsError } = await supabase
-        .from('product_variants')
-        .select('size')
-        .not('size', 'is', null)
+      // Cargar talles desde custom_sizes
+      let customSizes: string[] = []
+      try {
+        const { data: customSizesData, error: sizesError } = await supabase
+          .from('custom_sizes')
+          .select('name')
+          .order('name')
+        
+        if (sizesError) {
+          console.warn('⚠️ Error cargando talles personalizados (puede que la tabla no exista):', sizesError.message)
+        } else {
+          customSizes = (customSizesData || []).map(s => s.name).filter(Boolean)
+          console.log('✅ Talles personalizados cargados:', customSizes.length)
+        }
+      } catch (err) {
+        console.warn('⚠️ Excepción al cargar custom_sizes:', err)
+      }
       
-      const customSizes = sizesError ? [] : (customSizesData || []).map(s => s.name).filter(Boolean)
-      const variantSizes = variantsError ? [] : [...new Set((variantsData || []).map(v => v.size).filter(Boolean))]
+      // Cargar talles desde product_variants (todos, no solo los activos)
+      let variantSizes: string[] = []
+      try {
+        const { data: variantsData, error: variantsError } = await supabase
+          .from('product_variants')
+          .select('size')
+          .not('size', 'is', null)
+        
+        if (variantsError) {
+          console.warn('⚠️ Error cargando talles de variantes:', variantsError.message)
+        } else {
+          variantSizes = [...new Set((variantsData || []).map(v => v.size).filter(Boolean))]
+          console.log('✅ Talles de variantes cargados:', variantSizes.length)
+        }
+      } catch (err) {
+        console.warn('⚠️ Excepción al cargar product_variants:', err)
+      }
       
       // Combinar talles de productos, custom_sizes y product_variants
       const productSizes = [...new Set(productsData?.flatMap(p => p.sizes || []) || [])]
       const allSizes = [...new Set([...productSizes, ...customSizes, ...variantSizes])].sort()
       setAllAvailableSizes(allSizes)
       console.log('✅ Total de talles disponibles:', allSizes.length, '(de productos:', productSizes.length, ', personalizados:', customSizes.length, ', variantes:', variantSizes.length, ')')
+      console.log('📋 Lista completa de talles:', allSizes)
       
     } catch (err) {
       console.error('Error general:', err)

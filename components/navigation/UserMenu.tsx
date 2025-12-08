@@ -88,12 +88,36 @@ export function UserMenu({ cartDrawerOpen: externalCartDrawerOpen, setCartDrawer
     }
 
     try {
-      // Cargar perfil del usuario
-      const { data: profileData } = await supabase
+      // Cargar o crear perfil del usuario
+      let { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single()
+
+      // Si el perfil no existe, crearlo
+      if (profileError || !profileData) {
+        console.log('⚠️ Perfil no encontrado, creando perfil para usuario:', user.id)
+        const { data: newProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            email: user.email || '',
+            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || '',
+            is_admin: false,
+            is_active: true,
+            is_wholesale_client: true
+          })
+          .select()
+          .single()
+
+        if (createError) {
+          console.error('Error creando perfil:', createError)
+          toast.error('Error al crear el perfil: ' + createError.message)
+          return
+        }
+        profileData = newProfile
+      }
 
       // Generar número de orden
       const orderNumber = await generateOrderNumber()
