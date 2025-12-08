@@ -171,20 +171,85 @@ export function UserMenu({ cartDrawerOpen: externalCartDrawerOpen, setCartDrawer
 
       // Verificar stock antes de crear los items del pedido
       for (const item of items) {
-        const { data: product, error: productError } = await supabase
-          .from('products')
-          .select('stock, name')
-          .eq('id', item.productId)
-          .single()
+        let availableStock = 0
 
-        if (productError) {
-          console.error('Error verificando stock del producto:', productError)
-          toast.error(`Error al verificar stock del producto ${item.name}`)
-          return
+        // Si el item tiene variantId, verificar stock de la variante específica
+        if (item.variantId) {
+          const { data: variant, error: variantError } = await supabase
+            .from('product_variants')
+            .select('stock, active')
+            .eq('id', item.variantId)
+            .single()
+
+          if (variantError || !variant || !variant.active) {
+            console.error('Error verificando variante:', variantError)
+            toast.error(`Error al verificar stock de la variante de ${item.name}`)
+            return
+          }
+
+          availableStock = variant.stock || 0
+        } 
+        // Si tiene size o color, buscar la variante correspondiente
+        else if (item.size || item.color) {
+          let variantQuery = supabase
+            .from('product_variants')
+            .select('stock')
+            .eq('product_id', item.productId)
+            .eq('active', true)
+
+          if (item.size) {
+            variantQuery = variantQuery.eq('size', item.size)
+          }
+          if (item.color) {
+            variantQuery = variantQuery.eq('color', item.color)
+          }
+
+          const { data: variants, error: variantsError } = await variantQuery
+
+          if (variantsError) {
+            console.error('Error verificando variantes:', variantsError)
+            toast.error(`Error al verificar stock de ${item.name}`)
+            return
+          }
+
+          if (variants && variants.length > 0) {
+            // Sumar stock de todas las variantes que coinciden
+            availableStock = variants.reduce((sum, v) => sum + (v.stock || 0), 0)
+          }
+        } 
+        // Si no tiene variantes, verificar stock del producto directamente
+        else {
+          const { data: product, error: productError } = await supabase
+            .from('products')
+            .select('stock, name')
+            .eq('id', item.productId)
+            .single()
+
+          if (productError) {
+            console.error('Error verificando stock del producto:', productError)
+            toast.error(`Error al verificar stock del producto ${item.name}`)
+            return
+          }
+
+          availableStock = product?.stock || 0
+
+          // Si el producto tiene stock 0, verificar si hay variantes con stock
+          if (availableStock === 0) {
+            const { data: variants, error: variantsError } = await supabase
+              .from('product_variants')
+              .select('stock')
+              .eq('product_id', item.productId)
+              .eq('active', true)
+
+            if (!variantsError && variants && variants.length > 0) {
+              const totalVariantStock = variants.reduce((sum, v) => sum + (v.stock || 0), 0)
+              availableStock = totalVariantStock
+            }
+          }
         }
 
-        if (!product || product.stock < item.quantity) {
-          toast.error(`Stock insuficiente para ${item.name}. Stock disponible: ${product?.stock || 0}, cantidad solicitada: ${item.quantity}`)
+        if (availableStock < item.quantity) {
+          toast.error(`Stock insuficiente para ${item.name}. Stock disponible: ${availableStock}, cantidad solicitada: ${item.quantity}`)
           return
         }
       }
