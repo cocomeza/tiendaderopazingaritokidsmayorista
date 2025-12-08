@@ -191,30 +191,11 @@ export default function ProductosPage() {
         ...product,
         product_variants: variantsByProduct.get(product.id) || [],
       })) as ProductWithVariants[]
-      
-      // Filtrar productos que tienen stock disponible
-      // Un producto tiene stock si:
-      // 1. Tiene stock > 0 en el producto directamente, O
-      // 2. Tiene al menos una variante activa con stock > 0
-      const productsWithStock = productsWithVariants.filter((product) => {
-        // Verificar stock del producto directamente
-        if (product.stock > 0) {
-          return true
-        }
-        
-        // Verificar stock en variantes
-        const variants = product.product_variants || []
-        const hasVariantStock = variants.some(variant => 
-          variant.active && variant.stock > 0
-        )
-        
-        return hasVariantStock
-      })
 
-      console.log(`📦 Productos con stock disponible: ${productsWithStock.length} de ${productsWithVariants.length}`)
+      console.log(`📦 Productos cargados: ${productsWithVariants.length}`)
 
-      setAllProducts(productsWithStock)
-      setFilteredProducts(productsWithStock)
+      setAllProducts(productsWithVariants)
+      setFilteredProducts(productsWithVariants)
       
       // Asegurar que categoriesData sea un array válido
       const validCategories = (categoriesData || []).filter(cat => 

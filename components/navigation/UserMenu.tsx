@@ -169,14 +169,6 @@ export function UserMenu({ cartDrawerOpen: externalCartDrawerOpen, setCartDrawer
         return
       }
 
-      // Validación básica de stock (simplificada)
-      for (const item of items) {
-        if (item.stock < item.quantity) {
-          toast.error(`Stock insuficiente para ${item.name}. Stock disponible: ${item.stock}, cantidad solicitada: ${item.quantity}`)
-          return
-        }
-      }
-
       // Crear los items del pedido
       const orderItems = items.map(item => {
         const subtotal = Number(item.wholesale_price * item.quantity)
