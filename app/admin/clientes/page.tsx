@@ -26,7 +26,8 @@ import {
   ShoppingBag,
   DollarSign,
   FileText,
-  Loader2
+  Loader2,
+  Printer
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Label } from '@/components/ui/label'
@@ -301,6 +302,262 @@ const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
       currency: 'ARS',
       minimumFractionDigits: 0
     }).format(price)
+  }
+
+  const handlePrintOrder = async (order: OrderSummary, customer: Customer) => {
+    try {
+      // Cargar datos completos del pedido
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (
+            id,
+            product_name,
+            quantity,
+            unit_price,
+            subtotal,
+            total_price
+          )
+        `)
+        .eq('id', order.id)
+        .single()
+
+      if (orderError || !orderData) {
+        toast.error('Error al cargar los datos del pedido para imprimir')
+        return
+      }
+
+      // Crear ventana de impresión con el contenido del pedido
+      const printWindow = window.open('', '_blank')
+      if (!printWindow) {
+        toast.error('Por favor, permite ventanas emergentes para imprimir')
+        return
+      }
+
+      const printContent = `
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Pedido ${orderData.order_number}</title>
+          <style>
+            @media print {
+              @page {
+                margin: 1cm;
+              }
+              body {
+                margin: 0;
+                padding: 0;
+              }
+              .no-print {
+                display: none;
+              }
+            }
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+              max-width: 800px;
+              margin: 0 auto;
+              color: #333;
+            }
+            .header {
+              border-bottom: 3px solid #7c3aed;
+              padding-bottom: 20px;
+              margin-bottom: 30px;
+            }
+            .header h1 {
+              color: #7c3aed;
+              margin: 0;
+              font-size: 28px;
+            }
+            .header p {
+              margin: 5px 0;
+              color: #666;
+            }
+            .order-info {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 20px;
+              margin-bottom: 30px;
+            }
+            .info-box {
+              background: #f9fafb;
+              padding: 15px;
+              border-radius: 8px;
+              border-left: 4px solid #7c3aed;
+            }
+            .info-box h3 {
+              margin: 0 0 10px 0;
+              font-size: 14px;
+              text-transform: uppercase;
+              color: #666;
+            }
+            .info-box p {
+              margin: 5px 0;
+              font-size: 16px;
+              font-weight: 600;
+            }
+            .products-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 30px;
+            }
+            .products-table th {
+              background: #7c3aed;
+              color: white;
+              padding: 12px;
+              text-align: left;
+              font-weight: 600;
+            }
+            .products-table td {
+              padding: 12px;
+              border-bottom: 1px solid #e5e7eb;
+            }
+            .products-table tr:hover {
+              background: #f9fafb;
+            }
+            .totals {
+              background: #f9fafb;
+              padding: 20px;
+              border-radius: 8px;
+              margin-top: 20px;
+            }
+            .totals-row {
+              display: flex;
+              justify-content: space-between;
+              padding: 8px 0;
+              border-bottom: 1px solid #e5e7eb;
+            }
+            .totals-row:last-child {
+              border-bottom: none;
+              font-size: 20px;
+              font-weight: bold;
+              color: #7c3aed;
+              margin-top: 10px;
+              padding-top: 15px;
+              border-top: 2px solid #7c3aed;
+            }
+            .footer {
+              margin-top: 40px;
+              padding-top: 20px;
+              border-top: 2px solid #e5e7eb;
+              text-align: center;
+              color: #666;
+              font-size: 12px;
+            }
+            .print-button {
+              position: fixed;
+              top: 20px;
+              right: 20px;
+              background: #7c3aed;
+              color: white;
+              border: none;
+              padding: 12px 24px;
+              border-radius: 8px;
+              cursor: pointer;
+              font-weight: 600;
+              box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }
+            .print-button:hover {
+              background: #6d28d9;
+            }
+          </style>
+        </head>
+        <body>
+          <button class="print-button no-print" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+          
+          <div class="header">
+            <h1>ZINGARITO KIDS</h1>
+            <p style="font-size: 22px; font-weight: bold; color: #7c3aed; margin-bottom: 10px;">📋 ORDEN DE COMPRA N°: ${orderData.order_number}</p>
+            <p>Pedido N°: <strong>${orderData.order_number}</strong></p>
+            <p>Fecha: ${new Date(orderData.created_at).toLocaleDateString('es-AR', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}</p>
+          </div>
+
+          <div class="order-info">
+            <div class="info-box">
+              <h3>Datos del Cliente</h3>
+              <p><strong>Nombre/Razón Social:</strong> ${customer.full_name || customer.company_name || 'No disponible'}</p>
+              <p><strong>Email:</strong> ${customer.email || 'No disponible'}</p>
+              <p><strong>CUIT:</strong> ${customer.cuit || 'No disponible'}</p>
+              <p><strong>Dirección de Facturación:</strong> ${customer.billing_address || customer.address || 'No disponible'}</p>
+              ${customer.locality ? `<p><strong>Localidad:</strong> ${customer.locality}</p>` : ''}
+            </div>
+            <div class="info-box">
+              <h3>Información del Pedido</h3>
+              <p><strong>Total de productos:</strong> ${orderData.order_items?.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0) || 0}</p>
+              <p><strong>Items diferentes:</strong> ${orderData.order_items?.length || 0}</p>
+              <p><strong>Estado:</strong> ${orderData.status?.toUpperCase() || 'PENDIENTE'}</p>
+              <p><strong>Estado de Pago:</strong> ${orderData.payment_status === 'pagado' ? 'PAGADO' : orderData.payment_status === 'rechazado' ? 'RECHAZADO' : 'PENDIENTE DE PAGO'}</p>
+            </div>
+          </div>
+
+          <table class="products-table">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Cantidad</th>
+                <th>Precio Unit.</th>
+                <th>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${orderData.order_items?.map((item: any) => `
+                <tr>
+                  <td>${item.product_name || 'Producto sin nombre'}</td>
+                  <td>${item.quantity || 0}</td>
+                  <td>${formatPrice(item.unit_price || 0)}</td>
+                  <td><strong>${formatPrice(item.subtotal || item.total_price || 0)}</strong></td>
+                </tr>
+              `).join('') || '<tr><td colspan="4">No hay productos</td></tr>'}
+            </tbody>
+          </table>
+
+          <div class="totals">
+            <div class="totals-row">
+              <span>Subtotal:</span>
+              <span>${formatPrice(orderData.subtotal || 0)}</span>
+            </div>
+            ${(orderData.discount || 0) > 0 ? `
+              <div class="totals-row" style="color: #059669;">
+                <span>Descuento:</span>
+                <span>-${formatPrice(orderData.discount || 0)}</span>
+              </div>
+            ` : ''}
+            <div class="totals-row">
+              <span>TOTAL:</span>
+              <span>${formatPrice(orderData.total || 0)}</span>
+            </div>
+          </div>
+
+          ${orderData.notes ? `
+            <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px; margin-top: 20px; border-radius: 4px;">
+              <h3 style="margin-top: 0;">Notas del Pedido:</h3>
+              <p>${orderData.notes}</p>
+            </div>
+          ` : ''}
+
+          <div class="footer">
+            <p>Zingarito Kids - Mayorista de Ropa Infantil</p>
+            <p>Este documento fue generado el ${new Date().toLocaleString('es-AR')}</p>
+          </div>
+        </body>
+        </html>
+      `
+
+      printWindow.document.write(printContent)
+      printWindow.document.close()
+    } catch (error) {
+      console.error('Error al imprimir pedido:', error)
+      toast.error('Error al generar la impresión del pedido')
+    }
   }
 
   const exportCustomers = () => {
@@ -946,6 +1203,19 @@ const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null)
                             ))}
                           </div>
                         )}
+
+                        {/* Botón de impresión */}
+                        <div className="pt-2 border-t">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => handlePrintOrder(order, selectedCustomer)}
+                          >
+                            <Printer className="w-4 h-4 mr-2" />
+                            Imprimir Pedido
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                     )
