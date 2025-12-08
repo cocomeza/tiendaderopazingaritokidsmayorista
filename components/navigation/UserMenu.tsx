@@ -101,26 +101,26 @@ export function UserMenu({ cartDrawerOpen: externalCartDrawerOpen, setCartDrawer
       const subtotal = cartTotal
       const total = subtotal
 
-      // Preparar datos de envío y facturación
-      const shippingAddress = profileData ? {
-        name: profileData.full_name || user.email,
-        phone: profileData.phone || '',
-        address: profileData.address || '',
-        city: profileData.city || '',
-        province: profileData.province || '',
-        postal_code: profileData.postal_code || ''
-      } : null
+      // Preparar datos de envío y facturación (siempre debe ser un objeto, nunca null)
+      const shippingAddress = {
+        name: profileData?.full_name || user.email || '',
+        phone: profileData?.phone || '',
+        address: profileData?.address || '',
+        city: profileData?.city || '',
+        province: profileData?.province || '',
+        postal_code: profileData?.postal_code || ''
+      }
 
-      const billingAddress = profileData ? {
-        name: profileData.full_name || user.email,
-        cuit: profileData.cuit || '',
-        email: user.email,
-        phone: profileData.phone || '',
-        address: profileData.billing_address || profileData.address || '',
-        city: profileData.city || '',
-        province: profileData.province || '',
-        postal_code: profileData.postal_code || ''
-      } : null
+      const billingAddress = {
+        name: profileData?.full_name || user.email || '',
+        cuit: profileData?.cuit || '',
+        email: user.email || '',
+        phone: profileData?.phone || '',
+        address: profileData?.billing_address || profileData?.address || '',
+        city: profileData?.city || '',
+        province: profileData?.province || '',
+        postal_code: profileData?.postal_code || ''
+      }
 
       // Crear el pedido en la base de datos
       const { data: newOrder, error: orderError } = await supabase
@@ -180,48 +180,24 @@ export function UserMenu({ cartDrawerOpen: externalCartDrawerOpen, setCartDrawer
         return
       }
 
-      // Generar mensaje de WhatsApp con el número de orden
-      const resumenProductos = items.map(item => {
-        const detalles = [
-          item.size ? `Talle: ${item.size}` : null,
-          item.color ? `Color: ${item.color || 'Color único'}` : null,
-        ].filter(Boolean).join(' | ')
+      // Generar mensaje de WhatsApp con el nuevo formato
+      const mensaje = `Hola 👋, ¿cómo estás?
 
-        const resumenProducto = detalles ? `${item.name} (${detalles})` : item.name
-        const precioItem = (item.wholesale_price * item.quantity)
+Acabo de armar mi carrito en la web mayorista.
 
-        return `• ${resumenProducto} - Cantidad: ${item.quantity} - $${precioItem.toLocaleString('es-AR')}`
-      }).join('\n')
+📦 Número de pedido: ${orderNumber}
 
-      const totalFormatted = `Total: $${cartTotal.toLocaleString('es-AR')}`
+🧸 Cantidad de artículos: ${totalCartItems}
 
-      const datosTransferencia = [
-        'Datos para pago:',
-        `Medios aceptados: ${DATOS_TRANSFERENCIA.medios}`,
-        `Alias: ${DATOS_TRANSFERENCIA.alias}`,
-        `CBU: ${DATOS_TRANSFERENCIA.cbu}`,
-        'Recordá enviar el comprobante o captura del pago para confirmar tu pedido.'
-      ].join('\n')
+💵 Total del pedido: $${cartTotal.toLocaleString('es-AR')}
 
-      const mensaje = [
-        'Hola! Quiero hacer un pedido MAYORISTA:',
-        '',
-        `📋 ORDEN DE COMPRA N°: ${orderNumber}`,
-        '',
-        resumenProductos,
-        '',
-        totalFormatted,
-        '',
-        'Compra mínima: 5 unidades por producto',
-        '',
-        datosTransferencia
-      ]
-        .filter(Boolean)
-        .join('\n')
+Por favor, ¿me confirmás si está todo correcto para proceder con el pago?
+
+¡Gracias!`
       
       // Abrir WhatsApp con el mensaje
       const numero = '543407440243'
-      window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank')
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank')
       
       // Cerrar el drawer
       setCartDrawerOpen(false)

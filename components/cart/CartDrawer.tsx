@@ -10,12 +10,6 @@ import { useAuth } from '@/lib/hooks/useAuth'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
-const DATOS_TRANSFERENCIA = {
-  alias: 'ZINGARITO.KIDS',
-  cbu: '0170123456789012345678',
-  medios: 'Transferencia bancaria, efectivo o cheque'
-}
-
 export function CartButton() {
   const { getTotalItems } = useCartStore()
   const itemCount = getTotalItems()
@@ -97,26 +91,26 @@ export function CartDrawer() {
       const subtotal = total
       const totalAmount = subtotal
 
-      // Preparar datos de envío y facturación
-      const shippingAddress = profileData ? {
-        name: profileData.full_name || user.email,
-        phone: profileData.phone || '',
-        address: profileData.address || '',
-        city: profileData.city || '',
-        province: profileData.province || '',
-        postal_code: profileData.postal_code || ''
-      } : null
+      // Preparar datos de envío y facturación (siempre debe ser un objeto, nunca null)
+      const shippingAddress = {
+        name: profileData?.full_name || user.email || '',
+        phone: profileData?.phone || '',
+        address: profileData?.address || '',
+        city: profileData?.city || '',
+        province: profileData?.province || '',
+        postal_code: profileData?.postal_code || ''
+      }
 
-      const billingAddress = profileData ? {
-        name: profileData.full_name || user.email,
-        cuit: profileData.cuit || '',
-        email: user.email,
-        phone: profileData.phone || '',
-        address: profileData.billing_address || profileData.address || '',
-        city: profileData.city || '',
-        province: profileData.province || '',
-        postal_code: profileData.postal_code || ''
-      } : null
+      const billingAddress = {
+        name: profileData?.full_name || user.email || '',
+        cuit: profileData?.cuit || '',
+        email: user.email || '',
+        phone: profileData?.phone || '',
+        address: profileData?.billing_address || profileData?.address || '',
+        city: profileData?.city || '',
+        province: profileData?.province || '',
+        postal_code: profileData?.postal_code || ''
+      }
 
       // Crear el pedido en la base de datos
       const { data: newOrder, error: orderError } = await supabase
@@ -176,25 +170,24 @@ export function CartDrawer() {
         return
       }
 
-      // Generar mensaje de WhatsApp con el número de orden
-      const mensaje = `Hola! Quiero hacer un pedido MAYORISTA:\n\n${items.map(item => {
-        const detalles = [
-          item.size ? `Talle: ${item.size}` : null,
-          item.color ? `Color: ${item.color || 'Color único'}` : null,
-        ].filter(Boolean).join(' | ')
-        
-        const detallesStr = detalles ? ` (${detalles})` : ''
-        const precioItem = (item.wholesale_price * item.quantity)
-        
-        return `• ${item.name}${detallesStr} - Cantidad: ${item.quantity} - $${precioItem.toLocaleString('es-AR')}`
-      }).join('\n')}\n\nTotal: $${total.toLocaleString('es-AR')}\n\nCompra mínima: 5 unidades por producto\n\nDatos para pago:\n\nMedios aceptados: ${DATOS_TRANSFERENCIA.medios}\nAlias: ${DATOS_TRANSFERENCIA.alias}\nCBU: ${DATOS_TRANSFERENCIA.cbu}\n\nRecordá enviar el comprobante o captura del pago para confirmar tu pedido.`
-      
-      // Agregar número de orden al inicio del mensaje
-      const mensajeConOrden = `Hola! Quiero hacer un pedido MAYORISTA:\n\n📋 ORDEN DE COMPRA N°: ${orderNumber}\n\n${mensaje.split('\n\n').slice(1).join('\n\n')}`
+      // Generar mensaje de WhatsApp con el nuevo formato
+      const mensaje = `Hola 👋, ¿cómo estás?
+
+Acabo de armar mi carrito en la web mayorista.
+
+📦 Número de pedido: ${orderNumber}
+
+🧸 Cantidad de artículos: ${totalItems}
+
+💵 Total del pedido: $${total.toLocaleString('es-AR')}
+
+Por favor, ¿me confirmás si está todo correcto para proceder con el pago?
+
+¡Gracias!`
       
       // Abrir WhatsApp con el mensaje
       const numero = '543407440243'
-      window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensajeConOrden)}`, '_blank')
+      window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank')
       
       // Cerrar el drawer
       setIsOpen(false)

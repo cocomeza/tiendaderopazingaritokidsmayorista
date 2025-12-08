@@ -11,14 +11,12 @@ interface FilterProps {
   onFilterChange: (filters: any) => void
   categories: any[]
   availableColors?: string[]
+  availableSizes?: string[]
 }
 
-export function ProductFilters({ products, onFilterChange, categories, availableColors }: FilterProps) {
+export function ProductFilters({ products, onFilterChange, categories, availableColors, availableSizes }: FilterProps) {
   const [filters, setFilters] = useState({
     category: '',
-    menuCategory: '',
-    ageCategory: '',
-    backToSchoolCategory: '',
     colors: [] as string[],
     sizes: [] as string[],
     priceMin: '',
@@ -29,10 +27,7 @@ export function ProductFilters({ products, onFilterChange, categories, available
   })
 
   const [expandedSections, setExpandedSections] = useState({
-    categories: true, // Nueva sección de categorías generales
-    menuCategories: false,
-    ageCategories: false,
-    backToSchoolCategories: false,
+    categories: true,
     colors: false,
     sizes: false,
     price: false,
@@ -48,22 +43,17 @@ export function ProductFilters({ products, onFilterChange, categories, available
     ...(availableColors || [])
   ])].sort()
   
-  const allSizes = [...new Set(products.flatMap(p => p.sizes || []))].sort()
+  // Combinar talles de productos con talles disponibles (de custom_sizes y product_variants)
+  const productSizes = [...new Set(products.flatMap(p => p.sizes || []))]
+  const allSizes = [...new Set([
+    ...productSizes,
+    ...(availableSizes || [])
+  ])].sort()
 
   // Validar que categories sea un array válido
   const validCategoriesArray = Array.isArray(categories) ? categories : []
   
-  // Organizar categorías por grupos
-  const menuCategories = validCategoriesArray.filter(cat => cat && cat.group_type === 'menu')
-    .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
-  
-  const ageCategories = validCategoriesArray.filter(cat => cat && cat.group_type === 'age')
-    .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
-  
-  const backToSchoolCategories = validCategoriesArray.filter(cat => cat && cat.group_type === 'back-to-school')
-    .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
-  
-  // Todas las categorías (para mostrar todas disponibles, incluso sin group_type)
+  // Todas las categorías (mostrar todas sin importar group_type)
   const allCategories = validCategoriesArray
     .filter(cat => cat && cat.id && cat.name) // Filtrar categorías válidas
     .sort((a, b) => {
@@ -91,12 +81,6 @@ export function ProductFilters({ products, onFilterChange, categories, available
     }
   }
   
-  // Agrupar categorías por rango de edad
-  const ageGroups = {
-    'BEBÉS': ageCategories.filter(cat => cat.age_range === 'BEBÉS'),
-    'NIÑOS': ageCategories.filter(cat => cat.age_range === 'NIÑOS'),
-    'ADULTOS': ageCategories.filter(cat => cat.age_range === 'ADULTOS')
-  }
 
   // Contar productos por filtro
   const getColorCount = (color: string) => 
@@ -165,9 +149,6 @@ export function ProductFilters({ products, onFilterChange, categories, available
   const clearFilters = () => {
     const clearedFilters = {
       category: '',
-      menuCategory: '',
-      ageCategory: '',
-      backToSchoolCategory: '',
       colors: [] as string[],
       sizes: [] as string[],
       priceMin: '',
@@ -189,20 +170,9 @@ export function ProductFilters({ products, onFilterChange, categories, available
 
   const activeFiltersCount = 
     (filters.category ? 1 : 0) +
-    (filters.menuCategory ? 1 : 0) +
-    (filters.ageCategory ? 1 : 0) +
-    (filters.backToSchoolCategory ? 1 : 0) +
     filters.colors.length +
     filters.sizes.length +
     (filters.priceMin || filters.priceMax ? 1 : 0)
-  
-  // Función para limpiar todos los filtros de categoría
-  const clearCategoryFilters = () => {
-    handleFilterChange('category', '')
-    handleFilterChange('menuCategory', '')
-    handleFilterChange('ageCategory', '')
-    handleFilterChange('backToSchoolCategory', '')
-  }
 
   return (
     <div className="w-full max-w-sm bg-white border border-gray-200 rounded-lg shadow-sm">
@@ -250,17 +220,13 @@ export function ProductFilters({ products, onFilterChange, categories, available
               ) : (
                 <>
                   <Button
-                    variant={filters.category === '' && !filters.menuCategory && !filters.ageCategory && !filters.backToSchoolCategory ? 'default' : 'ghost'}
+                    variant={filters.category === '' ? 'default' : 'ghost'}
                     size="sm"
                     className="w-full justify-start font-semibold"
                     onClick={() => {
-                      // Limpiar todos los filtros de categoría de una vez
                       const clearedFilters = {
                         ...filters,
-                        category: '',
-                        menuCategory: '',
-                        ageCategory: '',
-                        backToSchoolCategory: ''
+                        category: ''
                       }
                       setFilters(clearedFilters)
                       onFilterChange(clearedFilters)
@@ -270,10 +236,7 @@ export function ProductFilters({ products, onFilterChange, categories, available
                   </Button>
                   {allCategories.map((category) => {
                     const count = getCategoryCount(category.id)
-                    const isSelected = filters.category === category.id || 
-                                     filters.menuCategory === category.id || 
-                                     filters.ageCategory === category.id || 
-                                     filters.backToSchoolCategory === category.id
+                    const isSelected = filters.category === category.id
                     
                     return (
                       <div
@@ -282,14 +245,9 @@ export function ProductFilters({ products, onFilterChange, categories, available
                           isSelected ? 'bg-purple-50 border border-purple-200' : ''
                         }`}
                         onClick={() => {
-                          // Si ya está seleccionada, limpiar todos los filtros de categoría (mostrar todas)
-                          // Si no está seleccionada, seleccionar solo esta categoría
                           const updatedFilters = {
                             ...filters,
-                            category: isSelected ? '' : category.id,
-                            menuCategory: '',
-                            ageCategory: '',
-                            backToSchoolCategory: ''
+                            category: isSelected ? '' : category.id
                           }
                           setFilters(updatedFilters)
                           onFilterChange(updatedFilters)
@@ -309,133 +267,6 @@ export function ProductFilters({ products, onFilterChange, categories, available
             </div>
           )}
         </div>
-
-        {/* Categorías del Menú Principal */}
-        {menuCategories.length > 0 && (
-          <div className="bg-white border-2 border-gray-200 rounded-lg">
-            <Button
-              variant="ghost"
-              className="w-full justify-between p-4 h-auto border-b border-gray-200"
-              onClick={() => toggleSection('menuCategories')}
-            >
-              <span className="font-bold text-gray-800 text-left">
-                📂 MENÚ PRINCIPAL
-              </span>
-              {expandedSections.menuCategories ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-            </Button>
-            
-            {expandedSections.menuCategories && (
-              <div className="p-4 space-y-2">
-                <Button
-                  variant={filters.menuCategory === '' ? 'default' : 'ghost'}
-                  size="sm"
-                  className="w-full justify-start font-semibold"
-                  onClick={() => handleFilterChange('menuCategory', '')}
-                >
-                  Todas
-                </Button>
-                {menuCategories.map((category) => (
-                  <Button
-                    key={category.id}
-                    variant={filters.menuCategory === category.id ? 'default' : 'ghost'}
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => handleFilterChange('menuCategory', category.id)}
-                  >
-                    {category.name}
-                  </Button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Categorías por Edad */}
-        {ageCategories.length > 0 && (
-          <div className="bg-white border-2 border-gray-200 rounded-lg">
-            <Button
-              variant="ghost"
-              className="w-full justify-between p-4 h-auto border-b border-gray-200"
-              onClick={() => toggleSection('ageCategories')}
-            >
-              <span className="font-bold text-gray-800 text-left">
-                👶 POR EDAD
-              </span>
-              {expandedSections.ageCategories ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-            </Button>
-            
-            {expandedSections.ageCategories && (
-              <div className="p-4 space-y-4">
-                {Object.entries(ageGroups).map(([ageRange, cats]) => (
-                  cats.length > 0 && (
-                    <div key={ageRange} className="space-y-2">
-                      <h4 className="font-semibold text-sm text-gray-600 px-2">{ageRange}</h4>
-                      <Button
-                        variant={filters.ageCategory === ageRange ? 'default' : 'ghost'}
-                        size="sm"
-                        className="w-full justify-start"
-                        onClick={() => handleFilterChange('ageCategory', filters.ageCategory === ageRange ? '' : ageRange)}
-                      >
-                        Todos {ageRange}
-                      </Button>
-                      {cats.map((category) => (
-                        <Button
-                          key={category.id}
-                          variant={filters.ageCategory === category.id ? 'default' : 'ghost'}
-                          size="sm"
-                          className="w-full justify-start text-sm pl-4"
-                          onClick={() => handleFilterChange('ageCategory', category.id)}
-                        >
-                          {category.name.replace(` ${ageRange}`, '')}
-                        </Button>
-                      ))}
-                    </div>
-                  )
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Back to School */}
-        {backToSchoolCategories.length > 0 && (
-          <div className="bg-white border-2 border-gray-200 rounded-lg">
-            <Button
-              variant="ghost"
-              className="w-full justify-between p-4 h-auto border-b border-gray-200"
-              onClick={() => toggleSection('backToSchoolCategories')}
-            >
-              <span className="font-bold text-gray-800 text-left">
-                🎒 BACK TO SCHOOL
-              </span>
-              {expandedSections.backToSchoolCategories ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-            </Button>
-            
-            {expandedSections.backToSchoolCategories && (
-              <div className="p-4 space-y-2">
-                <Button
-                  variant={filters.backToSchoolCategory === '' ? 'default' : 'ghost'}
-                  size="sm"
-                  className="w-full justify-start font-semibold"
-                  onClick={() => handleFilterChange('backToSchoolCategory', '')}
-                >
-                  Todos Back to School
-                </Button>
-                {backToSchoolCategories.map((category) => (
-                  <Button
-                    key={category.id}
-                    variant={filters.backToSchoolCategory === category.id ? 'default' : 'ghost'}
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => handleFilterChange('backToSchoolCategory', category.id)}
-                  >
-                    {category.name.replace(' BACK TO SCHOOL', '')}
-                  </Button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Colores */}
         {allColors.length > 0 && (

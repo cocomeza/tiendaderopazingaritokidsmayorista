@@ -218,44 +218,20 @@ export default function CheckoutPage() {
     
     console.log('generateWhatsAppMessage llamado con orderNumber:', orderNumber)
     
-    // Formato consistente con el resto de la aplicación
-    let message = `Hola! Quiero hacer un pedido MAYORISTA:\n\n`
-    
-    // Agregar número de orden si existe (sin asteriscos para mejor compatibilidad con WhatsApp)
-    if (orderNumber && orderNumber.trim() !== '') {
-      message += `📋 ORDEN DE COMPRA N°: ${orderNumber}\n\n`
-      console.log('Número de orden agregado al mensaje:', orderNumber)
-    } else {
-      console.warn('⚠️ orderNumber está vacío o no definido')
-    }
-    
-    // Listar productos con formato: • Nombre (Talle: X | Color: Y) - Cantidad: Z - $Precio
-    items.forEach(item => {
-      const detalles = [
-        item.size ? `Talle: ${item.size}` : null,
-        item.color ? `Color: ${item.color || 'Color único'}` : null,
-      ].filter(Boolean)
-      
-      const detallesStr = detalles.length > 0 ? ` (${detalles.join(' | ')})` : ''
-      const precioItem = (item.wholesale_price * item.quantity)
-      
-      message += `• ${item.name}${detallesStr} - Cantidad: ${item.quantity} - $${precioItem.toLocaleString('es-AR')}\n`
-    })
-    
-    message += `\nTotal: $${totalPrice.toLocaleString('es-AR')}\n`
-    message += `\nCompra mínima: 5 unidades por producto\n\n`
-    
-    // Agregar datos de transferencia
-    message += `Datos para pago:\n\n`
-    message += `Medios aceptados: Transferencia bancaria, efectivo o cheque\n`
-    message += `Alias: ${businessInfo.alias}\n`
-    message += `CBU: ${businessInfo.cbu}\n`
-    message += `\nRecordá enviar el comprobante o captura del pago para confirmar tu pedido.`
-    
-    // Agregar notas si existen
-    if (notes) {
-      message += `\n\nNotas: ${notes}`
-    }
+    // Nuevo formato de mensaje simplificado
+    const message = `Hola 👋, ¿cómo estás?
+
+Acabo de armar mi carrito en la web mayorista.
+
+📦 Número de pedido: ${orderNumber || 'Pendiente'}
+
+🧸 Cantidad de artículos: ${totalItems}
+
+💵 Total del pedido: $${totalPrice.toLocaleString('es-AR')}
+
+Por favor, ¿me confirmás si está todo correcto para proceder con el pago?
+
+¡Gracias!`
     
     return encodeURIComponent(message)
   }

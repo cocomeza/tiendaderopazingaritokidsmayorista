@@ -32,14 +32,12 @@ export default function ProductosPage() {
   const [filteredProducts, setFilteredProducts] = useState<ProductWithVariants[]>([])
   const [categories, setCategories] = useState<CategorySimple[]>([])
   const [allAvailableColors, setAllAvailableColors] = useState<string[]>([])
+  const [allAvailableSizes, setAllAvailableSizes] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [filters, setFilters] = useState({
     category: '',
-    menuCategory: '',
-    ageCategory: '',
-    backToSchoolCategory: '',
     colors: [] as string[],
     sizes: [] as string[],
     priceMin: '',
@@ -234,6 +232,28 @@ export default function ProductosPage() {
         console.log('✅ Total de colores disponibles:', allColors.length, '(de productos:', productColors.length, ', personalizados:', customColors.length, ')')
       }
       
+      // Cargar talles desde custom_sizes y product_variants
+      console.log('📏 Cargando talles desde custom_sizes y product_variants...')
+      const { data: customSizesData, error: sizesError } = await supabase
+        .from('custom_sizes')
+        .select('name')
+        .order('name')
+      
+      // Cargar talles desde product_variants
+      const { data: variantsData, error: variantsError } = await supabase
+        .from('product_variants')
+        .select('size')
+        .not('size', 'is', null)
+      
+      const customSizes = sizesError ? [] : (customSizesData || []).map(s => s.name).filter(Boolean)
+      const variantSizes = variantsError ? [] : [...new Set((variantsData || []).map(v => v.size).filter(Boolean))]
+      
+      // Combinar talles de productos, custom_sizes y product_variants
+      const productSizes = [...new Set(productsData?.flatMap(p => p.sizes || []) || [])]
+      const allSizes = [...new Set([...productSizes, ...customSizes, ...variantSizes])].sort()
+      setAllAvailableSizes(allSizes)
+      console.log('✅ Total de talles disponibles:', allSizes.length, '(de productos:', productSizes.length, ', personalizados:', customSizes.length, ', variantes:', variantSizes.length, ')')
+      
     } catch (err) {
       console.error('Error general:', err)
       setError('Error: ' + (err instanceof Error ? err.message : 'Error desconocido'))
@@ -261,24 +281,9 @@ export default function ProductosPage() {
       )
     }
 
-    // Filtro por categoría (compatibilidad hacia atrás)
+    // Filtro por categoría
     if (currentFilters.category) {
       filtered = filtered.filter(product => product.category_id === currentFilters.category)
-    }
-
-    // Filtro por categoría de menú
-    if (currentFilters.menuCategory) {
-      filtered = filtered.filter(product => product.category_id === currentFilters.menuCategory)
-    }
-
-    // Filtro por categoría de edad
-    if (currentFilters.ageCategory) {
-      filtered = filtered.filter(product => product.category_id === currentFilters.ageCategory)
-    }
-
-    // Filtro por categoría Back to School
-    if (currentFilters.backToSchoolCategory) {
-      filtered = filtered.filter(product => product.category_id === currentFilters.backToSchoolCategory)
     }
 
     // Filtro por colores
@@ -483,6 +488,7 @@ export default function ProductosPage() {
               onFilterChange={applyFilters}
               categories={categories}
               availableColors={allAvailableColors}
+              availableSizes={allAvailableSizes}
             />
             </div>
           </div>
