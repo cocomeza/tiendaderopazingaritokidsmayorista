@@ -40,15 +40,32 @@ export default function ResetPasswordPage() {
         const accessTokenFromQuery = searchParams.get('access_token')
         const typeFromQuery = searchParams.get('type')
         
-        // CRÍTICO: Si estamos en localhost pero tenemos un token, redirigir a producción
+        // CRÍTICO: Si estamos en localhost pero tenemos un token, redirigir a producción INMEDIATAMENTE
         if (typeof window !== 'undefined' && window.location.hostname === 'localhost' && (hash || accessTokenFromQuery)) {
-          const productionUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://tiendaderopazingaritokidsmayorista.vercel.app'
-          const tokenHash = hash || (accessTokenFromQuery ? `#access_token=${accessTokenFromQuery}&type=${typeFromQuery}&refresh_token=${searchParams.get('refresh_token') || ''}&expires_at=${searchParams.get('expires_at') || ''}&expires_in=${searchParams.get('expires_in') || ''}&token_type=${searchParams.get('token_type') || 'bearer'}&type=${typeFromQuery}` : '')
+          const productionUrl = 'https://tiendaderopazingaritokidsmayorista.vercel.app'
+          let tokenHash = hash
           
-          if (tokenHash && productionUrl && !productionUrl.includes('localhost')) {
-            console.log('🔄 Redirigiendo desde localhost a producción con token...')
-            console.log('URL destino:', `${productionUrl}/auth/reset-password${tokenHash.startsWith('#') ? tokenHash : '#' + tokenHash}`)
-            window.location.replace(`${productionUrl}/auth/reset-password${tokenHash.startsWith('#') ? tokenHash : '#' + tokenHash}`)
+          // Si no hay hash pero hay query params, construir el hash
+          if (!tokenHash && accessTokenFromQuery) {
+            const params = []
+            params.push(`access_token=${accessTokenFromQuery}`)
+            if (typeFromQuery) params.push(`type=${typeFromQuery}`)
+            const refreshToken = searchParams.get('refresh_token')
+            if (refreshToken) params.push(`refresh_token=${refreshToken}`)
+            const expiresAt = searchParams.get('expires_at')
+            if (expiresAt) params.push(`expires_at=${expiresAt}`)
+            const expiresIn = searchParams.get('expires_in')
+            if (expiresIn) params.push(`expires_in=${expiresIn}`)
+            const tokenType = searchParams.get('token_type') || 'bearer'
+            params.push(`token_type=${tokenType}`)
+            tokenHash = '#' + params.join('&')
+          }
+          
+          if (tokenHash) {
+            console.log('🔄 REDIRIGIENDO desde localhost a producción con token...')
+            console.log('URL destino:', `${productionUrl}/auth/reset-password${tokenHash}`)
+            // Usar replace para que no se pueda volver atrás
+            window.location.replace(`${productionUrl}/auth/reset-password${tokenHash}`)
             return
           }
         }
