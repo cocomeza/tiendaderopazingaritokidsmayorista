@@ -159,6 +159,26 @@ export function CartDrawer() {
         return
       }
 
+      // Verificar stock antes de crear los items del pedido
+      for (const item of items) {
+        const { data: product, error: productError } = await supabase
+          .from('products')
+          .select('stock, name')
+          .eq('id', item.productId)
+          .single()
+
+        if (productError) {
+          console.error('Error verificando stock del producto:', productError)
+          toast.error(`Error al verificar stock del producto ${item.name}`)
+          return
+        }
+
+        if (!product || product.stock < item.quantity) {
+          toast.error(`Stock insuficiente para ${item.name}. Stock disponible: ${product?.stock || 0}, cantidad solicitada: ${item.quantity}`)
+          return
+        }
+      }
+
       // Crear los items del pedido
       const orderItems = items.map(item => {
         const subtotal = Number(item.wholesale_price * item.quantity)
