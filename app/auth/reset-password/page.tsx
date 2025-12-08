@@ -156,6 +156,8 @@ export default function ResetPasswordPage() {
           // Primero, establecer la sesión manualmente con el token
           try {
             console.log('🔐 Estableciendo sesión con token de recuperación...')
+            console.log('Token presente:', !!accessToken, 'Type:', type)
+            
             const { data: { session: setSessionData }, error: setSessionError } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken || ''
@@ -178,8 +180,13 @@ export default function ResetPasswordPage() {
                 setInitializing(false)
                 return
               }
-              // Continuar con el flujo normal aunque falle
-            } else if (setSessionData?.session) {
+              
+              // Si hay un error pero no es de expiración, intentar verificar la sesión de todas formas
+              console.log('⚠️ Error al establecer sesión, pero continuando con verificación...')
+            }
+            
+            // Verificar si la sesión se estableció correctamente
+            if (setSessionData?.session) {
               console.log('✅ Sesión establecida correctamente')
               // Limpiar el hash/query params de la URL para seguridad
               try {
@@ -193,9 +200,30 @@ export default function ResetPasswordPage() {
                 subscription.unsubscribe()
               }
               return
-            } else {
-              console.warn('⚠️ No se pudo establecer sesión, pero no hay error explícito')
             }
+            
+            // Si no se estableció la sesión pero tampoco hay error crítico, verificar después de un momento
+            console.log('⏳ Esperando a que Supabase procese el token...')
+            await new Promise(resolve => setTimeout(resolve, 1000))
+            
+            // Verificar la sesión nuevamente
+            const { data: { session: verifySession }, error: verifyError } = await supabase.auth.getSession()
+            if (verifySession && !verifyError) {
+              console.log('✅ Sesión verificada después de esperar')
+              try {
+                window.history.replaceState(null, '', window.location.pathname)
+              } catch (e) {
+                console.warn('⚠️ No se pudo limpiar la URL:', e)
+              }
+              setError(null)
+              setInitializing(false)
+              if (subscription) {
+                subscription.unsubscribe()
+              }
+              return
+            }
+            
+            console.warn('⚠️ No se pudo establecer sesión después de intentos')
           } catch (setSessionErr) {
             console.error('❌ Error al establecer sesión:', setSessionErr)
             // Continuar con el flujo de verificación
@@ -233,7 +261,7 @@ export default function ResetPasswordPage() {
 
           // También verificar la sesión después de un breve delay
           // por si Supabase ya procesó el hash antes de que se registre el listener
-          const checkSession = async (retries = 5) => {
+          const checkSession = async (retries = 10) => {
             if (!mounted) return
 
             try {
@@ -241,9 +269,15 @@ export default function ResetPasswordPage() {
               
               if (!mounted) return
 
-              console.log('Verificando sesión (intento):', { hasSession: !!session, error: sessionError?.message, retries })
+              console.log('🔍 Verificando sesión (intento):', { 
+                hasSession: !!session, 
+                error: sessionError?.message, 
+                retries,
+                userId: session?.user?.id
+              })
 
               if (session && !sessionError) {
+                console.log('✅ Sesión encontrada en verificación')
                 try {
                   window.history.replaceState(null, '', window.location.pathname)
                 } catch (e) {
@@ -256,8 +290,10 @@ export default function ResetPasswordPage() {
                 }
               } else if (!session && retries > 0) {
                 // Esperar un poco más por si Supabase aún está procesando
-                setTimeout(() => checkSession(retries - 1), 1000)
+                console.log(`⏳ Esperando... (${retries} intentos restantes)`)
+                setTimeout(() => checkSession(retries - 1), 500)
               } else {
+                console.error('❌ No se pudo establecer sesión después de todos los intentos')
                 setError('El enlace de recuperación es inválido o ha expirado. Por favor solicita un nuevo enlace.')
                 setInitializing(false)
                 if (subscription) {
@@ -267,7 +303,7 @@ export default function ResetPasswordPage() {
             } catch (err) {
               console.error('Error verificando sesión:', err)
               if (retries > 0) {
-                setTimeout(() => checkSession(retries - 1), 1000)
+                setTimeout(() => checkSession(retries - 1), 500)
               } else {
                 setError('Error al procesar el enlace de recuperación. Por favor intenta nuevamente.')
                 setInitializing(false)
@@ -279,7 +315,7 @@ export default function ResetPasswordPage() {
           }
 
           // Esperar un momento para que Supabase procese el hash
-          setTimeout(() => checkSession(), 1000)
+          setTimeout(() => checkSession(), 500)
         } else {
           // No hay token válido en la URL
           setError('No se encontró un enlace de recuperación válido. Por favor solicita un nuevo enlace desde la página de recuperación.')
