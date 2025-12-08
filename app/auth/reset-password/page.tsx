@@ -40,6 +40,17 @@ export default function ResetPasswordPage() {
         const accessTokenFromQuery = searchParams.get('access_token')
         const typeFromQuery = searchParams.get('type')
         
+        // Si la URL contiene localhost pero estamos en producción, extraer el hash y redirigir
+        if (fullUrl.includes('localhost') && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+          const hashMatch = fullUrl.match(/#(.+)$/)
+          if (hashMatch && hashMatch[1]) {
+            console.log('🔄 Detectado enlace con localhost en producción, redirigiendo...')
+            const productionUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+            window.location.replace(`${productionUrl}/auth/reset-password#${hashMatch[1]}`)
+            return
+          }
+        }
+        
         console.log('🔍 Inicializando reset password:', { 
           hasHash: !!hash, 
           hashLength: hash?.length,
