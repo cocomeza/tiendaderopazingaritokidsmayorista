@@ -209,9 +209,13 @@ Por favor, ¿me confirmás si está todo correcto para proceder con el pago?
 
 ¡Gracias!`
       
+      // Codificar mensaje para WhatsApp
+      // encodeURIComponent codifica correctamente los emojis como UTF-8
+      const encodedMessage = encodeURIComponent(mensaje)
+      
       // Abrir WhatsApp con el mensaje
       const numero = '543407440243'
-      const whatsappUrl = `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`
+      const whatsappUrl = `https://wa.me/${numero}?text=${encodedMessage}`
       window.open(whatsappUrl, '_blank')
       
       // Mostrar mensaje de éxito
