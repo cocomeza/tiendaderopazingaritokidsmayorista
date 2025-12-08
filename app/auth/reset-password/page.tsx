@@ -33,6 +33,13 @@ export default function ResetPasswordPage() {
       try {
         // Verificar si hay un hash fragment en la URL (viene del email)
         const hash = window.location.hash
+        const fullUrl = window.location.href
+        
+        console.log('🔍 Inicializando reset password:', { 
+          hasHash: !!hash, 
+          hashLength: hash?.length,
+          url: fullUrl.substring(0, 100) // Solo primeros 100 caracteres para no exponer token completo
+        })
         
         // Si no hay hash, verificar si hay una sesión activa
         if (!hash || hash.length <= 1) {
@@ -55,28 +62,53 @@ export default function ResetPasswordPage() {
         const accessToken = hashParams.get('access_token')
         const type = hashParams.get('type')
         const refreshToken = hashParams.get('refresh_token')
+        const expiresAt = hashParams.get('expires_at')
 
-        console.log('Hash detectado:', { hasToken: !!accessToken, type, hashLength: hash.length })
+        console.log('Hash detectado:', { 
+          hasToken: !!accessToken, 
+          type, 
+          hashLength: hash.length,
+          hasRefreshToken: !!refreshToken,
+          expiresAt: expiresAt ? new Date(parseInt(expiresAt) * 1000).toLocaleString() : 'N/A'
+        })
+        
+        // Verificar si el token ha expirado
+        if (expiresAt) {
+          const expirationTime = parseInt(expiresAt) * 1000 // Convertir a milisegundos
+          const now = Date.now()
+          if (now > expirationTime) {
+            setError('El enlace de recuperación ha expirado. Por favor solicita un nuevo enlace.')
+            setInitializing(false)
+            return
+          }
+        }
 
         // Si hay un token en el hash, procesarlo
         if (accessToken && type === 'recovery') {
           // Primero, establecer la sesión manualmente con el token
           try {
+            console.log('🔐 Estableciendo sesión con token de recuperación...')
             const { data: { session: setSessionData }, error: setSessionError } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken || ''
             })
 
             if (setSessionError) {
-              console.error('Error estableciendo sesión:', setSessionError)
+              console.error('❌ Error estableciendo sesión:', setSessionError)
+              // Si el error es de token expirado o inválido, mostrar mensaje específico
+              if (setSessionError.message?.includes('expired') || setSessionError.message?.includes('invalid')) {
+                setError('El enlace de recuperación ha expirado o es inválido. Por favor solicita un nuevo enlace.')
+                setInitializing(false)
+                return
+              }
               // Continuar con el flujo normal aunque falle
             } else if (setSessionData?.session) {
-              console.log('Sesión establecida correctamente')
-              // Limpiar el hash de la URL
+              console.log('✅ Sesión establecida correctamente')
+              // Limpiar el hash de la URL para seguridad
               try {
                 window.history.replaceState(null, '', window.location.pathname)
               } catch (e) {
-                console.warn('No se pudo limpiar el hash:', e)
+                console.warn('⚠️ No se pudo limpiar el hash:', e)
               }
               setError(null)
               setInitializing(false)
@@ -86,7 +118,7 @@ export default function ResetPasswordPage() {
               return
             }
           } catch (setSessionErr) {
-            console.error('Error al establecer sesión:', setSessionErr)
+            console.error('❌ Error al establecer sesión:', setSessionErr)
             // Continuar con el flujo de verificación
           }
 
@@ -299,9 +331,19 @@ export default function ResetPasswordPage() {
                 <h3 className="text-xl font-bold text-gray-900 mb-2">
                   Error de Recuperación
                 </h3>
-                <p className="text-gray-600 mb-6">
+                <p className="text-gray-600 mb-4">
                   {error}
                 </p>
+                {window.location.href.includes('localhost') && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 text-left">
+                    <p className="text-sm text-yellow-800 font-semibold mb-2">💡 Nota importante:</p>
+                    <p className="text-xs text-yellow-700">
+                      Si estás accediendo desde un dispositivo móvil y el enlace apunta a "localhost", 
+                      necesitas acceder desde el mismo dispositivo donde está corriendo el servidor, 
+                      o solicitar un nuevo enlace desde la aplicación en producción.
+                    </p>
+                  </div>
+                )}
                 <div className="space-y-3">
                   <Button 
                     onClick={() => router.push('/auth/recuperar-password')}

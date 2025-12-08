@@ -28,8 +28,15 @@ export default function RecuperarPasswordPage() {
     setLoading(true)
 
     try {
+      // Usar la URL de producción si está disponible, sino usar la URL actual
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+      const redirectUrl = `${siteUrl}/auth/reset-password`
+      
+      console.log('Enviando email de recuperación a:', email)
+      console.log('URL de redirección:', redirectUrl)
+      
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
+        redirectTo: redirectUrl,
       })
 
       if (error) {
