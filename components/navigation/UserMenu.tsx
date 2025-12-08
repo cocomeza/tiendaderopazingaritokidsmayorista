@@ -169,87 +169,10 @@ export function UserMenu({ cartDrawerOpen: externalCartDrawerOpen, setCartDrawer
         return
       }
 
-      // Verificar stock antes de crear los items del pedido
+      // Validación básica de stock (simplificada)
       for (const item of items) {
-        let availableStock = 0
-
-        // Si el item tiene variantId, verificar stock de la variante específica
-        if (item.variantId) {
-          const { data: variant, error: variantError } = await supabase
-            .from('product_variants')
-            .select('stock, active')
-            .eq('id', item.variantId)
-            .single()
-
-          if (variantError || !variant || !variant.active) {
-            console.error('Error verificando variante:', variantError)
-            toast.error(`Error al verificar stock de la variante de ${item.name}`)
-            return
-          }
-
-          availableStock = variant.stock || 0
-        } 
-        // Si tiene size o color, buscar la variante correspondiente
-        else if (item.size || item.color) {
-          let variantQuery = supabase
-            .from('product_variants')
-            .select('stock')
-            .eq('product_id', item.productId)
-            .eq('active', true)
-
-          if (item.size) {
-            variantQuery = variantQuery.eq('size', item.size)
-          }
-          if (item.color) {
-            variantQuery = variantQuery.eq('color', item.color)
-          }
-
-          const { data: variants, error: variantsError } = await variantQuery
-
-          if (variantsError) {
-            console.error('Error verificando variantes:', variantsError)
-            toast.error(`Error al verificar stock de ${item.name}`)
-            return
-          }
-
-          if (variants && variants.length > 0) {
-            // Sumar stock de todas las variantes que coinciden
-            availableStock = variants.reduce((sum, v) => sum + (v.stock || 0), 0)
-          }
-        } 
-        // Si no tiene variantes, verificar stock del producto directamente
-        else {
-          const { data: product, error: productError } = await supabase
-            .from('products')
-            .select('stock, name')
-            .eq('id', item.productId)
-            .single()
-
-          if (productError) {
-            console.error('Error verificando stock del producto:', productError)
-            toast.error(`Error al verificar stock del producto ${item.name}`)
-            return
-          }
-
-          availableStock = product?.stock || 0
-
-          // Si el producto tiene stock 0, verificar si hay variantes con stock
-          if (availableStock === 0) {
-            const { data: variants, error: variantsError } = await supabase
-              .from('product_variants')
-              .select('stock')
-              .eq('product_id', item.productId)
-              .eq('active', true)
-
-            if (!variantsError && variants && variants.length > 0) {
-              const totalVariantStock = variants.reduce((sum, v) => sum + (v.stock || 0), 0)
-              availableStock = totalVariantStock
-            }
-          }
-        }
-
-        if (availableStock < item.quantity) {
-          toast.error(`Stock insuficiente para ${item.name}. Stock disponible: ${availableStock}, cantidad solicitada: ${item.quantity}`)
+        if (item.stock < item.quantity) {
+          toast.error(`Stock insuficiente para ${item.name}. Stock disponible: ${item.stock}, cantidad solicitada: ${item.quantity}`)
           return
         }
       }
@@ -289,20 +212,33 @@ export function UserMenu({ cartDrawerOpen: externalCartDrawerOpen, setCartDrawer
         return
       }
 
-      // Generar mensaje de WhatsApp con el nuevo formato
-      const mensaje = `Hola 👋, ¿cómo estás?
+      // Generar mensaje de WhatsApp con formato original
+      const itemsList = items.map(item => {
+        const sizeText = item.size ? `Talle: ${item.size}` : ''
+        const colorText = item.color ? `Color: ${item.color}` : 'Color único'
+        const attributes = [sizeText, colorText].filter(Boolean).join(' | ')
+        return `* ${item.name}${attributes ? ` (${attributes})` : ''} - Cantidad: ${item.quantity} - $${(item.wholesale_price * item.quantity).toLocaleString('es-AR')}`
+      }).join('\n\n')
 
-Acabo de armar mi carrito en la web mayorista.
+      const mensaje = `Hola! Quiero hacer un pedido MAYORISTA:
 
-📦 Número de pedido: ${orderNumber}
+ ORDEN DE COMPRA N°: ${orderNumber}
 
-🧸 Cantidad de artículos: ${totalCartItems}
+${itemsList}
 
-💵 Total del pedido: $${cartTotal.toLocaleString('es-AR')}
+Total: $${cartTotal.toLocaleString('es-AR')}
 
-Por favor, ¿me confirmás si está todo correcto para proceder con el pago?
+Compra mínima: 5 unidades por producto
 
-¡Gracias!`
+Datos para pago:
+
+Medios aceptados: Transferencia bancaria, efectivo o cheque
+
+Alias: ZINGARITO.KIDS
+
+CBU: 0170123456789012345678
+
+Recordá enviar el comprobante o captura del pago para confirmar tu pedido.`
       
       // Abrir WhatsApp con el mensaje
       const numero = '543407440243'
