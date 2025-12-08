@@ -34,35 +34,62 @@ export default function ResetPasswordPage() {
         // Verificar si hay un hash fragment en la URL (viene del email)
         const hash = window.location.hash
         const fullUrl = window.location.href
+        const searchParams = new URLSearchParams(window.location.search)
+        
+        // También verificar si el token viene como query param (algunos clientes de email lo convierten)
+        const accessTokenFromQuery = searchParams.get('access_token')
+        const typeFromQuery = searchParams.get('type')
         
         console.log('🔍 Inicializando reset password:', { 
           hasHash: !!hash, 
           hashLength: hash?.length,
-          url: fullUrl.substring(0, 100) // Solo primeros 100 caracteres para no exponer token completo
+          hasQueryToken: !!accessTokenFromQuery,
+          url: fullUrl.substring(0, 150) // Solo primeros 150 caracteres para debugging
         })
         
-        // Si no hay hash, verificar si hay una sesión activa
-        if (!hash || hash.length <= 1) {
+        // Si no hay hash ni query params, verificar si hay una sesión activa
+        if ((!hash || hash.length <= 1) && !accessTokenFromQuery) {
+          // Esperar un momento para que Supabase procese el hash automáticamente
+          await new Promise(resolve => setTimeout(resolve, 500))
+          
           const { data: { session }, error: sessionError } = await supabase.auth.getSession()
           
           if (sessionError || !session) {
+            console.log('❌ No hay sesión activa:', { error: sessionError?.message })
             setError('No se encontró un enlace de recuperación válido. Por favor solicita un nuevo enlace desde la página de recuperación.')
             setInitializing(false)
             return
           }
 
+          console.log('✅ Sesión encontrada sin hash')
           setError(null)
           setInitializing(false)
           return
         }
 
-        // Parsear el hash (remover el # inicial)
-        const hashString = hash.startsWith('#') ? hash.substring(1) : hash
-        const hashParams = new URLSearchParams(hashString)
-        const accessToken = hashParams.get('access_token')
-        const type = hashParams.get('type')
-        const refreshToken = hashParams.get('refresh_token')
-        const expiresAt = hashParams.get('expires_at')
+        // Parsear el hash o query params
+        let accessToken: string | null = null
+        let type: string | null = null
+        let refreshToken: string | null = null
+        let expiresAt: string | null = null
+        
+        if (accessTokenFromQuery && typeFromQuery) {
+          // Token viene como query param
+          accessToken = accessTokenFromQuery
+          type = typeFromQuery
+          refreshToken = searchParams.get('refresh_token')
+          expiresAt = searchParams.get('expires_at')
+          console.log('📧 Token detectado en query params')
+        } else if (hash && hash.length > 1) {
+          // Token viene como hash fragment
+          const hashString = hash.startsWith('#') ? hash.substring(1) : hash
+          const hashParams = new URLSearchParams(hashString)
+          accessToken = hashParams.get('access_token')
+          type = hashParams.get('type')
+          refreshToken = hashParams.get('refresh_token')
+          expiresAt = hashParams.get('expires_at')
+          console.log('🔗 Token detectado en hash fragment')
+        }
 
         console.log('Hash detectado:', { 
           hasToken: !!accessToken, 
@@ -83,7 +110,7 @@ export default function ResetPasswordPage() {
           }
         }
 
-        // Si hay un token en el hash, procesarlo
+        // Si hay un token, procesarlo
         if (accessToken && type === 'recovery') {
           // Primero, establecer la sesión manualmente con el token
           try {
@@ -95,8 +122,17 @@ export default function ResetPasswordPage() {
 
             if (setSessionError) {
               console.error('❌ Error estableciendo sesión:', setSessionError)
+              console.error('Detalles del error:', {
+                message: setSessionError.message,
+                status: setSessionError.status,
+                name: setSessionError.name
+              })
+              
               // Si el error es de token expirado o inválido, mostrar mensaje específico
-              if (setSessionError.message?.includes('expired') || setSessionError.message?.includes('invalid')) {
+              if (setSessionError.message?.includes('expired') || 
+                  setSessionError.message?.includes('invalid') ||
+                  setSessionError.message?.includes('expired_token') ||
+                  setSessionError.status === 400) {
                 setError('El enlace de recuperación ha expirado o es inválido. Por favor solicita un nuevo enlace.')
                 setInitializing(false)
                 return
@@ -104,11 +140,11 @@ export default function ResetPasswordPage() {
               // Continuar con el flujo normal aunque falle
             } else if (setSessionData?.session) {
               console.log('✅ Sesión establecida correctamente')
-              // Limpiar el hash de la URL para seguridad
+              // Limpiar el hash/query params de la URL para seguridad
               try {
                 window.history.replaceState(null, '', window.location.pathname)
               } catch (e) {
-                console.warn('⚠️ No se pudo limpiar el hash:', e)
+                console.warn('⚠️ No se pudo limpiar la URL:', e)
               }
               setError(null)
               setInitializing(false)
@@ -116,6 +152,8 @@ export default function ResetPasswordPage() {
                 subscription.unsubscribe()
               }
               return
+            } else {
+              console.warn('⚠️ No se pudo establecer sesión, pero no hay error explícito')
             }
           } catch (setSessionErr) {
             console.error('❌ Error al establecer sesión:', setSessionErr)
