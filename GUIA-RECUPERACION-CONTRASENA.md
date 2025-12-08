@@ -16,22 +16,33 @@
 
 ### 2. Configuración en Supabase Dashboard
 
-**Pasos críticos:**
+**Pasos críticos - Ubicaciones alternativas:**
 
-1. **Site URL:**
-   - Ve a: Supabase Dashboard → Tu Proyecto → Settings → Authentication → URL Configuration
+**Opción A: Authentication → Settings**
+1. En el sidebar izquierdo, haz clic en **"Authentication"**
+2. En la parte superior, busca la pestaña **"Settings"** (junto a Users, Policies, etc.)
+3. Busca las secciones:
    - **Site URL:** Debe ser `https://tiendaderopazingaritokidsmayorista.vercel.app`
-   - Guarda los cambios
-
-2. **Redirect URLs:**
-   - En la misma sección, busca "Redirect URLs"
-   - Agrega estas URLs (una por línea):
+   - **Redirect URLs:** Agrega estas URLs (una por línea):
      ```
      https://tiendaderopazingaritokidsmayorista.vercel.app/auth/reset-password
      https://tiendaderopazingaritokidsmayorista.vercel.app/**
      ```
-   - El `**` permite cualquier ruta bajo tu dominio
-   - Guarda los cambios
+
+**Opción B: Settings → Authentication**
+1. En el sidebar izquierdo, haz clic en el ícono de **Settings (⚙️)** en la parte inferior
+2. Ve a **Authentication**
+3. Busca **"URL Configuration"** o **"Redirect URLs"**
+
+**Opción C: Búsqueda**
+1. Usa la barra de búsqueda superior (Q Search...)
+2. Busca **"redirect"** o **"URL"**
+3. Selecciona la opción de configuración que aparezca
+
+**Si NO encuentras estas opciones:**
+- Es posible que tu proyecto de Supabase use una versión diferente del dashboard
+- En ese caso, el código ya está configurado para usar `redirectTo` dinámicamente
+- Solo asegúrate de que `NEXT_PUBLIC_SITE_URL` esté configurada en Vercel
 
 3. **Email Templates (Opcional pero recomendado):**
    - Ve a: Settings → Authentication → Email Templates
