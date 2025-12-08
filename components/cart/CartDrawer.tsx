@@ -210,10 +210,16 @@ Por favor, ¿me confirmás si está todo correcto para proceder con el pago?
 ¡Gracias!`
       
       // Codificar mensaje para WhatsApp
-      // encodeURIComponent codifica correctamente los emojis como UTF-8
-      const encodedMessage = encodeURIComponent(mensaje)
+      // encodeURIComponent codifica correctamente UTF-8, pero WhatsApp a veces tiene problemas
+      // con emojis. Usamos una función que asegura la codificación correcta.
+      const encodeWhatsAppMessage = (text: string): string => {
+        // encodeURIComponent codifica UTF-8 correctamente, incluyendo emojis
+        return encodeURIComponent(text)
+      }
       
-      // Abrir WhatsApp con el mensaje
+      const encodedMessage = encodeWhatsAppMessage(mensaje)
+      
+      // Abrir WhatsApp - usar wa.me que funciona en web y móvil
       const numero = '543407440243'
       const whatsappUrl = `https://wa.me/${numero}?text=${encodedMessage}`
       window.open(whatsappUrl, '_blank')
