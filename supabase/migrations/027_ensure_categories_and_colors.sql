@@ -5,6 +5,30 @@
 -- requeridos para el sistema de productos
 -- =====================================================
 
+-- Función auxiliar para generar slug desde nombre (si no existe)
+CREATE OR REPLACE FUNCTION generate_slug(input_name TEXT) RETURNS TEXT AS $$
+BEGIN
+  RETURN LOWER(
+    REGEXP_REPLACE(
+      REGEXP_REPLACE(
+        REGEXP_REPLACE(
+          REGEXP_REPLACE(
+            REGEXP_REPLACE(
+              REGEXP_REPLACE(input_name, '[áàäâ]', 'a', 'gi'),
+              '[éèëê]', 'e', 'gi'
+            ),
+            '[íìïî]', 'i', 'gi'
+          ),
+          '[óòöô]', 'o', 'gi'
+        ),
+        '[úùüû]', 'u', 'gi'
+      ),
+      '[^a-z0-9]+', '-', 'gi'
+    )
+  );
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
 -- =====================================================
 -- 1. CATEGORÍAS REQUERIDAS
 -- =====================================================
@@ -25,10 +49,13 @@ DECLARE
     'CALZADO'
   ];
   cat_name TEXT;
+  cat_slug TEXT;
   cat_exists BOOLEAN;
   has_group_type BOOLEAN;
   has_age_range BOOLEAN;
   has_display_order BOOLEAN;
+  has_slug BOOLEAN;
+  slug_is_nullable BOOLEAN;
   display_order_val INTEGER := 1;
 BEGIN
   -- Verificar qué columnas existen en categories
@@ -47,9 +74,30 @@ BEGIN
     WHERE table_name = 'categories' AND column_name = 'display_order'
   ) INTO has_display_order;
   
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'categories' AND column_name = 'slug'
+  ) INTO has_slug;
+  
+  -- Verificar si slug es nullable
+  IF has_slug THEN
+    SELECT is_nullable = 'YES' INTO slug_is_nullable
+    FROM information_schema.columns
+    WHERE table_name = 'categories' AND column_name = 'slug';
+  ELSE
+    slug_is_nullable := true; -- Si no existe, no es requerido
+  END IF;
+  
   -- Iterar sobre cada categoría requerida
   FOREACH cat_name IN ARRAY required_categories
   LOOP
+    -- Generar slug si es necesario
+    IF has_slug AND NOT slug_is_nullable THEN
+      cat_slug := generate_slug(cat_name);
+    ELSE
+      cat_slug := NULL;
+    END IF;
+    
     -- Verificar si la categoría ya existe (case-insensitive)
     SELECT EXISTS (
       SELECT 1 FROM categories 
@@ -58,7 +106,35 @@ BEGIN
     
     IF NOT cat_exists THEN
       -- Insertar la categoría según las columnas disponibles
-      IF has_group_type AND has_age_range AND has_display_order THEN
+      IF has_slug AND NOT slug_is_nullable AND has_group_type AND has_age_range AND has_display_order THEN
+        INSERT INTO categories (name, slug, description, group_type, age_range, display_order, active)
+        VALUES (
+          cat_name,
+          cat_slug,
+          'Categoría ' || cat_name,
+          'menu',
+          NULL,
+          display_order_val,
+          true
+        );
+      ELSIF has_slug AND NOT slug_is_nullable AND has_display_order THEN
+        INSERT INTO categories (name, slug, description, display_order, active)
+        VALUES (
+          cat_name,
+          cat_slug,
+          'Categoría ' || cat_name,
+          display_order_val,
+          true
+        );
+      ELSIF has_slug AND NOT slug_is_nullable THEN
+        INSERT INTO categories (name, slug, description, active)
+        VALUES (
+          cat_name,
+          cat_slug,
+          'Categoría ' || cat_name,
+          true
+        );
+      ELSIF has_group_type AND has_age_range AND has_display_order THEN
         INSERT INTO categories (name, description, group_type, age_range, display_order, active)
         VALUES (
           cat_name,
@@ -85,7 +161,7 @@ BEGIN
         );
       END IF;
       
-      RAISE NOTICE '✅ Categoría "%" agregada', cat_name;
+      RAISE NOTICE '✅ Categoría "%" agregada (slug: %)', cat_name, COALESCE(cat_slug, 'N/A');
     ELSE
       RAISE NOTICE 'ℹ️ Categoría "%" ya existe', cat_name;
     END IF;
