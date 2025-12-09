@@ -48,25 +48,48 @@ Guía paso a paso para comprar un dominio en Namecheap y configurarlo con Vercel
 
 ## ⚙️ Paso 2: Configurar DNS en Namecheap
 
-### 2.1 Acceder a la gestión del dominio
+### 2.1 Obtener los Nameservers de Vercel (PRIMERO)
+
+**⚠️ IMPORTANTE:** Los nameservers NO se configuran en Vercel, se configuran en **Namecheap**. Primero debes obtener los nameservers de Vercel.
+
+1. Ve a [vercel.com](https://vercel.com) e inicia sesión
+2. Selecciona tu proyecto: `tiendaderopazingaritokidsmayorista`
+3. Ve a **Settings** → **Domains**
+4. Click en **"Add Domain"**
+5. Ingresa tu dominio: `zingaritokids.com`
+6. Click en **"Add"**
+7. Vercel te mostrará los **nameservers** que debes usar (generalmente son):
+   ```
+   ns1.vercel-dns.com
+   ns2.vercel-dns.com
+   ```
+8. **Copia estos nameservers** - los necesitarás en el siguiente paso
+
+**Nota:** Vercel mostrará el estado como "Pending" hasta que configures los nameservers en Namecheap. Esto es normal.
+
+### 2.2 Acceder a la gestión del dominio en Namecheap
 
 1. En Namecheap, ve a **"Domain List"** (menú superior)
 2. Encuentra tu dominio `zingaritokids.com`
 3. Click en **"Manage"** (al lado del dominio)
 
-### 2.2 Configurar Nameservers (Método Recomendado)
+### 2.3 Configurar Nameservers en Namecheap (Método Recomendado)
 
 **Opción A: Usar Nameservers de Vercel (Recomendado)**
 
-1. En la página de gestión, ve a la pestaña **"Advanced DNS"**
-2. Scroll hasta **"Nameservers"**
-3. Selecciona **"Custom DNS"**
-4. Agrega estos nameservers de Vercel:
+1. En la página de gestión de Namecheap, ve a la pestaña **"Nameservers"** (o busca "Nameservers" en la sección de configuración)
+2. Selecciona **"Custom DNS"** (en lugar de "Namecheap BasicDNS")
+3. Ingresa los nameservers que copiaste de Vercel:
    ```
    ns1.vercel-dns.com
    ns2.vercel-dns.com
    ```
-5. Click en **"Save"** (puede tardar hasta 24 horas en propagarse, pero generalmente es más rápido)
+4. Click en **"Save"** (el check verde)
+5. Espera la propagación (puede tardar 5 minutos - 24 horas, pero generalmente es más rápido)
+
+**✅ Resumen del proceso:**
+- **Vercel**: Te da los nameservers (paso 2.1)
+- **Namecheap**: Donde configuras esos nameservers (paso 2.3)
 
 **Opción B: Usar DNS de Namecheap (Alternativa)**
 

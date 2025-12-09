@@ -7,25 +7,26 @@
 2. Busca `zingaritokids.com`
 3. Agrega al carrito y paga (~$10-12 USD/año)
 
-### 2️⃣ Configurar DNS (2 opciones)
+### 2️⃣ Obtener Nameservers de Vercel (PRIMERO - 2 minutos)
+1. Vercel → Settings → Domains
+2. Add Domain → `zingaritokids.com`
+3. Vercel te mostrará los nameservers (ej: `ns1.vercel-dns.com`, `ns2.vercel-dns.com`)
+4. **Copia estos nameservers**
 
-**Opción A - Nameservers de Vercel (Más fácil):**
+### 3️⃣ Configurar Nameservers en Namecheap (5 minutos)
 1. Namecheap → Domain List → Manage
-2. Nameservers → Custom DNS
-3. Agrega:
+2. Pestaña "Nameservers" → Custom DNS
+3. Pega los nameservers que copiaste de Vercel:
    ```
    ns1.vercel-dns.com
    ns2.vercel-dns.com
    ```
+4. Save
+5. Espera propagación (5 min - 2 horas, generalmente < 1 hora)
 
-**Opción B - DNS de Namecheap:**
-1. Namecheap → Advanced DNS
-2. Agrega registros que Vercel te indique
-
-### 3️⃣ Configurar en Vercel (5 minutos)
-1. Vercel → Settings → Domains
-2. Add Domain → `zingaritokids.com`
-3. Espera verificación (5 min - 2 horas)
+**⚠️ IMPORTANTE:** 
+- Los nameservers se configuran en **Namecheap**, NO en Vercel
+- Vercel solo te da los nameservers que debes usar
 
 ### 4️⃣ Actualizar Variables (2 minutos)
 1. Vercel → Settings → Environment Variables
